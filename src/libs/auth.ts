@@ -1,41 +1,52 @@
 // Third-party Imports
 import CredentialProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
-import { PrismaAdapter } from '@auth/prisma-adapter'
-import { PrismaClient } from '@prisma/client'
 import type { NextAuthOptions } from 'next-auth'
-import type { Adapter } from 'next-auth/adapters'
 
-const prisma = new PrismaClient()
+// Lib Imports
+import { loginWithGoogle } from '@/libs/authApi'
+
+// Type Imports
+import type { NestAuthUser } from '@/types/apps/authTypes'
+
+const applyNestUserToToken = (token: Record<string, unknown>, data: NestAuthUser) => {
+  token.id = data.id
+  token.sub = data.id
+  token.email = data.email
+  token.name = data.name
+  token.picture = data.image
+  token.accessToken = data.accessToken
+  token.propertyId = data.propertyId
+  token.personUuid = data.personUuid
+  token.employeeUuid = data.employeeUuid
+}
+
+const toNestErrorPayload = (error: unknown) => {
+  if (error && typeof error === 'object' && 'message' in error) {
+    return error
+  }
+
+  return { statusCode: 401, message: ['Acceso no autorizado.'], error: 'Unauthorized' }
+}
+
+const loginErrorRedirect = (error: unknown) => {
+  const payload = toNestErrorPayload(error)
+
+  return `/pages/auth/login-v1?error=${encodeURIComponent(JSON.stringify(payload))}`
+}
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as Adapter,
-
-  // ** Configure one or more authentication providers
-  // ** Please refer to https://next-auth.js.org/configuration/options#providers for more `providers` options
+  // Source of truth is NestJS (users / persons / employees) — do not use PrismaAdapter
   providers: [
     CredentialProvider({
-      // ** The name to display on the sign in form (e.g. 'Sign in with...')
-      // ** For more details on Credentials Provider, visit https://next-auth.js.org/providers/credentials
       name: 'Credentials',
       type: 'credentials',
-
-      /*
-       * As we are using our own Sign-in page, we do not need to change
-       * username or password attributes manually in following credentials object.
-       */
       credentials: {},
       async authorize(credentials) {
-        /*
-         * You need to provide your own logic here that takes the credentials submitted and returns either
-         * an object representing a user or value that is false/null if the credentials are invalid.
-         * For e.g. return { id: 1, name: 'J Smith', email: 'jsmith@example.com' }
-         * You can also use the `req` object to obtain additional parameters (i.e., the request IP address)
-         */
         const { email, password } = credentials as { email: string; password: string }
 
         try {
-          // ** Login API Call to match the user credentials and receive user data in response along with his role
+          // Materio alias: /login → Nest /auth/login (401 body: { message: string[] })
           const res = await fetch(`${process.env.API_URL}/login`, {
             method: 'POST',
             headers: {
@@ -46,22 +57,20 @@ export const authOptions: NextAuthOptions = {
 
           const data = await res.json()
 
-          if (res.status === 401) {
+          if (!res.ok) {
+            // Propagate Nest body so LoginV1 parseAuthError can show message[0]
             throw new Error(JSON.stringify(data))
           }
 
-          if (res.status === 200) {
-            /*
-             * Please unset all the sensitive information of the user either from API response or before returning
-             * user data below. Below return statement will set the user object in the token and the same is set in
-             * the session which will be accessible all over the app.
-             */
-            return data
+          return data as NestAuthUser
+        } catch (e: unknown) {
+          if (e instanceof Error) {
+            throw new Error(e.message)
           }
 
-          return null
-        } catch (e: any) {
-          throw new Error(e.message)
+          throw new Error(
+            JSON.stringify({ statusCode: 401, message: ['Acceso no autorizado.'], error: 'Unauthorized' })
+          )
         }
       }
     }),
@@ -70,56 +79,67 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string
     })
-
-    // ** ...add more providers here
   ],
 
-  // ** Please refer to https://next-auth.js.org/configuration/options#session for more `session` options
   session: {
-    /*
-     * Choose how you want to save the user session.
-     * The default is `jwt`, an encrypted JWT (JWE) stored in the session cookie.
-     * If you use an `adapter` however, NextAuth default it to `database` instead.
-     * You can still force a JWT session by explicitly defining `jwt`.
-     * When using `database`, the session cookie will only contain a `sessionToken` value,
-     * which is used to look up the session in the database.
-     * If you use a custom credentials provider, user accounts will not be persisted in a database by NextAuth.js (even if one is configured).
-     * The option to use JSON Web Tokens for session tokens must be enabled to use a custom credentials provider.
-     */
     strategy: 'jwt',
-
-    // ** Seconds - How long until an idle session expires and is no longer valid
-    maxAge: 30 * 24 * 60 * 60 // ** 30 days
+    maxAge: 30 * 24 * 60 * 60
   },
 
-  // ** Please refer to https://next-auth.js.org/configuration/options#pages for more `pages` options
   pages: {
-    signIn: '/login'
+    signIn: '/pages/auth/login-v1'
   },
 
-  // ** Please refer to https://next-auth.js.org/configuration/options#callbacks for more `callbacks` options
   callbacks: {
-    /*
-     * While using `jwt` as a strategy, `jwt()` callback will be called before
-     * the `session()` callback. So we have to add custom parameters in `token`
-     * via `jwt()` callback to make them accessible in the `session()` callback
-     */
-    async jwt({ token, user }) {
+    async signIn({ user, account }) {
+      // Google: validate against Nest before creating a NextAuth session
+      if (account?.provider === 'google') {
+        if (!account.id_token) {
+          return loginErrorRedirect({ message: ['No se recibió el token de Google.'] })
+        }
+
+        try {
+          const data = await loginWithGoogle(account.id_token)
+
+          // Attach Nest payload onto user so jwt callback can persist it
+          Object.assign(user, data)
+
+          return true
+        } catch (error: unknown) {
+          return loginErrorRedirect(error)
+        }
+      }
+
+      return true
+    },
+
+    async jwt({ token, user, account }) {
       if (user) {
-        /*
-         * For adding custom parameters to user in session, we first need to add those parameters
-         * in token which then will be available in the `session()` callback
-         */
-        token.name = user.name
+        applyNestUserToToken(token as Record<string, unknown>, user as NestAuthUser)
+        token.authProvider = account?.provider === 'google' ? 'google' : 'credentials'
+
+        if (account?.provider === 'google') {
+          token.googleToken = account.access_token ?? account.id_token
+        }
       }
 
       return token
     },
+
     async session({ session, token }) {
       if (session.user) {
-        // ** Add custom params to user in session which are added in `jwt()` callback via `token` parameter
-        session.user.name = token.name
+        session.user.id = (token.id as string) ?? (token.sub as string)
+        session.user.name = token.name as string
+        session.user.email = token.email as string
+        session.user.image = (token.picture as string) ?? null
+        session.user.propertyId = token.propertyId as number | undefined
+        session.user.personUuid = token.personUuid as string | undefined
+        session.user.employeeUuid = token.employeeUuid as string | undefined
       }
+
+      session.accessToken = token.accessToken as string | undefined
+      session.googleToken = token.googleToken as string | undefined
+      session.authProvider = token.authProvider as 'credentials' | 'google' | undefined
 
       return session
     }

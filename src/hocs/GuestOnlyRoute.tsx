@@ -14,8 +14,11 @@ import themeConfig from '@configs/themeConfig'
 // Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
+// Lib Imports
+import { authOptions } from '@/libs/auth'
+
 const GuestOnlyRoute = async ({ children, lang }: ChildrenType & { lang: Locale }) => {
-  const session = await getServerSession()
+  const session = await getServerSession(authOptions)
 
   if (session) {
     redirect(getLocalizedUrl(themeConfig.homePageUrl, lang))

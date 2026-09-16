@@ -1,22 +1,26 @@
 // Next Imports
+import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 
-// Component Imports
-import Login from '@views/Login'
+// Type Imports
+import type { Locale } from '@configs/i18n'
 
-// Server Action Imports
-import { getServerMode } from '@core/utils/serverHelpers'
+// Util Imports
+import { getLocalizedUrl } from '@/utils/i18n'
 
 export const metadata: Metadata = {
   title: 'Login',
-  description: 'Login to your account'
+  description: 'Login to your hotel staff account'
 }
 
-const LoginPage = async () => {
-  // Vars
-  const mode = await getServerMode()
+type Props = {
+  params: Promise<{ lang: Locale }>
+}
 
-  return <Login mode={mode} />
+const LoginPage = async ({ params }: Props) => {
+  const { lang } = await params
+
+  redirect(getLocalizedUrl('/pages/auth/login-v1', lang))
 }
 
 export default LoginPage

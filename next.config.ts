@@ -1,6 +1,13 @@
+import path from 'path'
+
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // Avoid picking C:\Users\Usuario\package-lock.json as workspace root (causes OOM on Windows)
+  outputFileTracingRoot: path.join(__dirname),
+  turbopack: {
+    root: path.join(__dirname)
+  },
   basePath: process.env.BASEPATH,
   redirects: async () => {
     return [
