@@ -41,6 +41,28 @@ const horizontalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>
     icon: 'ri-mail-open-line',
     children: [
       {
+        label: dictionary['navigation'].maintenance,
+        icon: 'ri-tools-line',
+        children: [
+          {
+            label: dictionary['navigation'].levels,
+            href: '/apps/floors/list'
+          },
+          {
+            label: dictionary['navigation'].roomTypes,
+            href: '/apps/room-types/list'
+          },
+          {
+            label: dictionary['navigation'].rooms,
+            href: '/apps/rooms/list'
+          },
+          {
+            label: dictionary['navigation'].roles,
+            href: '/apps/hotel-roles/list'
+          }
+        ]
+      },
+      {
         label: dictionary['navigation'].eCommerce,
         icon: 'ri-shopping-bag-3-line',
         children: [
