@@ -78,21 +78,16 @@ const verticalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>>)
     isSection: true,
     children: [
       {
+        label: dictionary['navigation'].rooms,
+        icon: 'ri-hotel-bed-line',
+        href: '/apps/rooms',
+        exactMatch: false,
+        activeUrl: '/apps/rooms'
+      },
+      {
         label: dictionary['navigation'].maintenance,
         icon: 'ri-tools-line',
         children: [
-          {
-            label: dictionary['navigation'].levels,
-            href: '/apps/floors/list'
-          },
-          {
-            label: dictionary['navigation'].roomTypes,
-            href: '/apps/room-types/list'
-          },
-          {
-            label: dictionary['navigation'].rooms,
-            href: '/apps/rooms/list'
-          },
           {
             label: dictionary['navigation'].roles,
             href: '/apps/hotel-roles/list'

@@ -55,7 +55,7 @@ export type Config = {
 
 const themeConfig: Config = {
   templateName: 'Materio',
-  homePageUrl: '/dashboards/crm',
+  homePageUrl: '/apps/rooms',
   settingsCookieName: 'materio-mui-next-demo-1',
   mode: 'system', // 'system', 'light', 'dark'
   skin: 'default', // 'default', 'bordered'

@@ -1,14 +1,16 @@
-import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
-import RoomListClient from '@views/apps/rooms/list/RoomListClient'
+import type { Locale } from '@configs/i18n'
+import { getLocalizedUrl } from '@/utils/i18n'
 
-export const metadata: Metadata = {
-  title: 'Habitaciones',
-  description: 'Mantenimiento de habitaciones'
+type Props = {
+  params: Promise<{ lang: Locale }>
 }
 
-const RoomsListPage = () => {
-  return <RoomListClient />
+const RoomsListPage = async ({ params }: Props) => {
+  const { lang } = await params
+
+  redirect(getLocalizedUrl('/apps/rooms', lang))
 }
 
 export default RoomsListPage

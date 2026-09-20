@@ -1,16 +1,16 @@
-// Next Imports
-import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
-// Component Imports
-import FloorListClient from '@views/apps/floors/list/FloorListClient'
+import type { Locale } from '@configs/i18n'
+import { getLocalizedUrl } from '@/utils/i18n'
 
-export const metadata: Metadata = {
-  title: 'Niveles',
-  description: 'Mantenimiento de niveles (floors)'
+type Props = {
+  params: Promise<{ lang: Locale }>
 }
 
-const FloorsListPage = () => {
-  return <FloorListClient />
+const FloorsListPage = async ({ params }: Props) => {
+  const { lang } = await params
+
+  redirect(getLocalizedUrl('/apps/rooms?tab=floors', lang))
 }
 
 export default FloorsListPage

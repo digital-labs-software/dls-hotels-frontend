@@ -1,35 +1,64 @@
-npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
-npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
-npm warn Unknown project config "shamefully-hoist". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
-npm warn Unknown project config "node-linker". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
 ▲ Next.js 16.1.1 (webpack)
 - Local:         http://localhost:3001
 - Network:       http://192.168.1.35:3001
 - Environments: .env
+- Experiments (use with caution):
+  ✓ webpackMemoryOptimizations
 
 ✓ Starting...
-✓ Ready in 2.9s
+✓ Ready in 3.5s
+○ Compiling /[lang]/pages/auth/login-v1 ...
+ GET /en/pages/auth/login-v1 200 in 28.1s (compile: 27.5s, render: 560ms)
+○ Compiling /[lang]/dashboards/crm ...
+ GET /en/dashboards/crm 200 in 13.3s (compile: 11.9s, render: 1366ms)
+ GET /api/auth/session 200 in 2.3s (compile: 2.2s, render: 50ms)
+ GET /api/auth/session 200 in 46ms (compile: 15ms, render: 31ms)
+ GET /en/apps/floors/list 200 in 4.3s (compile: 4.2s, render: 184ms)
+ GET /en/apps/ecommerce/dashboard 200 in 4.0s (compile: 3.7s, render: 263ms)
+ GET /api/auth/session 200 in 45ms (compile: 19ms, render: 26ms)
+○ Compiling /[lang]/pages/widget-examples/advanced ...
+ GET /en/pages/widget-examples/advanced 200 in 10.2s (compile: 9.2s, render: 1023ms)
+○ Compiling /[lang]/forms/form-layouts ...
+ GET /api/auth/session 200 in 88ms (compile: 58ms, render: 30ms)
+ GET /en/forms/form-layouts 200 in 13.4s (compile: 13.3s, render: 101ms)
+ GET /en/apps/roles 200 in 9.0s (compile: 8.8s, render: 137ms)
+ GET /en/pages/user-profile 200 in 10.4s (compile: 9.8s, render: 604ms)
+ GET /en/pages/user-profile 200 in 253ms (compile: 22ms, render: 231ms)
+ GET /api/auth/session 200 in 62ms (compile: 31ms, render: 31ms)
+ GET /api/auth/session 200 in 37ms (compile: 16ms, render: 21ms)
+ GET /api/auth/session 200 in 52ms (compile: 26ms, render: 27ms)
+ GET /api/auth/session 200 in 48ms (compile: 16ms, render: 32ms)
+ GET /api/auth/session 200 in 55ms (compile: 22ms, render: 33ms)
+ GET /api/auth/session 200 in 66ms (compile: 15ms, render: 52ms)
+ GET /api/auth/session 200 in 51ms (compile: 22ms, render: 30ms)
+ GET /en/pages/user-profile 200 in 3.9s (compile: 26ms, render: 3.8s)
+ GET /en/pages/user-profile 200 in 3.6s (compile: 405ms, render: 3.2s)
+▲ Next.js 16.1.1 (webpack)
+- Local:         http://localhost:3001
+- Network:       http://192.168.1.35:3001
+- Environments: .env
+- Experiments (use with caution):
+  ✓ webpackMemoryOptimizations
 
-<--- Last few GCs --->
-
-[24304:000001FCE06C5000]   158528 ms: Scavenge 195.1 (200.9) -> 194.7 (203.9) MB, pooled: 0 MB, 10.70 / 0.00 ms  (average mu = 0.994, current mu = 0.004) allocation failure; 
-[24304:000001FCE06C5000]   158557 ms: Scavenge (interleaved) 196.1 (203.9) -> 195.5 (207.9) MB, pooled: 0 MB, 4.93 / 0.00 ms  (average mu = 0.994, current mu = 0.004) allocation failure; 
-
-
-<--- JS stacktrace --->
-
-FATAL ERROR: NewSpace::EnsureCurrentCapacity Allocation failed - JavaScript heap out of memory
------ Native stack trace -----
-
- 1: 00007FF62618542D 
- 2: 00007FF6260E8248 
- 3: 00007FF626C6ED41 
- 4: 00007FF626C5B9C6 
- 5: 00007FF626AA8B10 
- 6: 00007FF626A865F2 
- 7: 00007FF626AAF6DB 
- 8: 00007FF626AB1CCB 
- 9: 00007FF626AA24A2 
-10: 00007FF626A9DEA5 
-11: 00007FF626421D0D 
-[?25h
+✓ Starting...
+✓ Ready in 3.4s
+○ Compiling /[lang]/pages/user-profile ...
+ GET /en/pages/user-profile 200 in 31.1s (compile: 29.0s, render: 2.1s)
+ GET /en/pages/user-profile 200 in 652ms (compile: 153ms, render: 499ms)
+ GET /api/auth/session 200 in 3.1s (compile: 3.1s, render: 49ms)
+ GET /en/apps/rooms 307 in 4.9s (compile: 4.4s, render: 514ms)
+ GET /en/pages/auth/login-v1 200 in 4.7s (compile: 4.1s, render: 556ms)
+ GET /api/auth/session 200 in 56ms (compile: 24ms, render: 33ms)
+ GET /en/pages/user-profile 200 in 1922ms (compile: 85ms, render: 1838ms)
+ GET /api/auth/session 200 in 37ms (compile: 17ms, render: 20ms)
+ GET /api/auth/session 200 in 52ms (compile: 27ms, render: 25ms)
+ GET /en/apps/rooms 200 in 77ms (compile: 46ms, render: 30ms)
+ GET /en/apps/rooms?tab=room-types 200 in 52ms (compile: 19ms, render: 33ms)
+ GET /en/apps/rooms?tab=floors 200 in 49ms (compile: 15ms, render: 34ms)
+ GET /en/apps/rooms 200 in 51ms (compile: 13ms, render: 39ms)
+ GET /en/apps/hotel-roles/list 200 in 2.6s (compile: 2.5s, render: 91ms)
+ GET /en/apps/roles 200 in 2.6s (compile: 2.5s, render: 99ms)
+ GET /en/apps/hotel-roles/list 200 in 53ms (compile: 29ms, render: 24ms)
+ GET /api/auth/session 200 in 37ms (compile: 16ms, render: 21ms)
+ GET /api/auth/session 200 in 83ms (compile: 48ms, render: 35ms)
+ GET /en/apps/hotel-roles/list 200 in 1910ms (compile: 178ms, render: 1732ms)

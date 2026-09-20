@@ -109,7 +109,7 @@ const RoomForm = ({ uuid }: Props) => {
         })
       } catch (error) {
         toast.error(getRoomsApiErrorMessage(error, 'No se encontró la habitación solicitada.'))
-        router.replace(getLocalizedUrl('/apps/rooms/list', locale as Locale))
+        router.replace(getLocalizedUrl('/apps/rooms', locale as Locale))
       } finally {
         setLoading(false)
       }
@@ -119,7 +119,7 @@ const RoomForm = ({ uuid }: Props) => {
   }, [locale, propertyId, reset, router, sessionStatus, uuid])
 
   const goBack = () => {
-    router.push(getLocalizedUrl('/apps/rooms/list', locale as Locale))
+    router.push(getLocalizedUrl('/apps/rooms', locale as Locale))
   }
 
   const onSubmit = async (data: FormValues) => {

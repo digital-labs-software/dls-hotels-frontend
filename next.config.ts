@@ -8,19 +8,30 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname)
   },
+  experimental: {
+    webpackMemoryOptimizations: true
+  },
+  webpack: (config, { dev }) => {
+    // Persistent pack cache OOMs this 16GB Windows box while compiling Materio
+    if (dev) {
+      config.cache = false
+    }
+
+    return config
+  },
   basePath: process.env.BASEPATH,
   redirects: async () => {
     return [
       {
         source: '/',
-        destination: '/en/dashboards/crm',
-        permanent: true,
+        destination: '/en/apps/rooms',
+        permanent: false,
         locale: false
       },
       {
         source: '/:lang(en|fr|ar)',
-        destination: '/:lang/dashboards/crm',
-        permanent: true,
+        destination: '/:lang/apps/rooms',
+        permanent: false,
         locale: false
       },
       {
