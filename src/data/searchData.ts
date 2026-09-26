@@ -10,6 +10,69 @@ type SearchData = {
 
 const data: SearchData[] = [
   {
+    id: '113',
+    name: 'Clientes',
+    url: '/apps/clients',
+    icon: 'ri-group-line',
+    section: 'Apps'
+  },
+  {
+    id: '114',
+    name: 'Huéspedes',
+    url: '/apps/clients',
+    icon: 'ri-user-line',
+    section: 'Apps'
+  },
+  {
+    id: '115',
+    name: 'Empresas',
+    url: '/apps/clients?tab=companies',
+    icon: 'ri-building-line',
+    section: 'Apps'
+  },
+  {
+    id: '116',
+    name: 'Personal',
+    url: '/apps/staff',
+    icon: 'ri-id-card-line',
+    section: 'Apps'
+  },
+  {
+    id: '117',
+    name: 'Empleados',
+    url: '/apps/staff',
+    icon: 'ri-id-card-line',
+    section: 'Apps'
+  },
+  {
+    id: '118',
+    name: 'Roles y permisos',
+    url: '/apps/staff?tab=roles',
+    icon: 'ri-shield-user-line',
+    section: 'Apps'
+  },
+  {
+    id: '119',
+    name: 'Hotel',
+    url: '/apps/hotel',
+    icon: 'ri-building-4-line',
+    section: 'Apps'
+  },
+  {
+    id: '120',
+    name: 'Habitaciones',
+    url: '/apps/rooms',
+    icon: 'ri-hotel-bed-line',
+    section: 'Apps'
+  },
+  {
+    id: '121',
+    name: 'Tarifas',
+    url: '/apps/rooms?tab=rates',
+    icon: 'ri-money-dollar-circle-line',
+    section: 'Apps'
+  },
+  {
     id: '1',
     name: 'CRM',
     url: '/dashboards/crm',

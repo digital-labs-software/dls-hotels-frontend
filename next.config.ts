@@ -2,6 +2,10 @@ import path from 'path'
 
 import type { NextConfig } from 'next'
 
+if (process.env.NODE_ENV !== 'production') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+}
+
 const nextConfig: NextConfig = {
   // Avoid picking C:\Users\Usuario\package-lock.json as workspace root (causes OOM on Windows)
   outputFileTracingRoot: path.join(__dirname),

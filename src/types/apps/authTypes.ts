@@ -6,6 +6,7 @@ export type NestAuthUser = {
   name: string
   image: string | null
   propertyId: number
+  propertyName?: string
   personUuid: string
   employeeUuid: string
   accessToken: string

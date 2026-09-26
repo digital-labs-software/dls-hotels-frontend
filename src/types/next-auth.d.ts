@@ -13,6 +13,7 @@ declare module 'next-auth' {
     user: {
       id: string
       propertyId?: number
+      propertyName?: string
       personUuid?: string
       employeeUuid?: string
     } & DefaultSession['user']
@@ -28,6 +29,7 @@ declare module 'next-auth/jwt' {
     googleToken?: string
     authProvider?: AuthProvider
     propertyId?: number
+    propertyName?: string
     personUuid?: string
     employeeUuid?: string
   }

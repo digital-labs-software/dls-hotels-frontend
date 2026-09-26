@@ -97,11 +97,8 @@ const FloorFormDrawer = (props: Props) => {
 
       const saved =
         isEdit && floor
-          ? await updateFloor(floor.uuid, payload)
-          : await createFloor({
-              propertyId,
-              ...payload
-            })
+          ? await updateFloor(propertyId, floor.uuid, payload)
+          : await createFloor(propertyId, payload)
 
       toast.success(isEdit ? 'Nivel actualizado correctamente.' : 'Nivel creado correctamente.')
       onSuccess(saved)

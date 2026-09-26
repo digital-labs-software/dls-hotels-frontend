@@ -4,7 +4,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import type { NextAuthOptions } from 'next-auth'
 
 // Lib Imports
-import { loginWithGoogle } from '@/libs/authApi'
+import { loginWithGoogle, loginWithPassword } from '@/libs/authApi'
 
 // Type Imports
 import type { NestAuthUser } from '@/types/apps/authTypes'
@@ -17,6 +17,7 @@ const applyNestUserToToken = (token: Record<string, unknown>, data: NestAuthUser
   token.picture = data.image
   token.accessToken = data.accessToken
   token.propertyId = data.propertyId
+  token.propertyName = data.propertyName
   token.personUuid = data.personUuid
   token.employeeUuid = data.employeeUuid
 }
@@ -46,31 +47,9 @@ export const authOptions: NextAuthOptions = {
         const { email, password } = credentials as { email: string; password: string }
 
         try {
-          // Materio alias: /login → Nest /auth/login (401 body: { message: string[] })
-          const res = await fetch(`${process.env.API_URL}/login`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
-          })
-
-          const data = await res.json()
-
-          if (!res.ok) {
-            // Propagate Nest body so LoginV1 parseAuthError can show message[0]
-            throw new Error(JSON.stringify(data))
-          }
-
-          return data as NestAuthUser
+          return await loginWithPassword(email, password)
         } catch (e: unknown) {
-          if (e instanceof Error) {
-            throw new Error(e.message)
-          }
-
-          throw new Error(
-            JSON.stringify({ statusCode: 401, message: ['Acceso no autorizado.'], error: 'Unauthorized' })
-          )
+          throw new Error(JSON.stringify(toNestErrorPayload(e)))
         }
       }
     }),
@@ -133,6 +112,7 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email as string
         session.user.image = (token.picture as string) ?? null
         session.user.propertyId = token.propertyId as number | undefined
+        session.user.propertyName = token.propertyName as string | undefined
         session.user.personUuid = token.personUuid as string | undefined
         session.user.employeeUuid = token.employeeUuid as string | undefined
       }

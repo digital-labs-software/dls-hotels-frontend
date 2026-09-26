@@ -8,6 +8,17 @@ const getApiBase = () => {
   return process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1'
 }
 
+const toApiError = (data: unknown, res: Response, path: string) => {
+  const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : { message: data }
+
+  return {
+    ...payload,
+    statusCode: payload.statusCode ?? res.status,
+    error: payload.error ?? res.statusText,
+    path
+  }
+}
+
 export async function loginWithPassword(email: string, password: string): Promise<NestAuthUser> {
   const res = await fetch(`${getApiBase()}/auth/login`, {
     method: 'POST',
@@ -18,7 +29,7 @@ export async function loginWithPassword(email: string, password: string): Promis
   const data = await res.json()
 
   if (!res.ok) {
-    throw data
+    throw toApiError(data, res, '/auth/login')
   }
 
   return data
@@ -34,7 +45,7 @@ export async function loginWithGoogle(idToken: string): Promise<NestAuthUser> {
   const data = await res.json()
 
   if (!res.ok) {
-    throw data
+    throw toApiError(data, res, '/auth/google')
   }
 
   return data

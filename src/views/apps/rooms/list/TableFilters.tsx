@@ -1,7 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-
 import Grid from '@mui/material/Grid'
 import CardContent from '@mui/material/CardContent'
 import FormControl from '@mui/material/FormControl'
@@ -11,39 +9,28 @@ import Select from '@mui/material/Select'
 
 import type { Floor } from '@/types/apps/floorTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
-import type { Room, RoomStatus } from '@/types/apps/roomsTypes'
+import type { RoomStatus } from '@/types/apps/roomsTypes'
 import { ROOM_STATUS_LABELS, ROOM_STATUSES } from '@/types/apps/roomsTypes'
 
 const TableFilters = ({
-  setData,
-  rooms,
+  status,
+  floorId,
+  roomTypeId,
   floors,
-  roomTypes
+  roomTypes,
+  onStatusChange,
+  onFloorChange,
+  onRoomTypeChange
 }: {
-  setData: (data: Room[]) => void
-  rooms: Room[]
+  status: RoomStatus | ''
+  floorId: number | ''
+  roomTypeId: number | ''
   floors: Floor[]
   roomTypes: RoomType[]
+  onStatusChange: (value: RoomStatus | '') => void
+  onFloorChange: (value: number | '') => void
+  onRoomTypeChange: (value: number | '') => void
 }) => {
-  const [status, setStatus] = useState<RoomStatus | ''>('')
-  const [floorId, setFloorId] = useState<number | ''>('')
-  const [roomTypeId, setRoomTypeId] = useState<number | ''>('')
-
-  useEffect(() => {
-    const filtered = rooms.filter(room => {
-      if (status && room.status !== status) return false
-      if (floorId !== '' && room.floorId !== floorId) return false
-      if (roomTypeId !== '' && room.roomTypeId !== roomTypeId) return false
-
-      return true
-    })
-
-    setData(filtered)
-  }, [status, floorId, roomTypeId, rooms, setData])
-
-  const floorsWithId = floors.filter(floor => typeof floor.id === 'number')
-  const typesWithId = roomTypes.filter(type => typeof type.id === 'number')
-
   return (
     <CardContent>
       <Grid container spacing={6}>
@@ -55,7 +42,7 @@ const TableFilters = ({
               label='Estado'
               labelId='room-status-filter'
               value={status}
-              onChange={e => setStatus(e.target.value as RoomStatus | '')}
+              onChange={e => onStatusChange(e.target.value as RoomStatus | '')}
             >
               <MenuItem value=''>Todos</MenuItem>
               {ROOM_STATUSES.map(item => (
@@ -74,10 +61,10 @@ const TableFilters = ({
               label='Nivel'
               labelId='room-floor-filter'
               value={floorId}
-              onChange={e => setFloorId(e.target.value === '' ? '' : Number(e.target.value))}
+              onChange={e => onFloorChange(e.target.value === '' ? '' : Number(e.target.value))}
             >
               <MenuItem value=''>Todos</MenuItem>
-              {floorsWithId.map(floor => (
+              {floors.map(floor => (
                 <MenuItem key={floor.uuid} value={floor.id}>
                   {floor.name}
                 </MenuItem>
@@ -93,10 +80,10 @@ const TableFilters = ({
               label='Tipo'
               labelId='room-type-filter'
               value={roomTypeId}
-              onChange={e => setRoomTypeId(e.target.value === '' ? '' : Number(e.target.value))}
+              onChange={e => onRoomTypeChange(e.target.value === '' ? '' : Number(e.target.value))}
             >
               <MenuItem value=''>Todos</MenuItem>
-              {typesWithId.map(type => (
+              {roomTypes.map(type => (
                 <MenuItem key={type.uuid} value={type.id}>
                   {type.name}
                 </MenuItem>

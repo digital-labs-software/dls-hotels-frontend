@@ -36,6 +36,7 @@ import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
 import type { RoomType } from '@/types/apps/roomTypeTypes'
+import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import RoomTypeFormDrawer from './RoomTypeFormDrawer'
 import type { RoomTypeDrawerMode } from './RoomTypeFormDrawer'
 import {
@@ -114,10 +115,9 @@ const RoomTypeListTable = () => {
     setLoading(true)
 
     try {
-      const items = await listRoomTypes()
-      const filtered = items.filter(item => item.propertyId === propertyId)
+      const page = await listRoomTypes(propertyId, { limit: 100 })
 
-      setData(filtered)
+      setData(page.data)
     } catch (error) {
       toast.error(getRoomTypesApiErrorMessage(error, 'No se pudieron cargar los tipos de habitación.'))
       setData([])
@@ -141,7 +141,7 @@ const RoomTypeListTable = () => {
 
     if ((mode === 'view' || mode === 'edit') && roomType?.uuid) {
       try {
-        const latest = await getRoomType(roomType.uuid)
+        const latest = await getRoomType(propertyId, roomType.uuid)
 
         setSelectedRoomType(latest)
       } catch (error) {
@@ -159,7 +159,7 @@ const RoomTypeListTable = () => {
     setDeleting(true)
 
     try {
-      await deleteRoomType(roomTypeToDelete.uuid)
+      await deleteRoomType(propertyId, roomTypeToDelete.uuid)
       setData(prev => prev.filter(item => item.uuid !== roomTypeToDelete.uuid))
       toast.success('Tipo de habitación eliminado.')
       setRoomTypeToDelete(null)
@@ -198,11 +198,17 @@ const RoomTypeListTable = () => {
           </Typography>
         )
       }),
-      columnHelper.accessor('description', {
-        header: 'Descripción',
+      columnHelper.accessor('basePrice', {
+        header: 'Precio',
+        cell: ({ row }) => <Typography>{formatRoomPrice(row.original.basePrice)}</Typography>
+      }),
+      columnHelper.accessor('maxAdults', {
+        header: 'Ocupación',
         cell: ({ row }) => (
-          <Typography variant='body2' className='max-is-[280px] truncate' title={row.original.description ?? ''}>
-            {row.original.description || '—'}
+          <Typography>
+            {row.original.maxAdults} ad.
+            {row.original.maxChildren ? ` / ${row.original.maxChildren} ni.` : ''}
+            {row.original.maxOccupancy != null ? ` · máx. ${row.original.maxOccupancy}` : ''}
           </Typography>
         )
       }),

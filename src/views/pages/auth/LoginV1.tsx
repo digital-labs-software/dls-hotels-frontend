@@ -61,6 +61,7 @@ const schema = object({
 })
 
 const NEXT_AUTH_GENERIC_ERRORS: Record<string, string> = {
+  OAuthSignin: 'No se pudo conectar con Google. En esta red el certificado HTTPS falla; reinicia el frontend.',
   OAuthCallback: 'Acceso no autorizado.',
   Callback: 'Acceso no autorizado.',
   AccessDenied: 'Acceso no autorizado.',
@@ -80,16 +81,34 @@ const parseAuthError = (raw?: string | null): ErrorType => {
     return { message: [generic] }
   }
 
+  const fromObject = (parsed: Record<string, unknown>): string[] => {
+    const lines: string[] = []
+    const status = parsed.statusCode ?? parsed.status
+    const errorName = typeof parsed.error === 'string' ? parsed.error : null
+
+    if (status || errorName) {
+      lines.push([status ? `HTTP ${status}` : null, errorName].filter(Boolean).join(' — '))
+    }
+
+    if (Array.isArray(parsed.message)) {
+      lines.push(...parsed.message.map(item => String(item)))
+    } else if (typeof parsed.message === 'string') {
+      lines.push(parsed.message)
+    }
+
+    if (typeof parsed.path === 'string') {
+      lines.push(`Ruta: ${parsed.path}`)
+    }
+
+    return lines.length ? lines : [JSON.stringify(parsed)]
+  }
+
   try {
     const decoded = decodeURIComponent(raw)
     const parsed = JSON.parse(decoded)
 
-    if (Array.isArray(parsed?.message)) {
-      return { message: parsed.message }
-    }
-
-    if (typeof parsed?.message === 'string') {
-      return { message: [parsed.message] }
+    if (parsed && typeof parsed === 'object') {
+      return { message: fromObject(parsed as Record<string, unknown>) }
     }
 
     return { message: [typeof parsed === 'string' ? parsed : raw] }
@@ -97,12 +116,8 @@ const parseAuthError = (raw?: string | null): ErrorType => {
     try {
       const parsed = JSON.parse(raw)
 
-      if (Array.isArray(parsed?.message)) {
-        return { message: parsed.message }
-      }
-
-      if (typeof parsed?.message === 'string') {
-        return { message: [parsed.message] }
+      if (parsed && typeof parsed === 'object') {
+        return { message: fromObject(parsed as Record<string, unknown>) }
       }
     } catch {
       // plain string from Nest / NextAuth
@@ -197,8 +212,8 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
             </div>
 
             {errorState?.message?.[0] ? (
-              <Alert severity='error' icon={false}>
-                {errorState.message[0]}
+              <Alert severity='error' icon={false} sx={{ whiteSpace: 'pre-wrap', alignItems: 'flex-start' }}>
+                {errorState.message.join('\n')}
               </Alert>
             ) : null}
 
@@ -223,9 +238,9 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
                       field.onChange(e.target.value)
                       errorState !== null && setErrorState(null)
                     }}
-                    {...((errors.email || errorState !== null) && {
+                    {...(errors.email && {
                       error: true,
-                      helperText: errors?.email?.message || errorState?.message[0]
+                      helperText: errors.email.message
                     })}
                   />
                 )}

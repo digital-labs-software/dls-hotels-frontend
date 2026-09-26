@@ -118,6 +118,30 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].rooms}
           </MenuItem>
+          <MenuItem
+            href={`/${locale}/apps/clients`}
+            exactMatch={false}
+            activeUrl='/apps/clients'
+            icon={<i className='ri-group-line' />}
+          >
+            {dictionary['navigation'].clients}
+          </MenuItem>
+          <MenuItem
+            href={`/${locale}/apps/staff`}
+            exactMatch={false}
+            activeUrl='/apps/staff'
+            icon={<i className='ri-id-card-line' />}
+          >
+            {dictionary['navigation'].staff}
+          </MenuItem>
+          <MenuItem
+            href={`/${locale}/apps/hotel`}
+            exactMatch={false}
+            activeUrl='/apps/hotel'
+            icon={<i className='ri-building-4-line' />}
+          >
+            {dictionary['navigation'].hotel}
+          </MenuItem>
           <SubMenu label={dictionary['navigation'].maintenance} icon={<i className='ri-tools-line' />}>
             <MenuItem href={`/${locale}/apps/hotel-roles/list`}>{dictionary['navigation'].roles}</MenuItem>
           </SubMenu>

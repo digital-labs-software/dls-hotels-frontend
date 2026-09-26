@@ -32,7 +32,6 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFacetedMinMaxValues,
-  getPaginationRowModel,
   getSortedRowModel
 } from '@tanstack/react-table'
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
@@ -45,7 +44,7 @@ import type { Locale } from '@configs/i18n'
 import type { Floor } from '@/types/apps/floorTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
 import type { Room, RoomStatus } from '@/types/apps/roomsTypes'
-import { ROOM_STATUS_LABELS } from '@/types/apps/roomsTypes'
+import { formatRoomPrice, ROOM_STATUS_LABELS } from '@/types/apps/roomsTypes'
 import TableFilters from './TableFilters'
 import { listFloors } from '@/libs/floorsApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
@@ -118,36 +117,47 @@ const RoomListTable = () => {
   const { lang: locale } = useParams()
 
   const [rooms, setRooms] = useState<Room[]>([])
-  const [filteredData, setFilteredData] = useState<Room[]>([])
   const [floors, setFloors] = useState<Floor[]>([])
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [roomToDelete, setRoomToDelete] = useState<Room | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
+  const [total, setTotal] = useState(0)
+  const [statusFilter, setStatusFilter] = useState<RoomStatus | ''>('')
+  const [floorFilter, setFloorFilter] = useState<number | ''>('')
+  const [roomTypeFilter, setRoomTypeFilter] = useState<number | ''>('')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
 
     try {
-      const [roomsRes, floorsRes, typesRes] = await Promise.all([listRooms(), listFloors(), listRoomTypes()])
+      const [roomsRes, floorsRes, typesRes] = await Promise.all([
+        listRooms(propertyId, {
+          page: page + 1,
+          limit: pageSize,
+          status: statusFilter || undefined,
+          floorId: floorFilter === '' ? undefined : floorFilter,
+          roomTypeId: roomTypeFilter === '' ? undefined : roomTypeFilter
+        }),
+        listFloors(propertyId, { limit: 100 }),
+        listRoomTypes(propertyId, { limit: 100 })
+      ])
 
-      const nextRooms = roomsRes.filter(room => room.propertyId === propertyId)
-      const nextFloors = floorsRes.filter(floor => floor.propertyId === propertyId)
-      const nextTypes = typesRes.filter(type => type.propertyId === propertyId)
-
-      setRooms(nextRooms)
-      setFilteredData(nextRooms)
-      setFloors(nextFloors)
-      setRoomTypes(nextTypes)
+      setRooms(roomsRes.data)
+      setTotal(roomsRes.meta.total)
+      setFloors(floorsRes.data)
+      setRoomTypes(typesRes.data)
     } catch (error) {
       toast.error(getRoomsApiErrorMessage(error, 'No se pudieron cargar las habitaciones.'))
       setRooms([])
-      setFilteredData([])
+      setTotal(0)
     } finally {
       setLoading(false)
     }
-  }, [propertyId])
+  }, [floorFilter, page, pageSize, propertyId, roomTypeFilter, statusFilter])
 
   useEffect(() => {
     if (sessionStatus === 'loading') {
@@ -157,30 +167,6 @@ const RoomListTable = () => {
     fetchData()
   }, [fetchData, sessionStatus])
 
-  const floorNameById = useMemo(() => {
-    const map = new Map<number, string>()
-
-    floors.forEach(floor => {
-      if (typeof floor.id === 'number') {
-        map.set(floor.id, floor.name)
-      }
-    })
-
-    return map
-  }, [floors])
-
-  const roomTypeNameById = useMemo(() => {
-    const map = new Map<number, string>()
-
-    roomTypes.forEach(type => {
-      if (typeof type.id === 'number') {
-        map.set(type.id, type.name)
-      }
-    })
-
-    return map
-  }, [roomTypes])
-
   const handleConfirmDelete = async () => {
     if (!roomToDelete) {
       return
@@ -189,10 +175,10 @@ const RoomListTable = () => {
     setDeleting(true)
 
     try {
-      await deleteRoom(roomToDelete.uuid)
-      setRooms(prev => prev.filter(item => item.uuid !== roomToDelete.uuid))
+      await deleteRoom(propertyId, roomToDelete.uuid)
       toast.success('Habitación eliminada.')
       setRoomToDelete(null)
+      await fetchData()
     } catch (error) {
       toast.error(getRoomsApiErrorMessage(error, 'No se pudo eliminar la habitación.'))
     } finally {
@@ -215,17 +201,17 @@ const RoomListTable = () => {
           </Typography>
         )
       }),
-      columnHelper.accessor('roomTypeId', {
+      columnHelper.accessor('roomTypeName', {
         header: 'Tipo',
-        cell: ({ row }) => (
-          <Typography>{roomTypeNameById.get(row.original.roomTypeId) || `#${row.original.roomTypeId}`}</Typography>
-        )
+        cell: ({ row }) => <Typography>{row.original.roomTypeName || `#${row.original.roomTypeId}`}</Typography>
       }),
-      columnHelper.accessor('floorId', {
+      columnHelper.accessor('floorName', {
         header: 'Nivel',
-        cell: ({ row }) => (
-          <Typography>{floorNameById.get(row.original.floorId) || `#${row.original.floorId}`}</Typography>
-        )
+        cell: ({ row }) => <Typography>{row.original.floorName || `#${row.original.floorId}`}</Typography>
+      }),
+      columnHelper.accessor('effectivePrice', {
+        header: 'Precio',
+        cell: ({ row }) => <Typography>{formatRoomPrice(row.original.effectivePrice)}</Typography>
       }),
       columnHelper.accessor('status', {
         header: 'Estado',
@@ -266,11 +252,11 @@ const RoomListTable = () => {
         enableSorting: false
       })
     ],
-    [floorNameById, locale, roomTypeNameById]
+    [locale]
   )
 
   const table = useReactTable({
-    data: filteredData,
+    data: rooms,
     columns,
     filterFns: {
       fuzzy: fuzzyFilter
@@ -278,18 +264,12 @@ const RoomListTable = () => {
     state: {
       globalFilter
     },
-    initialState: {
-      pagination: {
-        pageSize: 10
-      }
-    },
     enableRowSelection: false,
     globalFilterFn: fuzzyFilter,
     getCoreRowModel: getCoreRowModel(),
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues()
@@ -299,7 +279,25 @@ const RoomListTable = () => {
     <>
       <Card>
         <CardHeader title='Filtros' className='pbe-4' />
-        <TableFilters setData={setFilteredData} rooms={rooms} floors={floors} roomTypes={roomTypes} />
+        <TableFilters
+          status={statusFilter}
+          floorId={floorFilter}
+          roomTypeId={roomTypeFilter}
+          floors={floors}
+          roomTypes={roomTypes}
+          onStatusChange={value => {
+            setPage(0)
+            setStatusFilter(value)
+          }}
+          onFloorChange={value => {
+            setPage(0)
+            setFloorFilter(value)
+          }}
+          onRoomTypeChange={value => {
+            setPage(0)
+            setRoomTypeFilter(value)
+          }}
+        />
         <Divider />
         <div className='flex justify-between flex-col items-start sm:flex-row sm:items-center gap-y-4 p-5'>
           <DebouncedInput
@@ -374,10 +372,7 @@ const RoomListTable = () => {
                   </tbody>
                 ) : (
                   <tbody>
-                    {table
-                      .getRowModel()
-                      .rows.slice(0, table.getState().pagination.pageSize)
-                      .map(row => (
+                    {table.getRowModel().rows.map(row => (
                         <tr key={row.id}>
                           {row.getVisibleCells().map(cell => (
                             <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
@@ -389,17 +384,18 @@ const RoomListTable = () => {
               </table>
             </div>
             <TablePagination
-              rowsPerPageOptions={[10, 25, 50]}
+              rowsPerPageOptions={[10, 20, 50, 100]}
               component='div'
               className='border-bs'
-              count={table.getFilteredRowModel().rows.length}
-              rowsPerPage={table.getState().pagination.pageSize}
-              page={table.getState().pagination.pageIndex}
+              count={total}
+              rowsPerPage={pageSize}
+              page={page}
               labelRowsPerPage='Filas:'
-              onPageChange={(_, page) => {
-                table.setPageIndex(page)
+              onPageChange={(_, nextPage) => setPage(nextPage)}
+              onRowsPerPageChange={e => {
+                setPage(0)
+                setPageSize(Number(e.target.value))
               }}
-              onRowsPerPageChange={e => table.setPageSize(Number(e.target.value))}
             />
           </>
         )}

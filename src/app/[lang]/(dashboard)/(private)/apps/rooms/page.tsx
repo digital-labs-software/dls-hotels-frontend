@@ -4,7 +4,7 @@ import RoomsCatalog from '@views/apps/rooms/RoomsCatalog'
 
 export const metadata: Metadata = {
   title: 'Habitaciones',
-  description: 'Habitaciones, tipos de habitación y niveles'
+  description: 'Habitaciones, tipos, niveles y tarifas'
 }
 
 type Props = {

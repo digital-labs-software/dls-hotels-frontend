@@ -1,5 +1,5 @@
 export type Floor = {
-  id?: number
+  id: number
   uuid: string
   propertyId: number
   name: string
@@ -9,13 +9,11 @@ export type Floor = {
 }
 
 export type CreateFloorDto = {
-  propertyId: number
   name: string
   displayOrder: number
 }
 
 export type UpdateFloorDto = {
-  propertyId?: number
   name?: string
   displayOrder?: number
 }

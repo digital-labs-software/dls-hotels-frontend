@@ -119,10 +119,9 @@ const FloorListTable = () => {
     setLoading(true)
 
     try {
-      const floors = await listFloors()
-      const filtered = floors.filter(floor => floor.propertyId === propertyId)
+      const page = await listFloors(propertyId, { limit: 100 })
 
-      setData(filtered)
+      setData(page.data)
     } catch (error) {
       toast.error(getFloorsApiErrorMessage(error, 'No se pudieron cargar los niveles.'))
       setData([])
@@ -146,7 +145,7 @@ const FloorListTable = () => {
 
     if ((mode === 'view' || mode === 'edit') && floor?.uuid) {
       try {
-        const latest = await getFloor(floor.uuid)
+        const latest = await getFloor(propertyId, floor.uuid)
 
         setSelectedFloor(latest)
       } catch (error) {
@@ -164,7 +163,7 @@ const FloorListTable = () => {
     setDeleting(true)
 
     try {
-      await deleteFloor(floorToDelete.uuid)
+      await deleteFloor(propertyId, floorToDelete.uuid)
       setData(prev => prev.filter(item => item.uuid !== floorToDelete.uuid))
       toast.success('Nivel eliminado correctamente.')
       setFloorToDelete(null)

@@ -13,18 +13,20 @@ import TabPanel from '@mui/lab/TabPanel'
 import type { Locale } from '@configs/i18n'
 import CustomTabList from '@core/components/mui/TabList'
 import FloorListClient from '@views/apps/floors/list/FloorListClient'
+import RateListClient from '@views/apps/rates/list/RateListClient'
 import RoomTypeListClient from '@views/apps/room-types/list/RoomTypeListClient'
 import RoomListClient from '@views/apps/rooms/list/RoomListClient'
 import { getLocalizedUrl } from '@/utils/i18n'
 
-const ROOM_TABS = ['rooms', 'room-types', 'floors'] as const
+const ROOM_TABS = ['rooms', 'room-types', 'floors', 'rates'] as const
 
 type RoomTab = (typeof ROOM_TABS)[number]
 
 const tabContentList: Record<RoomTab, ReactElement> = {
   rooms: <RoomListClient />,
   'room-types': <RoomTypeListClient />,
-  floors: <FloorListClient />
+  floors: <FloorListClient />,
+  rates: <RateListClient />
 }
 
 const isRoomTab = (value?: string): value is RoomTab => {
@@ -83,6 +85,15 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
                 </div>
               }
               value='floors'
+            />
+            <Tab
+              label={
+                <div className='flex items-center gap-1.5'>
+                  <i className='ri-money-dollar-circle-line text-lg' />
+                  Tarifas
+                </div>
+              }
+              value='rates'
             />
           </CustomTabList>
 

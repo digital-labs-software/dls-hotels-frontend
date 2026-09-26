@@ -1,10 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 
-import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -19,7 +18,7 @@ import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
@@ -27,7 +26,7 @@ import type { Locale } from '@configs/i18n'
 import type { Floor } from '@/types/apps/floorTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
 import type { RoomStatus } from '@/types/apps/roomsTypes'
-import { ROOM_STATUS_LABELS, ROOM_STATUSES } from '@/types/apps/roomsTypes'
+import { formatRoomPrice, ROOM_STATUS_LABELS, ROOM_STATUSES } from '@/types/apps/roomsTypes'
 import { listFloors } from '@/libs/floorsApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
 import { createRoom, getRoom, getRoomsApiErrorMessage, updateRoom } from '@/libs/roomsApi'
@@ -38,12 +37,19 @@ type FormValues = {
   floorId: number | ''
   roomTypeId: number | ''
   status: RoomStatus
+  basePrice: string
   photoUrl: string
   notes: string
 }
 
 type Props = {
   uuid?: string
+}
+
+const parseOptionalPrice = (value: string) => {
+  const trimmed = value.trim()
+
+  return trimmed ? Number(trimmed) : null
 }
 
 const RoomForm = ({ uuid }: Props) => {
@@ -55,9 +61,10 @@ const RoomForm = ({ uuid }: Props) => {
   const isView = searchParams.get('mode') === 'view'
   const isEdit = Boolean(uuid) && !isView
 
-  const [loading, setLoading] = useState(Boolean(uuid))
+  const [loading, setLoading] = useState(true)
   const [floors, setFloors] = useState<Floor[]>([])
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
+  const [effectivePrice, setEffectivePrice] = useState<number | null>(null)
 
   const {
     control,
@@ -70,14 +77,14 @@ const RoomForm = ({ uuid }: Props) => {
       floorId: '',
       roomTypeId: '',
       status: 'AVAILABLE',
+      basePrice: '',
       photoUrl: '',
       notes: ''
     }
   })
 
-  const floorsWithId = useMemo(() => floors.filter(floor => typeof floor.id === 'number'), [floors])
-  const typesWithId = useMemo(() => roomTypes.filter(type => typeof type.id === 'number'), [roomTypes])
-  const missingNumericIds = floors.length > 0 && floorsWithId.length === 0
+  const roomTypeId = useWatch({ control, name: 'roomTypeId' })
+  const selectedType = roomTypes.find(type => type.id === Number(roomTypeId))
 
   useEffect(() => {
     if (sessionStatus === 'loading') {
@@ -86,24 +93,27 @@ const RoomForm = ({ uuid }: Props) => {
 
     const load = async () => {
       try {
-        const [floorsRes, typesRes] = await Promise.all([listFloors(), listRoomTypes()])
+        const [floorsRes, typesRes] = await Promise.all([
+          listFloors(propertyId, { limit: 100 }),
+          listRoomTypes(propertyId, { limit: 100 })
+        ])
 
-        setFloors(floorsRes.filter(item => item.propertyId === propertyId))
-        setRoomTypes(typesRes.filter(item => item.propertyId === propertyId))
+        setFloors(floorsRes.data)
+        setRoomTypes(typesRes.data)
 
         if (!uuid) {
-          setLoading(false)
-
           return
         }
 
-        const room = await getRoom(uuid)
+        const room = await getRoom(propertyId, uuid)
 
+        setEffectivePrice(room.effectivePrice)
         reset({
           number: room.number,
           floorId: room.floorId,
           roomTypeId: room.roomTypeId,
           status: room.status,
+          basePrice: room.basePrice == null ? '' : String(room.basePrice),
           photoUrl: room.photoUrl ?? '',
           notes: room.notes ?? ''
         })
@@ -133,23 +143,26 @@ const RoomForm = ({ uuid }: Props) => {
       return
     }
 
+    const basePrice = parseOptionalPrice(data.basePrice)
+
     try {
       if (isEdit && uuid) {
-        await updateRoom(uuid, {
+        await updateRoom(propertyId, uuid, {
           floorId: Number(data.floorId),
           roomTypeId: Number(data.roomTypeId),
           status: data.status,
+          basePrice,
           photoUrl: data.photoUrl.trim() ? data.photoUrl.trim() : null,
           notes: data.notes.trim() ? data.notes.trim() : null
         })
         toast.success('Habitación actualizada.')
       } else {
-        await createRoom({
-          propertyId,
+        await createRoom(propertyId, {
           floorId: Number(data.floorId),
           roomTypeId: Number(data.roomTypeId),
           number: data.number.trim(),
           status: data.status,
+          basePrice,
           photoUrl: data.photoUrl.trim() ? data.photoUrl.trim() : null,
           notes: data.notes.trim() ? data.notes.trim() : null
         })
@@ -185,7 +198,7 @@ const RoomForm = ({ uuid }: Props) => {
                 {isView
                   ? 'Consulta los datos de la habitación'
                   : isEdit
-                    ? 'Actualiza tipo, nivel, estado o notas. El número no se puede cambiar.'
+                    ? 'Actualiza tipo, nivel, precio, estado o notas. El número no se puede cambiar.'
                     : 'Registra una habitación del hotel'}
               </Typography>
             </div>
@@ -194,22 +207,13 @@ const RoomForm = ({ uuid }: Props) => {
                 {isView ? 'Volver' : 'Descartar'}
               </Button>
               {!isView ? (
-                <Button variant='contained' type='submit' disabled={isSubmitting || missingNumericIds}>
+                <Button variant='contained' type='submit' disabled={isSubmitting}>
                   {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Publicar habitación'}
                 </Button>
               ) : null}
             </div>
           </div>
         </Grid>
-
-        {missingNumericIds ? (
-          <Grid size={{ xs: 12 }}>
-            <Alert severity='warning'>
-              Los listados de niveles y tipos aún no traen el `id` numérico. El backend debe incluir `id` en GET
-              /floors y GET /room-types para poder crear habitaciones (`floorId` y `roomTypeId`).
-            </Alert>
-          </Grid>
-        ) : null}
 
         <Grid size={{ xs: 12, md: 8 }}>
           <Card>
@@ -233,6 +237,42 @@ const RoomForm = ({ uuid }: Props) => {
                   />
                 )}
               />
+              <Controller
+                name='basePrice'
+                control={control}
+                rules={{
+                  validate: value => {
+                    if (!value.trim()) {
+                      return true
+                    }
+
+                    if (!/^\d+(\.\d{1,2})?$/.test(value.trim())) {
+                      return 'Usa un número con máximo 2 decimales.'
+                    }
+
+                    return Number(value) >= 0 || 'El precio no puede ser negativo.'
+                  }
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label='Precio propio (S/ por noche)'
+                    placeholder={selectedType ? String(selectedType.basePrice) : 'Vacío = precio del tipo'}
+                    disabled={isView || isSubmitting}
+                    helperText={
+                      errors.basePrice?.message ||
+                      (selectedType
+                        ? `Si lo dejas vacío se usa el precio del tipo: ${formatRoomPrice(selectedType.basePrice)}`
+                        : 'Si lo dejas vacío se usa el precio del tipo.')
+                    }
+                    {...(errors.basePrice && { error: true })}
+                  />
+                )}
+              />
+              {isView && effectivePrice != null ? (
+                <TextField fullWidth label='Precio efectivo' value={formatRoomPrice(effectivePrice)} disabled />
+              ) : null}
               <Controller
                 name='photoUrl'
                 control={control}
@@ -276,13 +316,8 @@ const RoomForm = ({ uuid }: Props) => {
                   control={control}
                   rules={{ required: 'El nivel es obligatorio.' }}
                   render={({ field }) => (
-                    <Select
-                      {...field}
-                      label='Nivel'
-                      labelId='room-floor'
-                      disabled={isView || isSubmitting}
-                    >
-                      {floorsWithId.map(floor => (
+                    <Select {...field} label='Nivel' labelId='room-floor' disabled={isView || isSubmitting}>
+                      {floors.map(floor => (
                         <MenuItem key={floor.uuid} value={floor.id}>
                           {floor.name}
                         </MenuItem>
@@ -300,15 +335,10 @@ const RoomForm = ({ uuid }: Props) => {
                   control={control}
                   rules={{ required: 'El tipo es obligatorio.' }}
                   render={({ field }) => (
-                    <Select
-                      {...field}
-                      label='Tipo'
-                      labelId='room-type'
-                      disabled={isView || isSubmitting}
-                    >
-                      {typesWithId.map(type => (
+                    <Select {...field} label='Tipo' labelId='room-type' disabled={isView || isSubmitting}>
+                      {roomTypes.map(type => (
                         <MenuItem key={type.uuid} value={type.id}>
-                          {type.name}
+                          {type.name} · {formatRoomPrice(type.basePrice)}
                         </MenuItem>
                       ))}
                     </Select>
