@@ -244,6 +244,45 @@ export interface FrontDeskPayment {
   createdAt: string
 }
 
+export type ListPaymentsQuery = {
+  from?: string
+  to?: string
+  method?: PaymentMethod
+  reservationId?: number
+  page?: number
+  limit?: number
+}
+
+export type BalanceTone = 'paid' | 'due' | 'credit'
+
+export const limaToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
+
+export const formatPaidAt = (value?: string | null) => {
+  if (!value) {
+    return '—'
+  }
+
+  const parsed = new Date(value)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value
+  }
+
+  return parsed.toLocaleString('es-PE', { timeZone: 'America/Lima' })
+}
+
+export const reservationBalanceTone = (balance: number): BalanceTone => {
+  if (balance === 0) {
+    return 'paid'
+  }
+
+  if (balance > 0) {
+    return 'due'
+  }
+
+  return 'credit'
+}
+
 export interface AvailabilityFreeRoom {
   id: number
   uuid?: string

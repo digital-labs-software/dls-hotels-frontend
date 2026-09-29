@@ -119,8 +119,19 @@ const RoomCard = ({ room, view, onOpenMenu, onOpenPhoto }: Props) => {
         {stay?.departureOverdue ? (
           <Chip size='small' label='Salida vencida' sx={{ bgcolor: '#6A1B9A', color: 'white' }} />
         ) : null}
-        {(stay?.reservationBalance ?? 0) > 0 ? (
-          <Chip size='small' label={`Saldo ${formatPrice(stay?.reservationBalance)}`} sx={{ bgcolor: '#B71C1C', color: 'white' }} />
+        {(stay?.reservationBalance ?? room.arrival?.reservationBalance ?? 0) > 0 ? (
+          <Chip
+            size='small'
+            label={`Saldo ${formatPrice(stay?.reservationBalance ?? room.arrival?.reservationBalance)}`}
+            sx={{ bgcolor: '#B71C1C', color: 'white' }}
+          />
+        ) : null}
+        {(stay?.reservationBalance ?? room.arrival?.reservationBalance ?? 0) < 0 ? (
+          <Chip
+            size='small'
+            label={`A favor ${formatPrice(Math.abs(stay?.reservationBalance ?? room.arrival?.reservationBalance ?? 0))}`}
+            sx={{ bgcolor: '#01579B', color: 'white' }}
+          />
         ) : null}
         {room.notes ? (
           <Tooltip title={room.notes}>

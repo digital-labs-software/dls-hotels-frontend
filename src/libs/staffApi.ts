@@ -2,6 +2,7 @@ import { getSession } from 'next-auth/react'
 
 import type { ApiError, DocumentType } from '@/types/apps/clientsTypes'
 import { DOCUMENT_TYPES } from '@/types/apps/clientsTypes'
+import type { Paginated } from '@/types/apps/pagination'
 import type {
   CreateEmployeeInput,
   CreateRoleInput,
@@ -124,6 +125,23 @@ const toRolePayload = (body: CreateRoleInput | UpdateRoleInput) => {
   return payload
 }
 
+const toList = <T>(payload: Paginated<T> | T[], map: (item: T) => T) => {
+  if (Array.isArray(payload)) {
+    return payload.map(map)
+  }
+
+  return Array.isArray(payload?.data) ? payload.data.map(map) : []
+}
+
+const listQuery = (params?: { page?: number; limit?: number }) => {
+  const query = new URLSearchParams()
+
+  query.set('page', String(params?.page ?? 1))
+  query.set('limit', String(params?.limit ?? 100))
+
+  return query.toString()
+}
+
 const toEmployeePayload = (body: CreateEmployeeInput | UpdateEmployeeInput) => {
   const payload: UpdateEmployeeInput = {}
 
@@ -152,9 +170,13 @@ const toEmployeePayload = (body: CreateEmployeeInput | UpdateEmployeeInput) => {
 
 export const rolesApi = {
   list: async (propertyId: number, token?: string) => {
-    const data = await request<Role[]>(`/properties/${propertyId}/roles`, {}, token)
+    const payload = await request<Paginated<Role> | Role[]>(
+      `/properties/${propertyId}/roles?${listQuery({ limit: 100 })}`,
+      {},
+      token
+    )
 
-    return Array.isArray(data) ? data.map(normalizeRole) : []
+    return toList(payload, normalizeRole)
   },
   get: async (propertyId: number, uuid: string, token?: string) => {
     return normalizeRole(await request<Role>(`/properties/${propertyId}/roles/${uuid}`, {}, token))
@@ -189,25 +211,29 @@ export const rolesApi = {
 
 export const permissionGroupsApi = {
   list: async (token?: string) => {
-    const data = await request<PermissionGroup[]>('/permission-groups', {}, token)
+    const payload = await request<Paginated<PermissionGroup> | PermissionGroup[]>('/permission-groups', {}, token)
 
-    return Array.isArray(data) ? data : []
+    return toList(payload, group => group)
   }
 }
 
 export const permissionsApi = {
   list: async (token?: string) => {
-    const data = await request<Permission[]>('/permissions', {}, token)
+    const payload = await request<Paginated<Permission> | Permission[]>('/permissions', {}, token)
 
-    return Array.isArray(data) ? data : []
+    return toList(payload, permission => permission)
   }
 }
 
 export const employeesApi = {
   list: async (propertyId: number, token?: string) => {
-    const data = await request<Employee[]>(`/properties/${propertyId}/employees`, {}, token)
+    const payload = await request<Paginated<Employee> | Employee[]>(
+      `/properties/${propertyId}/employees?${listQuery({ limit: 100 })}`,
+      {},
+      token
+    )
 
-    return Array.isArray(data) ? data.map(normalizeEmployee) : []
+    return toList(payload, normalizeEmployee)
   },
   get: async (propertyId: number, uuid: string, token?: string) => {
     return normalizeEmployee(await request<Employee>(`/properties/${propertyId}/employees/${uuid}`, {}, token))

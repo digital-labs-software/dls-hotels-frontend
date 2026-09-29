@@ -7,6 +7,7 @@ import type {
   AvailabilityRoomType,
   FrontDesk,
   FrontDeskPayment,
+  ListPaymentsQuery,
   PaymentMethod,
   RackStatus,
   Reservation,
@@ -176,9 +177,12 @@ const normalizeReservation = (reservation: Reservation): Reservation => ({
 const normalizePayment = (payment: FrontDeskPayment): FrontDeskPayment => ({
   ...payment,
   id: toNumber(payment.id),
+  propertyId: toNumber(payment.propertyId),
+  reservationId: toNumber(payment.reservationId),
   amount: toNumber(payment.amount),
   reference: payment.reference ?? null,
-  notes: payment.notes ?? null
+  notes: payment.notes ?? null,
+  employeeId: toNullableNumber(payment.employeeId)
 })
 
 const emptyMeta = (total = 0): PageMeta => ({
@@ -292,24 +296,63 @@ export const frontDeskApi = {
 
     return rows.map(normalizePayment)
   },
+  listPropertyPayments: async (propertyId: number, params: ListPaymentsQuery = {}, token?: string) => {
+    const search = new URLSearchParams()
+
+    if (params.from) search.set('from', params.from)
+    if (params.to) search.set('to', params.to)
+    if (params.method) search.set('method', params.method)
+    if (params.reservationId) search.set('reservationId', String(params.reservationId))
+    search.set('page', String(params.page ?? 1))
+    search.set('limit', String(Math.min(params.limit ?? 20, 100)))
+
+    const payload = await request<Paginated<FrontDeskPayment> | FrontDeskPayment[]>(
+      `/properties/${propertyId}/payments?${search.toString()}`,
+      {},
+      token
+    )
+
+    if (Array.isArray(payload)) {
+      return { data: payload.map(normalizePayment), meta: emptyMeta(payload.length) }
+    }
+
+    const data = Array.isArray(payload?.data) ? payload.data.map(normalizePayment) : []
+
+    return {
+      data,
+      meta: payload?.meta ?? emptyMeta(data.length)
+    }
+  },
+  getPayment: async (propertyId: number, uuid: string, token?: string) => {
+    return normalizePayment(await request<FrontDeskPayment>(`/properties/${propertyId}/payments/${uuid}`, {}, token))
+  },
   pay: async (
     propertyId: number,
     reservationUuid: string,
-    body: { amount: number; method: PaymentMethod; reference?: string | null; notes?: string | null },
+    body: {
+      amount: number
+      method: PaymentMethod
+      reference?: string | null
+      notes?: string | null
+      paidAt?: string | null
+    },
     token?: string
   ) => {
+    const payload: Record<string, unknown> = {
+      amount: Number(body.amount),
+      method: body.method,
+      reference: emptyToNull(body.reference) ?? null,
+      notes: emptyToNull(body.notes) ?? null
+    }
+
+    if (body.paidAt) {
+      payload.paidAt = body.paidAt
+    }
+
     return normalizePayment(
       await request<FrontDeskPayment>(
         `/properties/${propertyId}/reservations/${reservationUuid}/payments`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            amount: Number(body.amount),
-            method: body.method,
-            reference: emptyToNull(body.reference) ?? null,
-            notes: emptyToNull(body.notes) ?? null
-          })
-        },
+        { method: 'POST', body: JSON.stringify(payload) },
         token
       )
     )

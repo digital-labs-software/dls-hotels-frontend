@@ -1,1 +1,55 @@
-⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+(node:26320) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+⨯ ./src/types/apps/frontDeskTypes.ts
+Module parse failed: Identifier 'limaToday' has already been declared (110:13)
+|     ].filter(Boolean).join(' ').trim();
+| };
+> export const limaToday = ()=>new Date().toLocaleDateString('en-CA', {
+|         timeZone: 'America/Lima'
+|     });
+
+Import trace for requested module:
+./src/types/apps/frontDeskTypes.ts
+./src/views/apps/front-desk/PaymentsCashTable.tsx
+./src/views/apps/front-desk/PaymentsCashClient.tsx
+./src/views/apps/front-desk/FrontDeskCatalog.tsx
+⨯ ./src/types/apps/frontDeskTypes.ts
+Module parse failed: Identifier 'limaToday' has already been declared (110:13)
+|     ].filter(Boolean).join(' ').trim();
+| };
+> export const limaToday = ()=>new Date().toLocaleDateString('en-CA', {
+|         timeZone: 'America/Lima'
+|     });
+
+Import trace for requested module:
+./src/types/apps/frontDeskTypes.ts
+./src/views/apps/front-desk/FrontDeskPage.tsx
+./src/views/apps/front-desk/FrontDeskClient.tsx
+./src/views/apps/front-desk/FrontDeskCatalog.tsx
+⨯ ./src/types/apps/frontDeskTypes.ts
+Module parse failed: Identifier 'limaToday' has already been declared (110:13)
+|     ].filter(Boolean).join(' ').trim();
+| };
+> export const limaToday = ()=>new Date().toLocaleDateString('en-CA', {
+|         timeZone: 'America/Lima'
+|     });
+
+Import trace for requested module:
+./src/types/apps/frontDeskTypes.ts
+./src/views/apps/front-desk/FrontDeskPage.tsx
+./src/views/apps/front-desk/FrontDeskClient.tsx
+./src/views/apps/front-desk/FrontDeskCatalog.tsx
+⨯ ./src/types/apps/frontDeskTypes.ts
+Module parse failed: Identifier 'limaToday' has already been declared (110:13)
+|     ].filter(Boolean).join(' ').trim();
+| };
+> export const limaToday = ()=>new Date().toLocaleDateString('en-CA', {
+|         timeZone: 'America/Lima'
+|     });
+
+Import trace for requested module:
+./src/types/apps/frontDeskTypes.ts
+./src/views/apps/front-desk/FrontDeskPage.tsx
+./src/views/apps/front-desk/FrontDeskClient.tsx
+./src/views/apps/front-desk/FrontDeskCatalog.tsx
+⚠ Fast Refresh had to perform a full reload due to a runtime error.

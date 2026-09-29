@@ -17,6 +17,7 @@ import type { Guest } from '@/types/apps/clientsTypes'
 import type { FrontDeskPayment, Reservation, Stay } from '@/types/apps/frontDeskTypes'
 import { formatFrontDeskDate, guestFullName, PAYMENT_METHOD_LABELS, STAY_STATUS_LABELS } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
+import BalanceChip from './BalanceChip'
 import GuestPicker from './GuestPicker'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
 
@@ -176,10 +177,12 @@ const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheck
                 {formatFrontDeskDate(line?.checkInDate)} – {formatFrontDeskDate(line?.checkOutDate)} · {line?.nights} noche
                 {line?.nights === 1 ? '' : 's'}
               </Typography>
-              <Typography variant='body2'>
-                Total {formatRoomPrice(reservation.totalAmount)} · Pagado {formatRoomPrice(reservation.paidAmount)} · Saldo{' '}
-                {formatRoomPrice(reservation.balance)}
-              </Typography>
+              <div className='flex flex-wrap items-center gap-2'>
+                <Typography variant='body2'>
+                  Total {formatRoomPrice(reservation.totalAmount)} · Pagado {formatRoomPrice(reservation.paidAmount)}
+                </Typography>
+                <BalanceChip balance={reservation.balance} />
+              </div>
               <div className='flex gap-2'>
                 <Button variant='contained' onClick={() => stay && onPay(stay)}>
                   Registrar pago
@@ -239,11 +242,13 @@ const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheck
                 </Typography>
               ) : (
                 payments.map(payment => (
-                  <div key={payment.uuid} className='flex justify-between'>
+                  <div key={payment.uuid} className='flex justify-between gap-2'>
                     <Typography variant='body2'>
-                      {PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}
+                      {payment.amount < 0 ? 'Devolución' : 'Cobro'} · {PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}
                     </Typography>
-                    <Typography variant='body2'>{formatRoomPrice(payment.amount)}</Typography>
+                    <Typography variant='body2' color={payment.amount < 0 ? 'error' : 'inherit'}>
+                      {formatRoomPrice(payment.amount)}
+                    </Typography>
                   </div>
                 ))
               )}

@@ -16,6 +16,7 @@ import { toast } from 'react-toastify'
 import type { Stay } from '@/types/apps/frontDeskTypes'
 import { formatFrontDeskDate } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
+import BalanceChip from './BalanceChip'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
 
 type Props = {
@@ -62,7 +63,10 @@ const CheckOutDialog = ({ open, propertyId, stay, onClose, onSuccess, onPay }: P
               {formatFrontDeskDate(stay.checkInDate)} – {formatFrontDeskDate(stay.checkOutDate)} · {stay.nights} noche
               {stay.nights === 1 ? '' : 's'} · {formatRoomPrice(stay.pricePerNight)} / noche
             </Typography>
-            <Typography variant='body2'>Saldo: {formatRoomPrice(stay.reservationBalance)}</Typography>
+            <div className='flex flex-wrap items-center gap-2'>
+              <Typography variant='body2'>Saldo:</Typography>
+              <BalanceChip balance={stay.reservationBalance} />
+            </div>
             {stay.reservationBalance > 0 ? (
               <Alert
                 severity='warning'

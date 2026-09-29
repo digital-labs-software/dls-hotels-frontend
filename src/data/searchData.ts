@@ -52,6 +52,20 @@ const data: SearchData[] = [
     section: 'Apps'
   },
   {
+    id: '124',
+    name: 'Reportes',
+    url: '/apps/reports',
+    icon: 'ri-file-chart-line',
+    section: 'Apps'
+  },
+  {
+    id: '125',
+    name: 'Parte de huéspedes',
+    url: '/apps/reports',
+    icon: 'ri-file-list-3-line',
+    section: 'Apps'
+  },
+  {
     id: '119',
     name: 'Hotel',
     url: '/apps/hotel',

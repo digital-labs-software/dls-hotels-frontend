@@ -154,6 +154,14 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
             {dictionary['navigation'].staff}
           </MenuItem>
           <MenuItem
+            href={`/${locale}/apps/reports`}
+            exactMatch={false}
+            activeUrl='/apps/reports'
+            icon={<i className='ri-file-chart-line' />}
+          >
+            {dictionary['navigation'].reports}
+          </MenuItem>
+          <MenuItem
             href={`/${locale}/apps/hotel`}
             exactMatch={false}
             activeUrl='/apps/hotel'

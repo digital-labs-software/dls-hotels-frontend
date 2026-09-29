@@ -1,14 +1,20 @@
 import type { Metadata } from 'next'
 
-import FrontDeskClient from '@views/apps/front-desk/FrontDeskClient'
+import FrontDeskCatalog from '@views/apps/front-desk/FrontDeskCatalog'
 
 export const metadata: Metadata = {
   title: 'Recepción',
-  description: 'Rack de habitaciones, llegadas, salidas y estadías del día'
+  description: 'Rack del día, llegadas, salidas y caja de pagos'
 }
 
-const FrontDeskRoute = () => {
-  return <FrontDeskClient />
+type Props = {
+  searchParams: Promise<{ tab?: string }>
+}
+
+const FrontDeskRoute = async ({ searchParams }: Props) => {
+  const { tab } = await searchParams
+
+  return <FrontDeskCatalog defaultTab={tab} />
 }
 
 export default FrontDeskRoute

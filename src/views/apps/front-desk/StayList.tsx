@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography'
 
 import type { Stay } from '@/types/apps/frontDeskTypes'
 import { formatFrontDeskDate, STAY_STATUS_LABELS } from '@/types/apps/frontDeskTypes'
-import { formatRoomPrice } from '@/types/apps/roomsTypes'
+import BalanceChip from './BalanceChip'
 
 type ListKind = 'arrivals' | 'departures' | 'inHouse'
 
@@ -55,9 +55,7 @@ const StayList = ({ kind, stays, onOpenStay, onCheckIn, onCheckOut, onAssign, on
           <div className='flex flex-wrap gap-1'>
             {stay.arrivalOverdue ? <Chip size='small' color='secondary' label='Llegada atrasada' /> : null}
             {stay.departureOverdue ? <Chip size='small' color='secondary' label='Salida vencida' /> : null}
-            {stay.reservationBalance > 0 ? (
-              <Chip size='small' color='error' label={`Saldo ${formatRoomPrice(stay.reservationBalance)}`} />
-            ) : null}
+            <BalanceChip balance={stay.reservationBalance} />
           </div>
           <div className='flex flex-wrap gap-1'>
             <IconButton size='small' title='Ver estadía' onClick={() => onOpenStay(stay)}>
@@ -83,11 +81,9 @@ const StayList = ({ kind, stays, onOpenStay, onCheckIn, onCheckOut, onAssign, on
                 Check-out
               </Button>
             ) : null}
-            {kind !== 'arrivals' || stay.reservationBalance > 0 ? (
-              <Button size='small' onClick={() => onPay(stay)}>
-                Pago
-              </Button>
-            ) : null}
+            <Button size='small' onClick={() => onPay(stay)}>
+              Pago
+            </Button>
           </div>
         </div>
       ))}
