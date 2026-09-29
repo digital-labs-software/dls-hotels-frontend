@@ -12,6 +12,7 @@ import type {
   UpdateGuestInput
 } from '@/types/apps/clientsTypes'
 import { COMPANY_TYPES, DOCUMENT_TYPES } from '@/types/apps/clientsTypes'
+import type { Paginated } from '@/types/apps/pagination'
 
 const getApiBase = () => {
   if (typeof window === 'undefined') {
@@ -151,11 +152,36 @@ const toCompanyPayload = (body: CreateCompanyInput | UpdateCompanyInput) => {
   return payload
 }
 
+const toList = <T>(payload: Paginated<T> | T[], map: (item: T) => T) => {
+  if (Array.isArray(payload)) {
+    return payload.map(map)
+  }
+
+  return Array.isArray(payload?.data) ? payload.data.map(map) : []
+}
+
+const listQuery = (params?: { search?: string; page?: number; limit?: number }) => {
+  const query = new URLSearchParams()
+
+  query.set('page', String(params?.page ?? 1))
+  query.set('limit', String(params?.limit ?? 100))
+
+  if (params?.search?.trim()) {
+    query.set('search', params.search.trim())
+  }
+
+  return query.toString()
+}
+
 export const guestsApi = {
   list: async (propertyId: number, token?: string) => {
-    const data = await request<Guest[]>(`/properties/${propertyId}/guests`, {}, token)
+    const payload = await request<Paginated<Guest> | Guest[]>(
+      `/properties/${propertyId}/guests?${listQuery({ limit: 100 })}`,
+      {},
+      token
+    )
 
-    return Array.isArray(data) ? data.map(normalizeGuest) : []
+    return toList(payload, normalizeGuest)
   },
   get: async (propertyId: number, uuid: string, token?: string) => {
     return normalizeGuest(await request<Guest>(`/properties/${propertyId}/guests/${uuid}`, {}, token))
@@ -187,9 +213,13 @@ export const guestsApi = {
 
 export const companiesApi = {
   list: async (propertyId: number, token?: string) => {
-    const data = await request<Company[]>(`/properties/${propertyId}/companies`, {}, token)
+    const payload = await request<Paginated<Company> | Company[]>(
+      `/properties/${propertyId}/companies?${listQuery({ limit: 100 })}`,
+      {},
+      token
+    )
 
-    return Array.isArray(data) ? data.map(normalizeCompany) : []
+    return toList(payload, normalizeCompany)
   },
   get: async (propertyId: number, uuid: string, token?: string) => {
     return normalizeCompany(await request<Company>(`/properties/${propertyId}/companies/${uuid}`, {}, token))

@@ -59,6 +59,20 @@ const data: SearchData[] = [
     section: 'Apps'
   },
   {
+    id: '122',
+    name: 'Recepción',
+    url: '/apps/front-desk',
+    icon: 'ri-dashboard-2-line',
+    section: 'Apps'
+  },
+  {
+    id: '123',
+    name: 'Reservas',
+    url: '/apps/reservations',
+    icon: 'ri-calendar-check-line',
+    section: 'Apps'
+  },
+  {
     id: '120',
     name: 'Habitaciones',
     url: '/apps/rooms',

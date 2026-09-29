@@ -16,6 +16,8 @@
     "maintenance": "Catalogues",
     "levels": "Niveaux",
     "roomTypes": "Types de chambre",
+    "frontDesk": "Réception",
+    "reservations": "Réservations",
     "rooms": "Chambres",
     "clients": "Clients",
     "guests": "Hôtes",

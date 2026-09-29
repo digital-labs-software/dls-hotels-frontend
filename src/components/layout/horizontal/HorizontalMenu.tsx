@@ -114,6 +114,22 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
 
         <SubMenu label={dictionary['navigation'].apps} icon={<i className='ri-mail-open-line' />}>
           <MenuItem
+            href={`/${locale}/apps/front-desk`}
+            exactMatch={false}
+            activeUrl='/apps/front-desk'
+            icon={<i className='ri-dashboard-2-line' />}
+          >
+            {dictionary['navigation'].frontDesk}
+          </MenuItem>
+          <MenuItem
+            href={`/${locale}/apps/reservations`}
+            exactMatch={false}
+            activeUrl='/apps/reservations'
+            icon={<i className='ri-calendar-check-line' />}
+          >
+            {dictionary['navigation'].reservations}
+          </MenuItem>
+          <MenuItem
             href={`/${locale}/apps/rooms`}
             exactMatch={false}
             activeUrl='/apps/rooms'

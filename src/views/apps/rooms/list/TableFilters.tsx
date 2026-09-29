@@ -61,7 +61,11 @@ const TableFilters = ({
               label='Nivel'
               labelId='room-floor-filter'
               value={floorId}
-              onChange={e => onFloorChange(e.target.value === '' ? '' : Number(e.target.value))}
+              onChange={e => {
+                const next = Number(e.target.value)
+
+                onFloorChange(Number.isFinite(next) ? next : '')
+              }}
             >
               <MenuItem value=''>Todos</MenuItem>
               {floors.map(floor => (
@@ -80,7 +84,11 @@ const TableFilters = ({
               label='Tipo'
               labelId='room-type-filter'
               value={roomTypeId}
-              onChange={e => onRoomTypeChange(e.target.value === '' ? '' : Number(e.target.value))}
+              onChange={e => {
+                const next = Number(e.target.value)
+
+                onRoomTypeChange(Number.isFinite(next) ? next : '')
+              }}
             >
               <MenuItem value=''>Todos</MenuItem>
               {roomTypes.map(type => (

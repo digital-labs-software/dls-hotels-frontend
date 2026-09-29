@@ -277,7 +277,9 @@ const RateListTable = () => {
                   value={roomTypeFilter}
                   onChange={e => {
                     setPage(0)
-                    setRoomTypeFilter(e.target.value === '' ? '' : Number(e.target.value))
+                    const next = Number(e.target.value)
+
+                    setRoomTypeFilter(Number.isFinite(next) ? next : '')
                   }}
                 >
                   <MenuItem value=''>Todos</MenuItem>
