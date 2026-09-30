@@ -16,9 +16,11 @@ const nextConfig: NextConfig = {
     webpackMemoryOptimizations: true
   },
   webpack: (config, { dev }) => {
-    // Persistent pack cache OOMs this 16GB Windows box while compiling Materio
+    // Persistent pack cache OOMs this 16GB Windows box while compiling Materio.
+    // parallelism 1 avoids CPU/RAM thrash that makes the first compile look frozen.
     if (dev) {
       config.cache = false
+      config.parallelism = 1
     }
 
     return config

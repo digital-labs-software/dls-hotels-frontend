@@ -8,6 +8,7 @@ import { alpha, useTheme } from '@mui/material/styles'
 import type { RackRoom, RackStatus } from '@/types/apps/frontDeskTypes'
 import { formatFrontDeskDate as formatDate } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice as formatPrice } from '@/types/apps/roomsTypes'
+import { ROOM_PHOTO_THUMB, cloudinaryTransformedUrl } from '@/libs/cloudinary'
 
 type ViewMode = 'compact' | 'photos'
 
@@ -43,7 +44,12 @@ const RoomCard = ({ room, view, onOpenMenu, onOpenPhoto }: Props) => {
       }}
     >
       {room.photoUrl ? (
-        <img src={room.photoUrl} alt={`Habitación ${room.number}`} loading='lazy' className='is-full bs-full object-cover' />
+        <img
+          src={cloudinaryTransformedUrl(room.photoUrl, ROOM_PHOTO_THUMB) || room.photoUrl}
+          alt={`Habitación ${room.number}`}
+          loading='lazy'
+          className='is-full bs-full object-cover'
+        />
       ) : (
         <div className='flex flex-col items-center justify-center gap-1 pli-2'>
           <i className='ri-hotel-bed-line text-2xl' />

@@ -30,7 +30,9 @@ import { formatRoomPrice, ROOM_STATUS_LABELS, ROOM_STATUSES } from '@/types/apps
 import { listFloors } from '@/libs/floorsApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
 import { createRoom, getRoom, getRoomsApiErrorMessage, updateRoom } from '@/libs/roomsApi'
+import { getUploadsApiErrorMessage, uploadRoomPhoto } from '@/libs/uploadsApi'
 import { getLocalizedUrl } from '@/utils/i18n'
+import RoomPhotoField from './RoomPhotoField'
 
 type FormValues = {
   number: string
@@ -38,7 +40,6 @@ type FormValues = {
   roomTypeId: number | ''
   status: RoomStatus
   basePrice: string
-  photoUrl: string
   notes: string
 }
 
@@ -65,6 +66,9 @@ const RoomForm = ({ uuid }: Props) => {
   const [floors, setFloors] = useState<Floor[]>([])
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [effectivePrice, setEffectivePrice] = useState<number | null>(null)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [pendingPhoto, setPendingPhoto] = useState<File | null>(null)
+  const [removePhoto, setRemovePhoto] = useState(false)
 
   const {
     control,
@@ -78,7 +82,6 @@ const RoomForm = ({ uuid }: Props) => {
       roomTypeId: '',
       status: 'AVAILABLE',
       basePrice: '',
-      photoUrl: '',
       notes: ''
     }
   })
@@ -108,13 +111,15 @@ const RoomForm = ({ uuid }: Props) => {
         const room = await getRoom(propertyId, uuid)
 
         setEffectivePrice(room.effectivePrice)
+        setPhotoUrl(room.photoUrl ?? null)
+        setPendingPhoto(null)
+        setRemovePhoto(false)
         reset({
           number: room.number,
           floorId: room.floorId,
           roomTypeId: room.roomTypeId,
           status: room.status,
           basePrice: room.basePrice == null ? '' : String(room.basePrice),
-          photoUrl: room.photoUrl ?? '',
           notes: room.notes ?? ''
         })
       } catch (error) {
@@ -145,6 +150,20 @@ const RoomForm = ({ uuid }: Props) => {
 
     const basePrice = parseOptionalPrice(data.basePrice)
 
+    const savePhoto = async (roomUuid: string) => {
+      if (pendingPhoto) {
+        const secureUrl = await uploadRoomPhoto(propertyId, roomUuid, pendingPhoto)
+
+        return updateRoom(propertyId, roomUuid, { photoUrl: secureUrl })
+      }
+
+      if (removePhoto) {
+        return updateRoom(propertyId, roomUuid, { photoUrl: null })
+      }
+
+      return null
+    }
+
     try {
       if (isEdit && uuid) {
         await updateRoom(propertyId, uuid, {
@@ -152,20 +171,42 @@ const RoomForm = ({ uuid }: Props) => {
           roomTypeId: Number(data.roomTypeId),
           status: data.status,
           basePrice,
-          photoUrl: data.photoUrl.trim() ? data.photoUrl.trim() : null,
           notes: data.notes.trim() ? data.notes.trim() : null
         })
+
+        try {
+          await savePhoto(uuid)
+        } catch (error) {
+          toast.error(getUploadsApiErrorMessage(error, 'No se pudo subir la foto.'))
+          toast.success('Habitación actualizada. La foto no se guardó.')
+          goBack()
+
+          return
+        }
+
         toast.success('Habitación actualizada.')
       } else {
-        await createRoom(propertyId, {
+        const created = await createRoom(propertyId, {
           floorId: Number(data.floorId),
           roomTypeId: Number(data.roomTypeId),
           number: data.number.trim(),
           status: data.status,
           basePrice,
-          photoUrl: data.photoUrl.trim() ? data.photoUrl.trim() : null,
           notes: data.notes.trim() ? data.notes.trim() : null
         })
+
+        if (pendingPhoto) {
+          try {
+            await savePhoto(created.uuid)
+          } catch (error) {
+            toast.success('Habitación creada.')
+            toast.error(getUploadsApiErrorMessage(error, 'No se pudo subir la foto. Puedes cargarla al editar.'))
+            router.push(getLocalizedUrl(`/apps/rooms/edit/${created.uuid}`, locale as Locale))
+
+            return
+          }
+        }
+
         toast.success('Habitación creada.')
       }
 
@@ -198,8 +239,8 @@ const RoomForm = ({ uuid }: Props) => {
                 {isView
                   ? 'Consulta los datos de la habitación'
                   : isEdit
-                    ? 'Actualiza tipo, nivel, precio, estado o notas. El número no se puede cambiar.'
-                    : 'Registra una habitación del hotel'}
+                    ? 'Actualiza tipo, nivel, precio, estado, foto o notas. El número no se puede cambiar.'
+                    : 'Registra una habitación del hotel. Si eliges foto, se sube después de crearla.'}
               </Typography>
             </div>
             <div className='flex flex-wrap max-sm:flex-col gap-4'>
@@ -273,18 +314,19 @@ const RoomForm = ({ uuid }: Props) => {
               {isView && effectivePrice != null ? (
                 <TextField fullWidth label='Precio efectivo' value={formatRoomPrice(effectivePrice)} disabled />
               ) : null}
-              <Controller
-                name='photoUrl'
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label='URL de foto'
-                    placeholder='https://cdn.ejemplo.com/rooms/101.jpg'
-                    disabled={isView || isSubmitting}
-                  />
-                )}
+              <RoomPhotoField
+                photoUrl={removePhoto ? null : photoUrl}
+                disabled={isView || isSubmitting}
+                onFileChange={file => {
+                  setPendingPhoto(file)
+                  setRemovePhoto(false)
+                }}
+                onRemove={() => {
+                  setPendingPhoto(null)
+                  setRemovePhoto(true)
+                  setPhotoUrl(null)
+                }}
+                onInvalidFile={message => toast.error(message)}
               />
               <Controller
                 name='notes'

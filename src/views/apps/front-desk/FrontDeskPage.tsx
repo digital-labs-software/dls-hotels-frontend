@@ -38,6 +38,7 @@ import StayList from './StayList'
 import SummaryBar from './SummaryBar'
 import WalkInDialog from './WalkInDialog'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
+import { ROOM_PHOTO_DETAIL, cloudinaryTransformedUrl } from '@/libs/cloudinary'
 
 type ViewMode = 'compact' | 'photos'
 type SideTab = 'arrivals' | 'departures' | 'inHouse'
@@ -554,7 +555,11 @@ const FrontDeskPage = () => {
       />
       <Dialog open={Boolean(photoRoom)} onClose={() => setPhotoRoom(null)} maxWidth='md' fullWidth>
         {photoRoom?.photoUrl ? (
-          <img src={photoRoom.photoUrl} alt={`Habitación ${photoRoom.number}`} className='is-full' />
+          <img
+            src={cloudinaryTransformedUrl(photoRoom.photoUrl, ROOM_PHOTO_DETAIL) || photoRoom.photoUrl}
+            alt={`Habitación ${photoRoom.number}`}
+            className='is-full'
+          />
         ) : (
           <div className='flex flex-col items-center justify-center gap-2 p-10'>
             <i className='ri-hotel-bed-line text-6xl' />

@@ -49,6 +49,7 @@ import TableFilters from './TableFilters'
 import { listFloors } from '@/libs/floorsApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
 import { deleteRoom, getRoomsApiErrorMessage, listRooms } from '@/libs/roomsApi'
+import { ROOM_PHOTO_THUMB, cloudinaryTransformedUrl } from '@/libs/cloudinary'
 import { getLocalizedUrl } from '@/utils/i18n'
 import tableStyles from '@core/styles/table.module.css'
 
@@ -188,6 +189,32 @@ const RoomListTable = () => {
 
   const columns = useMemo<ColumnDef<RoomWithAction, any>[]>(
     () => [
+      columnHelper.display({
+        id: 'photo',
+        header: 'Foto',
+        cell: ({ row }) => {
+          const src = cloudinaryTransformedUrl(row.original.photoUrl, ROOM_PHOTO_THUMB)
+
+          return src ? (
+            <img
+              src={src}
+              alt={`Habitación ${row.original.number}`}
+              className='rounded object-cover'
+              width={48}
+              height={48}
+              style={{ width: 48, height: 48 }}
+            />
+          ) : (
+            <div
+              className='flex items-center justify-center rounded bg-actionHover text-textSecondary'
+              style={{ width: 48, height: 48 }}
+            >
+              <i className='ri-hotel-bed-line' />
+            </div>
+          )
+        },
+        enableSorting: false
+      }),
       columnHelper.accessor('number', {
         header: 'Habitación',
         cell: ({ row }) => (
