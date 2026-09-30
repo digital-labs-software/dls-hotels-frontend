@@ -23,11 +23,12 @@ import { toast } from 'react-toastify'
 import type { GeoItem, PropertySettings, UpdatePropertySettingsInput } from '@/types/apps/hotelSettingsTypes'
 import { PROPERTY_CATEGORY_LABELS } from '@/types/apps/hotelSettingsTypes'
 import { getHotelSettingsApiErrorMessage, hotelSettingsApi, locationApi } from '@/libs/hotelSettingsApi'
+import { getUploadsApiErrorMessage, uploadHotelLogo } from '@/libs/uploadsApi'
+import HotelLogoField from './HotelLogoField'
 
 type FormValues = {
   tradeName: string
   description: string
-  logoUrl: string
   phone: string
   whatsapp: string
   email: string
@@ -52,7 +53,6 @@ const emptyToNull = (value: string) => {
 const toFormValues = (settings: PropertySettings): FormValues => ({
   tradeName: settings.tradeName ?? '',
   description: settings.description ?? '',
-  logoUrl: settings.logoUrl ?? '',
   phone: settings.phone ?? '',
   whatsapp: settings.whatsapp ?? '',
   email: settings.email ?? '',
@@ -92,10 +92,6 @@ const buildChangedPayload = (initial: FormValues, current: FormValues): UpdatePr
     payload.description = emptyToNull(current.description)
   }
 
-  if (emptyToNull(current.logoUrl) !== emptyToNull(initial.logoUrl)) {
-    payload.logoUrl = emptyToNull(current.logoUrl)
-  }
-
   if (emptyToNull(current.whatsapp) !== emptyToNull(initial.whatsapp)) {
     payload.whatsapp = emptyToNull(current.whatsapp)
   }
@@ -127,6 +123,9 @@ const HotelSettingsForm = () => {
   const [districts, setDistricts] = useState<GeoItem[]>([])
   const [loadingProvinces, setLoadingProvinces] = useState(false)
   const [loadingDistricts, setLoadingDistricts] = useState(false)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [removeLogo, setRemoveLogo] = useState(false)
+  const [logoFieldKey, setLogoFieldKey] = useState(0)
 
   const {
     control,
@@ -139,7 +138,6 @@ const HotelSettingsForm = () => {
     defaultValues: {
       tradeName: '',
       description: '',
-      logoUrl: '',
       phone: '',
       whatsapp: '',
       email: '',
@@ -153,7 +151,6 @@ const HotelSettingsForm = () => {
     }
   })
 
-  const logoUrl = watch('logoUrl')
   const departmentId = watch('departmentId')
   const provinceId = watch('provinceId')
 
@@ -243,9 +240,24 @@ const HotelSettingsForm = () => {
     }
 
     const payload = buildChangedPayload(initialValues, data)
+    const hadLogoChange = Boolean(logoFile) || removeLogo
+
+    if (logoFile) {
+      try {
+        payload.logoUrl = await uploadHotelLogo(propertyId, logoFile)
+      } catch (error) {
+        toast.error(getUploadsApiErrorMessage(error, 'No se pudo subir el logo.'))
+
+        if (Object.keys(payload).length === 0) {
+          return
+        }
+      }
+    } else if (removeLogo) {
+      payload.logoUrl = null
+    }
 
     if (Object.keys(payload).length === 0) {
-      toast.info('No hay cambios para guardar.')
+      toast.info(hadLogoChange ? 'No se pudo guardar el logo.' : 'No hay cambios para guardar.')
 
       return
     }
@@ -256,6 +268,9 @@ const HotelSettingsForm = () => {
 
       setSettings(updated)
       setInitialValues(values)
+      setLogoFile(null)
+      setRemoveLogo(false)
+      setLogoFieldKey(key => key + 1)
       reset(values)
       toast.success('Datos del hotel actualizados.')
     } catch (error) {
@@ -298,7 +313,16 @@ const HotelSettingsForm = () => {
                 color='secondary'
                 type='button'
                 disabled={isSubmitting || !initialValues}
-                onClick={() => initialValues && reset(initialValues)}
+                onClick={() => {
+                  if (!initialValues) {
+                    return
+                  }
+
+                  reset(initialValues)
+                  setLogoFile(null)
+                  setRemoveLogo(false)
+                  setLogoFieldKey(key => key + 1)
+                }}
               >
                 Descartar
               </Button>
@@ -428,30 +452,22 @@ const HotelSettingsForm = () => {
                     )}
                   />
                 </Grid>
-                <Grid size={{ xs: 12, sm: logoUrl.trim() ? 8 : 12 }}>
-                  <Controller
-                    name='logoUrl'
-                    control={control}
-                    rules={{
-                      validate: value => !value.trim() || URL_REGEX.test(value.trim()) || 'Debe iniciar con http:// o https://'
+                <Grid size={{ xs: 12 }}>
+                  <HotelLogoField
+                    key={logoFieldKey}
+                    logoUrl={removeLogo ? null : settings.logoUrl}
+                    disabled={isSubmitting}
+                    onFileChange={file => {
+                      setLogoFile(file)
+                      setRemoveLogo(false)
                     }}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        label='URL del logo'
-                        placeholder='https://cdn.dls-hotels.com/logos/hotel.png'
-                        disabled={isSubmitting}
-                        {...(errors.logoUrl && { error: true, helperText: errors.logoUrl.message })}
-                      />
-                    )}
+                    onRemove={() => {
+                      setLogoFile(null)
+                      setRemoveLogo(true)
+                    }}
+                    onInvalidFile={message => toast.error(message)}
                   />
                 </Grid>
-                {logoUrl.trim() ? (
-                  <Grid size={{ xs: 12, sm: 4 }} className='flex items-center'>
-                    <img src={logoUrl} alt='Logo del hotel' className='max-h-[72px] max-w-full rounded border' />
-                  </Grid>
-                ) : null}
               </Grid>
             </CardContent>
           </Card>

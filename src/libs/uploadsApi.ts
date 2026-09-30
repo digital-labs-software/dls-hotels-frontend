@@ -67,7 +67,7 @@ const request = async <T>(path: string, init: RequestInit = {}, token?: string):
     }
 
     if (res.status === 404) {
-      throw { message: 'No se encontró la habitación para firmar la foto.', error: 'Not Found', statusCode: 404 }
+      throw { message: 'No se encontró el recurso para firmar la imagen.', error: 'Not Found', statusCode: 404 }
     }
 
     throw (data as ApiError) ?? { message: ['Ocurrió un error.'], error: 'Error', statusCode: res.status }
@@ -101,6 +101,8 @@ export const validateRoomPhotoFile = (file: File, signed?: Pick<SignedUpload, 'm
 
   return null
 }
+
+export const validateCloudinaryImageFile = validateRoomPhotoFile
 
 export async function signRoomUpload(propertyId: number, roomUuid: string, token?: string) {
   const body: SignUploadDto = { kind: 'room', roomUuid }
@@ -150,6 +152,22 @@ export async function uploadRoomPhoto(propertyId: number, roomUuid: string, file
   }
 
   const signed = await signRoomUpload(propertyId, roomUuid, token)
+
+  return uploadSignedFile(signed, file)
+}
+
+export async function signLogoUpload(propertyId: number, token?: string) {
+  return request<SignedUpload>(`/properties/${propertyId}/uploads/logo/sign`, { method: 'POST' }, token)
+}
+
+export async function uploadHotelLogo(propertyId: number, file: File, token?: string) {
+  const preflightError = validateRoomPhotoFile(file)
+
+  if (preflightError) {
+    throw new Error(preflightError)
+  }
+
+  const signed = await signLogoUpload(propertyId, token)
 
   return uploadSignedFile(signed, file)
 }

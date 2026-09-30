@@ -127,16 +127,6 @@ const verticalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>>)
         activeUrl: '/apps/hotel'
       },
       {
-        label: dictionary['navigation'].maintenance,
-        icon: 'ri-tools-line',
-        children: [
-          {
-            label: dictionary['navigation'].roles,
-            href: '/apps/hotel-roles/list'
-          }
-        ]
-      },
-      {
         label: dictionary['navigation'].eCommerce,
         icon: 'ri-shopping-bag-3-line',
         children: [

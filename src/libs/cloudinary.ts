@@ -1,5 +1,6 @@
 export const ROOM_PHOTO_THUMB = 'w_400,c_fill,g_auto,f_auto,q_auto'
 export const ROOM_PHOTO_DETAIL = 'w_1200,c_limit,f_auto,q_auto'
+export const HOTEL_LOGO = 'w_400,h_400,c_fit,f_auto,q_auto'
 
 export const cloudinaryTransformedUrl = (url: string | null | undefined, transform: string) => {
   if (!url) {

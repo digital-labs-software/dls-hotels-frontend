@@ -1,7 +1,7 @@
-export type UploadKind = 'room'
+export type UploadKind = 'room' | 'logo'
 
 export type SignUploadDto = {
-  kind: UploadKind
+  kind: 'room'
   roomUuid: string
 }
 

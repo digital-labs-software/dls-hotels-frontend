@@ -169,9 +169,6 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           >
             {dictionary['navigation'].hotel}
           </MenuItem>
-          <SubMenu label={dictionary['navigation'].maintenance} icon={<i className='ri-tools-line' />}>
-            <MenuItem href={`/${locale}/apps/hotel-roles/list`}>{dictionary['navigation'].roles}</MenuItem>
-          </SubMenu>
           <SubMenu label={dictionary['navigation'].eCommerce} icon={<i className='ri-shopping-bag-3-line' />}>
             <MenuItem href={`/${locale}/apps/ecommerce/dashboard`}>{dictionary['navigation'].dashboard}</MenuItem>
             <SubMenu label={dictionary['navigation'].products}>
