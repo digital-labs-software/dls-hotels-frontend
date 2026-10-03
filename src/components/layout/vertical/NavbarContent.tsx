@@ -44,10 +44,10 @@ const shortcuts: ShortcutsType[] = [
     subtitle: 'Permissions'
   },
   {
-    url: '/dashboards/crm',
+    url: '/apps/dashboard',
     icon: 'ri-pie-chart-2-line',
     title: 'Dashboard',
-    subtitle: 'User Dashboard'
+    subtitle: 'Recepción'
   },
   {
     url: '/pages/account-settings',

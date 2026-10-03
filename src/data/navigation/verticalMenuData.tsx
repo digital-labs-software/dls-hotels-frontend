@@ -78,6 +78,13 @@ const verticalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>>)
     isSection: true,
     children: [
       {
+        label: dictionary['navigation'].dashboards,
+        icon: 'ri-home-smile-line',
+        href: '/apps/dashboard',
+        exactMatch: false,
+        activeUrl: '/apps/dashboard'
+      },
+      {
         label: dictionary['navigation'].frontDesk,
         icon: 'ri-dashboard-2-line',
         href: '/apps/front-desk',

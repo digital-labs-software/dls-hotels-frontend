@@ -41,6 +41,13 @@ const horizontalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>
     icon: 'ri-mail-open-line',
     children: [
       {
+        label: dictionary['navigation'].dashboards,
+        icon: 'ri-home-smile-line',
+        href: '/apps/dashboard',
+        exactMatch: false,
+        activeUrl: '/apps/dashboard'
+      },
+      {
         label: dictionary['navigation'].frontDesk,
         icon: 'ri-dashboard-2-line',
         href: '/apps/front-desk',
