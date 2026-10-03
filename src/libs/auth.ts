@@ -20,6 +20,8 @@ const applyNestUserToToken = (token: Record<string, unknown>, data: NestAuthUser
   token.propertyName = data.propertyName
   token.personUuid = data.personUuid
   token.employeeUuid = data.employeeUuid
+  token.permissions = Array.isArray(data.permissions) ? data.permissions : []
+  token.subscriptionSuspended = Boolean(data.subscriptionSuspended)
 }
 
 const toNestErrorPayload = (error: unknown) => {
@@ -115,6 +117,8 @@ export const authOptions: NextAuthOptions = {
         session.user.propertyName = token.propertyName as string | undefined
         session.user.personUuid = token.personUuid as string | undefined
         session.user.employeeUuid = token.employeeUuid as string | undefined
+        session.user.permissions = Array.isArray(token.permissions) ? (token.permissions as string[]) : []
+        session.user.subscriptionSuspended = Boolean(token.subscriptionSuspended)
       }
 
       session.accessToken = token.accessToken as string | undefined

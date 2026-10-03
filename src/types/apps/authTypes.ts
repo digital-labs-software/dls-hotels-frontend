@@ -10,4 +10,6 @@ export type NestAuthUser = {
   personUuid: string
   employeeUuid: string
   accessToken: string
+  permissions?: string[]
+  subscriptionSuspended?: boolean
 }

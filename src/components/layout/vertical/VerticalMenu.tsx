@@ -19,6 +19,7 @@ import { Menu, SubMenu, MenuItem, MenuSection } from '@menu/vertical-menu'
 
 // Hook Imports
 import useVerticalNav from '@menu/hooks/useVerticalNav'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 
 // Styled Component Imports
 import StyledVerticalNavExpandIcon from '@menu/styles/vertical/StyledVerticalNavExpandIcon'
@@ -51,12 +52,45 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
   const theme = useTheme()
   const verticalNavOptions = useVerticalNav()
   const params = useParams()
+  const { subscriptionSuspended, canViewSubscription } = useSubscriptionAccess()
 
   // Vars
   const { isBreakpointReached, transitionDuration } = verticalNavOptions
   const { lang: locale } = params
 
   const ScrollWrapper = isBreakpointReached ? 'div' : PerfectScrollbar
+  const scrollWrapperProps = isBreakpointReached
+    ? {
+        className: 'bs-full overflow-y-auto overflow-x-hidden',
+        onScroll: (container: HTMLElement) => scrollMenu(container, false)
+      }
+    : {
+        options: { wheelPropagation: false, suppressScrollX: true },
+        onScrollY: (container: HTMLElement) => scrollMenu(container, true)
+      }
+
+  if (subscriptionSuspended) {
+    return (
+      <ScrollWrapper {...scrollWrapperProps}>
+        <Menu
+          popoutMenuOffset={{ mainAxis: 10 }}
+          menuItemStyles={menuItemStyles(verticalNavOptions, theme)}
+          renderExpandIcon={({ open }) => <RenderExpandIcon open={open} transitionDuration={transitionDuration} />}
+          renderExpandedMenuItemIcon={{ icon: <i className='ri-circle-line' /> }}
+          menuSectionStyles={menuSectionStyles(verticalNavOptions, theme)}
+        >
+          <MenuItem
+            href={`/${locale}/apps/billing`}
+            exactMatch={false}
+            activeUrl='/apps/billing'
+            icon={<i className='ri-secure-payment-line' />}
+          >
+            {dictionary['navigation'].subscription}
+          </MenuItem>
+        </Menu>
+      </ScrollWrapper>
+    )
+  }
 
   return (
     // eslint-disable-next-line lines-around-comment
@@ -158,6 +192,16 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].reports}
           </MenuItem>
+          {canViewSubscription ? (
+            <MenuItem
+              href={`/${locale}/apps/billing`}
+              exactMatch={false}
+              activeUrl='/apps/billing'
+              icon={<i className='ri-secure-payment-line' />}
+            >
+              {dictionary['navigation'].subscription}
+            </MenuItem>
+          ) : null}
           <MenuItem
             href={`/${locale}/apps/hotel`}
             exactMatch={false}

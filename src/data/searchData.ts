@@ -66,6 +66,13 @@ const data: SearchData[] = [
     section: 'Apps'
   },
   {
+    id: '126',
+    name: 'Suscripción',
+    url: '/apps/billing',
+    icon: 'ri-secure-payment-line',
+    section: 'Apps'
+  },
+  {
     id: '119',
     name: 'Hotel',
     url: '/apps/hotel',

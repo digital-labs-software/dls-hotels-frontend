@@ -16,6 +16,8 @@ declare module 'next-auth' {
       propertyName?: string
       personUuid?: string
       employeeUuid?: string
+      permissions?: string[]
+      subscriptionSuspended?: boolean
     } & DefaultSession['user']
   }
 
@@ -32,5 +34,7 @@ declare module 'next-auth/jwt' {
     propertyName?: string
     personUuid?: string
     employeeUuid?: string
+    permissions?: string[]
+    subscriptionSuspended?: boolean
   }
 }

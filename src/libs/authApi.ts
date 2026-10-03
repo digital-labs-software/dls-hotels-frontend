@@ -60,6 +60,21 @@ export async function logoutPassword(accessToken: string) {
   return res.json().catch(() => ({ message: 'Sesión cerrada' }))
 }
 
+export async function getAuthMe(accessToken: string): Promise<NestAuthUser> {
+  const res = await fetch(`${getApiBase()}/auth/me`, {
+    cache: 'no-store',
+    headers: { Authorization: `Bearer ${accessToken}` }
+  })
+
+  const data = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    throw toApiError(data, res, '/auth/me')
+  }
+
+  return data as NestAuthUser
+}
+
 export async function logoutGoogle(accessToken: string, googleToken?: string) {
   const res = await fetch(`${getApiBase()}/auth/google/logout`, {
     method: 'POST',

@@ -18,6 +18,7 @@ import VerticalNavContent from './VerticalNavContent'
 // Hook Imports
 import useVerticalNav from '@menu/hooks/useVerticalNav'
 import { useSettings } from '@core/hooks/useSettings'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 
 // Styled Component Imports
 import StyledHorizontalNavExpandIcon from '@menu/styles/horizontal/StyledHorizontalNavExpandIcon'
@@ -60,11 +61,58 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
   const theme = useTheme()
   const { settings } = useSettings()
   const params = useParams()
+  const { subscriptionSuspended, canViewSubscription } = useSubscriptionAccess()
 
   // Vars
   const { skin } = settings
   const { transitionDuration } = verticalNavOptions
   const { lang: locale } = params
+
+  const subscriptionItem = (
+    <MenuItem
+      href={`/${locale}/apps/billing`}
+      exactMatch={false}
+      activeUrl='/apps/billing'
+      icon={<i className='ri-secure-payment-line' />}
+    >
+      {dictionary['navigation'].subscription}
+    </MenuItem>
+  )
+
+  if (subscriptionSuspended) {
+    return (
+      <HorizontalNav
+        switchToVertical
+        verticalNavContent={VerticalNavContent}
+        verticalNavProps={{
+          customStyles: verticalNavigationCustomStyles(verticalNavOptions, theme),
+          backgroundColor:
+            skin === 'bordered' ? 'var(--mui-palette-background-paper)' : 'var(--mui-palette-background-default)'
+        }}
+      >
+        <Menu
+          rootStyles={menuRootStyles(theme)}
+          renderExpandIcon={({ level }) => <RenderExpandIcon level={level} />}
+          renderExpandedMenuItemIcon={{ icon: <i className='ri-circle-line' /> }}
+          menuItemStyles={menuItemStyles(theme, 'ri-circle-line')}
+          popoutMenuOffset={{
+            mainAxis: ({ level }) => (level && level > 0 ? 4 : 16),
+            alignmentAxis: 0
+          }}
+          verticalMenuProps={{
+            menuItemStyles: verticalMenuItemStyles(verticalNavOptions, theme),
+            renderExpandIcon: ({ open }) => (
+              <RenderVerticalExpandIcon open={open} transitionDuration={transitionDuration} />
+            ),
+            renderExpandedMenuItemIcon: { icon: <i className='ri-circle-line' /> },
+            menuSectionStyles: verticalMenuSectionStyles(verticalNavOptions, theme)
+          }}
+        >
+          {subscriptionItem}
+        </Menu>
+      </HorizontalNav>
+    )
+  }
 
   return (
     <HorizontalNav
@@ -161,6 +209,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           >
             {dictionary['navigation'].reports}
           </MenuItem>
+          {canViewSubscription ? subscriptionItem : null}
           <MenuItem
             href={`/${locale}/apps/hotel`}
             exactMatch={false}
