@@ -186,6 +186,28 @@ export const guestsApi = {
   get: async (propertyId: number, uuid: string, token?: string) => {
     return normalizeGuest(await request<Guest>(`/properties/${propertyId}/guests/${uuid}`, {}, token))
   },
+
+  /** Huésped del hotel con exactamente ese documento; el search del backend es parcial. */
+  findByDocument: async (
+    propertyId: number,
+    documentType: DocumentType,
+    documentNumber: string,
+    token?: string
+  ): Promise<Guest | null> => {
+    const number = documentNumber.trim()
+
+    const payload = await request<Paginated<Guest> | Guest[]>(
+      `/properties/${propertyId}/guests?${listQuery({ search: number, limit: 20 })}`,
+      {},
+      token
+    )
+
+    return (
+      toList(payload, normalizeGuest).find(
+        guest => guest.person.documentType === documentType && guest.person.documentNumber === number
+      ) ?? null
+    )
+  },
   create: async (propertyId: number, body: CreateGuestInput, token?: string) => {
     return normalizeGuest(
       await request<Guest>(
@@ -223,6 +245,19 @@ export const companiesApi = {
   },
   get: async (propertyId: number, uuid: string, token?: string) => {
     return normalizeCompany(await request<Company>(`/properties/${propertyId}/companies/${uuid}`, {}, token))
+  },
+
+  /** Empresa del hotel con exactamente ese RUC; el search del backend es parcial. */
+  findByTaxNumber: async (propertyId: number, taxNumber: string, token?: string): Promise<Company | null> => {
+    const number = taxNumber.trim()
+
+    const payload = await request<Paginated<Company> | Company[]>(
+      `/properties/${propertyId}/companies?${listQuery({ search: number, limit: 20 })}`,
+      {},
+      token
+    )
+
+    return toList(payload, normalizeCompany).find(company => company.taxNumber === number) ?? null
   },
   create: async (propertyId: number, body: CreateCompanyInput, token?: string) => {
     return normalizeCompany(

@@ -26,6 +26,10 @@ import type { CompanyType } from '@/types/apps/clientsTypes'
 import { COMPANY_TYPE_LABELS, COMPANY_TYPES } from '@/types/apps/clientsTypes'
 import { companiesApi, getClientsApiErrorMessage } from '@/libs/clientsApi'
 import { getLocalizedUrl } from '@/utils/i18n'
+import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup'
+import { useExistingRecord } from '@/hooks/useExistingRecord'
+import { DocumentLookupAdornment, DocumentLookupHelper } from '@/components/document-lookup/DocumentLookupHelper'
+import ExistingRecordAlert from '@/components/document-lookup/ExistingRecordAlert'
 
 type FormValues = {
   businessName: string
@@ -55,6 +59,8 @@ const CompanyForm = ({ uuid }: Props) => {
     control,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting }
   } = useForm<FormValues>({
     defaultValues: {
@@ -67,6 +73,33 @@ const CompanyForm = ({ uuid }: Props) => {
       address: ''
     }
   })
+
+  const taxNumber = watch('taxNumber')
+
+  const rucLookup = useDocumentLookup('RUC', data => {
+    const options = { shouldValidate: true, shouldDirty: true }
+
+    if (data.businessName) setValue('businessName', data.businessName, options)
+    if (data.tradeName) setValue('tradeName', data.tradeName, options)
+    if (data.fullAddress || data.address) setValue('address', data.fullAddress ?? data.address ?? '', options)
+  })
+
+  const existingCompany = useExistingRecord(async (number: string) => {
+    const company = await companiesApi.findByTaxNumber(propertyId, number)
+
+    return company && company.uuid !== uuid ? company : null
+  })
+
+  /** Primero busca el RUC entre las empresas del hotel; solo si no existe consulta SUNAT. */
+  const checkTaxNumber = async (raw: string) => {
+    const number = raw.trim()
+    const found = await existingCompany.check(number)
+
+    if (found === undefined) return
+
+    if (found) rucLookup.reset()
+    else rucLookup.lookup(number)
+  }
 
   useEffect(() => {
     if (sessionStatus === 'loading') {
@@ -107,8 +140,20 @@ const CompanyForm = ({ uuid }: Props) => {
     router.push(getLocalizedUrl('/apps/clients?tab=companies', locale as Locale))
   }
 
+  const openExistingCompany = () => {
+    if (!existingCompany.record) return
+
+    router.push(getLocalizedUrl(`/apps/clients/companies/edit/${existingCompany.record.uuid}`, locale as Locale))
+  }
+
   const onSubmit = async (data: FormValues) => {
     if (isView) {
+      return
+    }
+
+    if (existingCompany.record) {
+      toast.error('Ya existe una empresa con ese RUC. Ábrela para actualizar sus datos.')
+
       return
     }
 
@@ -138,6 +183,20 @@ const CompanyForm = ({ uuid }: Props) => {
   }
 
   const title = isView ? 'Ver empresa' : isEdit ? 'Editar empresa' : 'Nueva empresa'
+  const existing = isView ? null : existingCompany.record
+
+  const taxNumberHelper = () => {
+    if (errors.taxNumber?.message) return errors.taxNumber.message
+    if (isView) return undefined
+    if (existingCompany.checking) return 'Verificando si ya está registrada…'
+    if (existing) return undefined
+
+    return rucLookup.status === 'idle' ? (
+      'Al completar los 11 dígitos se cargan los datos de SUNAT.'
+    ) : (
+      <DocumentLookupHelper lookup={rucLookup} />
+    )
+  }
 
   if (loading) {
     return (
@@ -169,7 +228,7 @@ const CompanyForm = ({ uuid }: Props) => {
                 {isView ? 'Volver' : 'Descartar'}
               </Button>
               {!isView ? (
-                <Button variant='contained' type='submit' disabled={isSubmitting}>
+                <Button variant='contained' type='submit' disabled={isSubmitting || Boolean(existing)}>
                   {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Guardar empresa'}
                 </Button>
               ) : null}
@@ -181,6 +240,65 @@ const CompanyForm = ({ uuid }: Props) => {
           <Card>
             <CardHeader title='Datos de la empresa' />
             <CardContent className='flex flex-col gap-5'>
+              <Controller
+                name='taxNumber'
+                control={control}
+                rules={{ maxLength: { value: 20, message: 'Máximo 20 caracteres.' } }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    autoFocus={!uuid && !isView}
+                    label='RUC'
+                    placeholder='20123456789'
+                    disabled={isView || isSubmitting}
+                    onChange={event => {
+                      const value = event.target.value
+
+                      field.onChange(event)
+
+                      if (isCompleteDocument('RUC', value)) {
+                        void checkTaxNumber(value)
+                      } else {
+                        existingCompany.clear()
+                        rucLookup.lookup(value)
+                      }
+                    }}
+                    onBlur={() => {
+                      field.onBlur()
+
+                      const number = taxNumber.trim()
+
+                      if (number && !isCompleteDocument('RUC', number)) void existingCompany.check(number)
+                    }}
+                    error={Boolean(errors.taxNumber)}
+                    helperText={taxNumberHelper()}
+                    slotProps={{
+                      htmlInput: { inputMode: 'numeric' },
+                      input: isView
+                        ? undefined
+                        : {
+                            endAdornment: (
+                              <DocumentLookupAdornment
+                                lookup={rucLookup}
+                                canSearch={isCompleteDocument('RUC', taxNumber) && !existing}
+                                onSearch={() => rucLookup.lookup(taxNumber, { force: true })}
+                              />
+                            )
+                          }
+                    }}
+                  />
+                )}
+              />
+              {existing ? (
+                <ExistingRecordAlert
+                  title='Este RUC ya está registrado como empresa'
+                  name={existing.businessName}
+                  details={[existing.tradeName, existing.phone && `Tel. ${existing.phone}`, existing.email]}
+                  actionLabel='Abrir empresa'
+                  onAction={openExistingCompany}
+                />
+              ) : null}
               <Controller
                 name='businessName'
                 control={control}
@@ -297,21 +415,6 @@ const CompanyForm = ({ uuid }: Props) => {
                   )}
                 />
               </FormControl>
-              <Controller
-                name='taxNumber'
-                control={control}
-                rules={{ maxLength: { value: 20, message: 'Máximo 20 caracteres.' } }}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label='RUC'
-                    placeholder='20123456789'
-                    disabled={isView || isSubmitting}
-                    {...(errors.taxNumber && { error: true, helperText: errors.taxNumber.message })}
-                  />
-                )}
-              />
             </CardContent>
           </Card>
         </Grid>

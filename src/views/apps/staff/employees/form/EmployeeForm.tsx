@@ -12,7 +12,6 @@ import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import FormControl from '@mui/material/FormControl'
-import FormHelperText from '@mui/material/FormHelperText'
 import Grid from '@mui/material/Grid'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -32,6 +31,8 @@ import type { Role } from '@/types/apps/staffTypes'
 import { employeesApi, getStaffApiErrorMessage, rolesApi } from '@/libs/staffApi'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
+import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup'
+import { DocumentLookupAdornment, DocumentLookupHelper } from '@/components/document-lookup/DocumentLookupHelper'
 
 type FormValues = {
   firstName: string
@@ -81,7 +82,7 @@ const EmployeeForm = ({ uuid }: Props) => {
       lastName: '',
       email: '',
       password: '',
-      documentType: '',
+      documentType: uuid ? '' : 'DNI',
       documentNumber: '',
       phone: '',
       address: '',
@@ -97,6 +98,14 @@ const EmployeeForm = ({ uuid }: Props) => {
   const documentType = watch('documentType')
   const documentNumber = watch('documentNumber')
   const roleIds = watch('roleIds')
+  const isDni = documentType === 'DNI'
+
+  const dniLookup = useDocumentLookup('DNI', data => {
+    const options = { shouldValidate: true, shouldDirty: true }
+
+    if (data.firstName) setValue('firstName', data.firstName, options)
+    if (data.lastName) setValue('lastName', data.lastName, options)
+  })
 
   useEffect(() => {
     if (sessionStatus === 'loading' || !accessLoaded) {
@@ -167,15 +176,7 @@ const EmployeeForm = ({ uuid }: Props) => {
       return
     }
 
-    const hasDocumentType = Boolean(data.documentType)
-    const hasDocumentNumber = Boolean(data.documentNumber.trim())
-
-    if (hasDocumentType !== hasDocumentNumber) {
-      toast.error('El tipo y el número de documento deben enviarse juntos.')
-
-      return
-    }
-
+    const number = data.documentNumber.trim()
     const primaryRoleId = data.primaryRoleId === '' ? data.roleIds[0] : Number(data.primaryRoleId)
 
     try {
@@ -184,8 +185,8 @@ const EmployeeForm = ({ uuid }: Props) => {
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
         password: data.password.trim() || undefined,
-        documentType: data.documentType || null,
-        documentNumber: data.documentNumber.trim() || null,
+        documentType: number ? data.documentType || null : null,
+        documentNumber: number || null,
         phone: data.phone.trim() || null,
         address: data.address.trim() || null,
         birthDate: data.birthDate || null,
@@ -236,7 +237,7 @@ const EmployeeForm = ({ uuid }: Props) => {
                   ? 'Consulta los datos del empleado'
                   : isEdit
                     ? 'Actualiza el cargo, los roles o los datos personales.'
-                    : 'Registra un empleado del hotel'}
+                    : 'Digita el documento para cargar sus datos y completa el acceso y los roles.'}
               </Typography>
             </div>
             <div className='flex flex-wrap max-sm:flex-col gap-4'>
@@ -253,165 +254,231 @@ const EmployeeForm = ({ uuid }: Props) => {
         </Grid>
 
         <Grid size={{ xs: 12, md: 8 }}>
-          <Card>
-            <CardHeader title='Datos personales' />
-            <CardContent className='flex flex-col gap-5'>
-              <Grid container spacing={5}>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Controller
-                    name='firstName'
-                    control={control}
-                    rules={{
-                      required: 'El nombre es obligatorio.',
-                      maxLength: { value: 100, message: 'Máximo 100 caracteres.' }
-                    }}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        label='Nombres'
-                        placeholder='Juan'
-                        disabled={isView || isSubmitting}
-                        {...(errors.firstName && { error: true, helperText: errors.firstName.message })}
+          <div className='flex flex-col gap-6'>
+            <Card>
+              <CardHeader title='Documento de identidad' />
+              <CardContent>
+                <Grid container spacing={5}>
+                  <Grid size={{ xs: 12, sm: 4 }}>
+                    <FormControl fullWidth>
+                      <InputLabel id='employee-document-type'>Tipo de documento</InputLabel>
+                      <Controller
+                        name='documentType'
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            {...field}
+                            label='Tipo de documento'
+                            labelId='employee-document-type'
+                            disabled={isView || isSubmitting}
+                            onChange={event => {
+                              field.onChange(event)
+
+                              if (event.target.value === 'DNI') {
+                                const digits = documentNumber.replace(/\D/g, '').slice(0, 8)
+
+                                if (digits !== documentNumber) setValue('documentNumber', digits)
+                                dniLookup.lookup(digits)
+                              } else {
+                                dniLookup.reset()
+                              }
+                            }}
+                          >
+                            <MenuItem value=''>Sin documento</MenuItem>
+                            {DOCUMENT_TYPES.map(item => (
+                              <MenuItem key={item} value={item}>
+                                {DOCUMENT_TYPE_LABELS[item]}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        )}
                       />
-                    )}
-                  />
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 8 }}>
+                    <Controller
+                      name='documentNumber'
+                      control={control}
+                      rules={{
+                        maxLength: { value: 20, message: 'Máximo 20 caracteres.' },
+                        validate: value => {
+                          const number = value.trim()
+
+                          if (!number) return true
+                          if (!documentType) return 'Selecciona el tipo de documento.'
+
+                          if (documentType === 'DNI' && !isCompleteDocument('DNI', number)) {
+                            return 'El DNI debe tener 8 dígitos.'
+                          }
+
+                          return true
+                        }
+                      }}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          autoFocus={!uuid && !isView}
+                          label='Número de documento'
+                          placeholder={isDni ? '70000002' : 'Número de documento'}
+                          disabled={isView || isSubmitting}
+                          onChange={event => {
+                            const value = isDni ? event.target.value.replace(/\D/g, '').slice(0, 8) : event.target.value
+
+                            field.onChange(value)
+                            if (isDni) dniLookup.lookup(value)
+                          }}
+                          error={Boolean(errors.documentNumber)}
+                          helperText={
+                            errors.documentNumber?.message ??
+                            (isDni && dniLookup.status === 'idle' && !isView ? (
+                              'Al completar los 8 dígitos se cargan los datos de RENIEC.'
+                            ) : (
+                              <DocumentLookupHelper lookup={dniLookup} />
+                            ))
+                          }
+                          slotProps={{
+                            htmlInput: isDni ? { inputMode: 'numeric' } : undefined,
+                            input:
+                              isDni && !isView
+                                ? {
+                                    endAdornment: (
+                                      <DocumentLookupAdornment
+                                        lookup={dniLookup}
+                                        canSearch={isCompleteDocument('DNI', documentNumber)}
+                                        onSearch={() => dniLookup.lookup(documentNumber, { force: true })}
+                                      />
+                                    )
+                                  }
+                                : undefined
+                          }}
+                        />
+                      )}
+                    />
+                  </Grid>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Controller
-                    name='lastName'
-                    control={control}
-                    rules={{
-                      required: 'Los apellidos son obligatorios.',
-                      maxLength: { value: 100, message: 'Máximo 100 caracteres.' }
-                    }}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        label='Apellidos'
-                        placeholder='Pérez'
-                        disabled={isView || isSubmitting}
-                        {...(errors.lastName && { error: true, helperText: errors.lastName.message })}
-                      />
-                    )}
-                  />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader title='Datos personales' />
+              <CardContent>
+                <Grid container spacing={5}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Controller
+                      name='firstName'
+                      control={control}
+                      rules={{
+                        required: 'El nombre es obligatorio.',
+                        maxLength: { value: 100, message: 'Máximo 100 caracteres.' }
+                      }}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          label='Nombres'
+                          placeholder='Juan'
+                          disabled={isView || isSubmitting}
+                          {...(errors.firstName && { error: true, helperText: errors.firstName.message })}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Controller
+                      name='lastName'
+                      control={control}
+                      rules={{
+                        required: 'Los apellidos son obligatorios.',
+                        maxLength: { value: 100, message: 'Máximo 100 caracteres.' }
+                      }}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          label='Apellidos'
+                          placeholder='Pérez'
+                          disabled={isView || isSubmitting}
+                          {...(errors.lastName && { error: true, helperText: errors.lastName.message })}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Controller
+                      name='phone'
+                      control={control}
+                      rules={{ maxLength: { value: 20, message: 'Máximo 20 caracteres.' } }}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          label='Teléfono'
+                          placeholder='987654321'
+                          disabled={isView || isSubmitting}
+                          {...(errors.phone && { error: true, helperText: errors.phone.message })}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Controller
+                      name='jobTitle'
+                      control={control}
+                      rules={{ maxLength: { value: 100, message: 'Máximo 100 caracteres.' } }}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          label='Cargo'
+                          placeholder='Recepcionista'
+                          disabled={isView || isSubmitting}
+                          {...(errors.jobTitle && { error: true, helperText: errors.jobTitle.message })}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 4 }}>
+                    <Controller
+                      name='birthDate'
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          type='date'
+                          label='Fecha de nacimiento'
+                          slotProps={{ inputLabel: { shrink: true } }}
+                          disabled={isView || isSubmitting}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 8 }}>
+                    <Controller
+                      name='address'
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          label='Dirección'
+                          placeholder='Av. Principal 123'
+                          disabled={isView || isSubmitting}
+                        />
+                      )}
+                    />
+                  </Grid>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Controller
-                    name='phone'
-                    control={control}
-                    rules={{ maxLength: { value: 20, message: 'Máximo 20 caracteres.' } }}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        label='Teléfono'
-                        placeholder='987654321'
-                        disabled={isView || isSubmitting}
-                        {...(errors.phone && { error: true, helperText: errors.phone.message })}
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Controller
-                    name='jobTitle'
-                    control={control}
-                    rules={{ maxLength: { value: 100, message: 'Máximo 100 caracteres.' } }}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        label='Cargo'
-                        placeholder='Recepcionista'
-                        disabled={isView || isSubmitting}
-                        {...(errors.jobTitle && { error: true, helperText: errors.jobTitle.message })}
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <Controller
-                    name='address'
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        label='Dirección'
-                        placeholder='Av. Principal 123'
-                        disabled={isView || isSubmitting}
-                      />
-                    )}
-                  />
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </Grid>
 
         <Grid size={{ xs: 12, md: 4 }}>
           <Card>
-            <CardHeader title='Documento y fechas' />
+            <CardHeader title='Fechas laborales' />
             <CardContent className='flex flex-col gap-5'>
-              <FormControl fullWidth error={Boolean(errors.documentType)}>
-                <InputLabel id='employee-document-type'>Tipo de documento</InputLabel>
-                <Controller
-                  name='documentType'
-                  control={control}
-                  rules={{
-                    validate: value =>
-                      Boolean(value) === Boolean(documentNumber.trim()) ||
-                      'El tipo y el número de documento deben enviarse juntos.'
-                  }}
-                  render={({ field }) => (
-                    <Select {...field} label='Tipo de documento' labelId='employee-document-type' disabled={isView || isSubmitting}>
-                      <MenuItem value=''>Ninguno</MenuItem>
-                      {DOCUMENT_TYPES.map(item => (
-                        <MenuItem key={item} value={item}>
-                          {DOCUMENT_TYPE_LABELS[item]}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  )}
-                />
-                {errors.documentType ? <FormHelperText>{errors.documentType.message}</FormHelperText> : null}
-              </FormControl>
-              <Controller
-                name='documentNumber'
-                control={control}
-                rules={{
-                  maxLength: { value: 20, message: 'Máximo 20 caracteres.' },
-                  validate: value =>
-                    Boolean(value.trim()) === Boolean(documentType) ||
-                    'El tipo y el número de documento deben enviarse juntos.'
-                }}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label='Número de documento'
-                    placeholder='70000002'
-                    disabled={isView || isSubmitting}
-                    {...(errors.documentNumber && { error: true, helperText: errors.documentNumber.message })}
-                  />
-                )}
-              />
-              <Controller
-                name='birthDate'
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    type='date'
-                    label='Fecha de nacimiento'
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    disabled={isView || isSubmitting}
-                  />
-                )}
-              />
               <Controller
                 name='hireDate'
                 control={control}
@@ -512,6 +579,7 @@ const EmployeeForm = ({ uuid }: Props) => {
                             const value = event.target.value as number[]
 
                             field.onChange(value)
+
                             if (value.length === 0) {
                               setValue('primaryRoleId', '')
                             } else if (!value.includes(Number(watch('primaryRoleId')))) {
