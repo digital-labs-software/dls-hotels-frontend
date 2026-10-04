@@ -105,6 +105,7 @@ const EmployeeForm = ({ uuid }: Props) => {
 
     if (data.firstName) setValue('firstName', data.firstName, options)
     if (data.lastName) setValue('lastName', data.lastName, options)
+    if (data.birthDate) setValue('birthDate', data.birthDate, options)
   })
 
   useEffect(() => {

@@ -91,6 +91,7 @@ const GuestForm = ({ uuid }: Props) => {
 
     if (data.firstName) setValue('firstName', data.firstName, options)
     if (data.lastName) setValue('lastName', data.lastName, options)
+    if (data.birthDate) setValue('birthDate', data.birthDate, options)
   })
 
   const existingGuest = useExistingRecord(async (query: { type: DocumentType; number: string }) => {

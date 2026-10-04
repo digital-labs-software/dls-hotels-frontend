@@ -16,6 +16,9 @@ export interface DniLookupResult extends LookupResultBase {
   paternalSurname: string | null
   maternalSurname: string | null
   fullName: string | null
+
+  /** YYYY-MM-DD, el formato que usan los inputs de fecha. */
+  birthDate: string | null
 }
 
 export interface LookupLocation {
