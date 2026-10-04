@@ -19,8 +19,7 @@ type StyledNavHeaderProps = {
 }
 
 const StyledNavHeader = styled.div<StyledNavHeaderProps>`
-  padding: 15px;
-  padding-inline-start: 20px;
+  padding: 8px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;

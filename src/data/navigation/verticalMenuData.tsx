@@ -74,7 +74,7 @@ const verticalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>>)
 
   // This is how you will normally render menu section
   {
-    label: dictionary['navigation'].appsPages,
+    label: dictionary['navigation'].operation,
     isSection: true,
     children: [
       {
@@ -97,7 +97,13 @@ const verticalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>>)
         href: '/apps/reservations',
         exactMatch: false,
         activeUrl: '/apps/reservations'
-      },
+      }
+    ]
+  },
+  {
+    label: dictionary['navigation'].propertySection,
+    isSection: true,
+    children: [
       {
         label: dictionary['navigation'].rooms,
         icon: 'ri-hotel-bed-line',
@@ -111,13 +117,19 @@ const verticalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>>)
         href: '/apps/clients',
         exactMatch: false,
         activeUrl: '/apps/clients'
-      },
+      }
+    ]
+  },
+  {
+    label: dictionary['navigation'].finance,
+    isSection: true,
+    children: [
       {
-        label: dictionary['navigation'].staff,
-        icon: 'ri-id-card-line',
-        href: '/apps/staff',
+        label: dictionary['navigation'].invoicing,
+        icon: 'ri-bill-line',
+        href: '/apps/invoicing',
         exactMatch: false,
-        activeUrl: '/apps/staff'
+        activeUrl: '/apps/invoicing'
       },
       {
         label: dictionary['navigation'].reports,
@@ -132,6 +144,19 @@ const verticalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>>)
         href: '/apps/billing',
         exactMatch: false,
         activeUrl: '/apps/billing'
+      }
+    ]
+  },
+  {
+    label: dictionary['navigation'].administration,
+    isSection: true,
+    children: [
+      {
+        label: dictionary['navigation'].staff,
+        icon: 'ri-id-card-line',
+        href: '/apps/staff',
+        exactMatch: false,
+        activeUrl: '/apps/staff'
       },
       {
         label: dictionary['navigation'].hotel,
@@ -139,7 +164,13 @@ const verticalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>>)
         href: '/apps/hotel',
         exactMatch: false,
         activeUrl: '/apps/hotel'
-      },
+      }
+    ]
+  },
+  {
+    label: dictionary['navigation'].appsPages,
+    isSection: true,
+    children: [
       {
         label: dictionary['navigation'].eCommerce,
         icon: 'ri-shopping-bag-3-line',

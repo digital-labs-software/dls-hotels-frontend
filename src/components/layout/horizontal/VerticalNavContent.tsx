@@ -74,15 +74,20 @@ const VerticalNavContent = ({ children }: ChildrenType) => {
   return (
     <>
       <NavHeader>
-        <Link href={getLocalizedUrl('/', locale as Locale)}>
-          <Logo />
-        </Link>
-        <NavCollapseIcons
-          lockedIcon={<i className='ri-radio-button-line text-xl' />}
-          unlockedIcon={<i className='ri-checkbox-blank-circle-line text-xl' />}
-          closeIcon={<i className='ri-close-line text-xl' />}
-          className='text-textSecondary'
-        />
+        <div className='grid is-full grid-cols-[1fr_auto_1fr] items-center'>
+          <span />
+          <Link href={getLocalizedUrl('/', locale as Locale)} className='flex justify-center'>
+            <Logo />
+          </Link>
+          <div className='flex justify-end'>
+            <NavCollapseIcons
+              lockedIcon={<i className='ri-radio-button-line text-xl' />}
+              unlockedIcon={<i className='ri-checkbox-blank-circle-line text-xl' />}
+              closeIcon={<i className='ri-close-line text-xl' />}
+              className='text-textSecondary'
+            />
+          </div>
+        </div>
       </NavHeader>
       <StyledBoxForShadow ref={shadowRef} />
       <ScrollWrapper

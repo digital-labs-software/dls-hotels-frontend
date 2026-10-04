@@ -22,7 +22,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
 
 // Third-party Imports
-import { signOut, useSession } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 
 // Type Imports
 import type { Locale } from '@configs/i18n'
@@ -33,7 +33,7 @@ import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 
 // Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
-import { logoutGoogle, logoutPassword } from '@/libs/authApi'
+import useHotelLogout from '@components/layout/shared/useHotelLogout'
 
 // Styled component for badge content
 const BadgeContentSpan = styled('span')({
@@ -58,6 +58,7 @@ const UserDropdown = () => {
   const { me } = useSubscriptionAccess()
   const { settings } = useSettings()
   const { lang: locale } = useParams()
+  const handleUserLogout = useHotelLogout()
   const displayName = me?.name || session?.user?.name || ''
   const displayEmail = me?.email || session?.user?.email || ''
   const displayImage = me?.image || session?.user?.image || ''
@@ -77,27 +78,6 @@ const UserDropdown = () => {
     }
 
     setOpen(false)
-  }
-
-  const handleUserLogout = async () => {
-    try {
-      const accessToken = session?.accessToken
-      const authProvider = session?.authProvider
-
-      if (accessToken) {
-        if (authProvider === 'google') {
-          await logoutGoogle(accessToken, session?.googleToken)
-        } else {
-          await logoutPassword(accessToken)
-        }
-      }
-
-      await signOut({ callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/en/pages/auth/login-v1` })
-    } catch (error) {
-      console.error(error)
-
-      await signOut({ callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/en/pages/auth/login-v1` })
-    }
   }
 
   return (

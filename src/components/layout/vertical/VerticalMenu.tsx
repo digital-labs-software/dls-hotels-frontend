@@ -20,6 +20,7 @@ import { Menu, SubMenu, MenuItem, MenuSection } from '@menu/vertical-menu'
 // Hook Imports
 import useVerticalNav from '@menu/hooks/useVerticalNav'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import useHotelLogout from '@components/layout/shared/useHotelLogout'
 
 // Styled Component Imports
 import StyledVerticalNavExpandIcon from '@menu/styles/vertical/StyledVerticalNavExpandIcon'
@@ -53,6 +54,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
   const verticalNavOptions = useVerticalNav()
   const params = useParams()
   const { subscriptionSuspended, canViewSubscription, canViewStaff } = useSubscriptionAccess()
+  const handleLogout = useHotelLogout()
 
   // Vars
   const { isBreakpointReached, transitionDuration } = verticalNavOptions
@@ -87,6 +89,11 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].subscription}
           </MenuItem>
+          <MenuSection label={dictionary['navigation'].account}>
+            <MenuItem icon={<i className='ri-logout-box-r-line' />} onClick={() => void handleLogout()}>
+              {dictionary['navigation'].logout}
+            </MenuItem>
+          </MenuSection>
         </Menu>
       </ScrollWrapper>
     )
@@ -123,7 +130,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
         >
           {dictionary['navigation'].dashboards}
         </MenuItem>
-        <MenuSection label={dictionary['navigation'].appsPages}>
+        <MenuSection label={dictionary['navigation'].operation}>
           <MenuItem
             href={`/${locale}/apps/front-desk`}
             exactMatch={false}
@@ -140,6 +147,8 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].reservations}
           </MenuItem>
+        </MenuSection>
+        <MenuSection label={dictionary['navigation'].propertySection}>
           <MenuItem
             href={`/${locale}/apps/rooms`}
             exactMatch={false}
@@ -156,16 +165,16 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].clients}
           </MenuItem>
-          {canViewStaff ? (
-            <MenuItem
-              href={`/${locale}/apps/staff`}
-              exactMatch={false}
-              activeUrl='/apps/staff'
-              icon={<i className='ri-id-card-line' />}
-            >
-              {dictionary['navigation'].staff}
-            </MenuItem>
-          ) : null}
+        </MenuSection>
+        <MenuSection label={dictionary['navigation'].finance}>
+          <MenuItem
+            href={`/${locale}/apps/invoicing`}
+            exactMatch={false}
+            activeUrl='/apps/invoicing'
+            icon={<i className='ri-bill-line' />}
+          >
+            {dictionary['navigation'].invoicing}
+          </MenuItem>
           <MenuItem
             href={`/${locale}/apps/reports`}
             exactMatch={false}
@@ -184,6 +193,18 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
               {dictionary['navigation'].subscription}
             </MenuItem>
           ) : null}
+        </MenuSection>
+        <MenuSection label={dictionary['navigation'].administration}>
+          {canViewStaff ? (
+            <MenuItem
+              href={`/${locale}/apps/staff`}
+              exactMatch={false}
+              activeUrl='/apps/staff'
+              icon={<i className='ri-id-card-line' />}
+            >
+              {dictionary['navigation'].staff}
+            </MenuItem>
+          ) : null}
           <MenuItem
             href={`/${locale}/apps/hotel`}
             exactMatch={false}
@@ -191,6 +212,11 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             icon={<i className='ri-building-4-line' />}
           >
             {dictionary['navigation'].hotel}
+          </MenuItem>
+        </MenuSection>
+        <MenuSection label={dictionary['navigation'].account}>
+          <MenuItem icon={<i className='ri-logout-box-r-line' />} onClick={() => void handleLogout()}>
+            {dictionary['navigation'].logout}
           </MenuItem>
         </MenuSection>
           {/* Plantilla Materio oculta en v1. Las rutas siguen existiendo. */}

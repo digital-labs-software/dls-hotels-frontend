@@ -151,7 +151,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           {dictionary['navigation'].dashboards}
         </MenuItem>
 
-        <SubMenu label={dictionary['navigation'].apps} icon={<i className='ri-mail-open-line' />}>
+        <SubMenu label={dictionary['navigation'].operation} icon={<i className='ri-dashboard-2-line' />}>
           <MenuItem
             href={`/${locale}/apps/front-desk`}
             exactMatch={false}
@@ -168,6 +168,8 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           >
             {dictionary['navigation'].reservations}
           </MenuItem>
+        </SubMenu>
+        <SubMenu label={dictionary['navigation'].propertySection} icon={<i className='ri-hotel-bed-line' />}>
           <MenuItem
             href={`/${locale}/apps/rooms`}
             exactMatch={false}
@@ -184,6 +186,27 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           >
             {dictionary['navigation'].clients}
           </MenuItem>
+        </SubMenu>
+        <SubMenu label={dictionary['navigation'].finance} icon={<i className='ri-bill-line' />}>
+          <MenuItem
+            href={`/${locale}/apps/invoicing`}
+            exactMatch={false}
+            activeUrl='/apps/invoicing'
+            icon={<i className='ri-bill-line' />}
+          >
+            {dictionary['navigation'].invoicing}
+          </MenuItem>
+          <MenuItem
+            href={`/${locale}/apps/reports`}
+            exactMatch={false}
+            activeUrl='/apps/reports'
+            icon={<i className='ri-file-chart-line' />}
+          >
+            {dictionary['navigation'].reports}
+          </MenuItem>
+          {canViewSubscription ? subscriptionItem : null}
+        </SubMenu>
+        <SubMenu label={dictionary['navigation'].administration} icon={<i className='ri-settings-3-line' />}>
           {canViewStaff ? (
             <MenuItem
               href={`/${locale}/apps/staff`}
@@ -194,15 +217,6 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
               {dictionary['navigation'].staff}
             </MenuItem>
           ) : null}
-          <MenuItem
-            href={`/${locale}/apps/reports`}
-            exactMatch={false}
-            activeUrl='/apps/reports'
-            icon={<i className='ri-file-chart-line' />}
-          >
-            {dictionary['navigation'].reports}
-          </MenuItem>
-          {canViewSubscription ? subscriptionItem : null}
           <MenuItem
             href={`/${locale}/apps/hotel`}
             exactMatch={false}

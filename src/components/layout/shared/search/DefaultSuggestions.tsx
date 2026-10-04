@@ -22,72 +22,57 @@ type DefaultSuggestionsType = {
 
 const defaultSuggestions: DefaultSuggestionsType[] = [
   {
-    sectionLabel: 'Popular Searches',
+    sectionLabel: 'Operación',
     items: [
       {
-        label: 'Analytics',
-        href: '/dashboards/analytics',
-        icon: 'ri-bar-chart-line'
-      },
-      {
-        label: 'CRM',
-        href: '/dashboards/crm',
-        icon: 'ri-pie-chart-2-line'
-      },
-      {
-        label: 'eCommerce',
-        href: '/dashboards/ecommerce',
-        icon: 'ri-shopping-bag-3-line'
-      },
-      {
-        label: 'User List',
-        href: '/apps/user/list',
-        icon: 'ri-file-user-line'
-      }
-    ]
-  },
-  {
-    sectionLabel: 'Apps',
-    items: [
-      {
-        label: 'Calendar',
-        href: '/apps/calendar',
-        icon: 'ri-calendar-line'
-      },
-      {
-        label: 'Invoice List',
-        href: '/apps/invoice/list',
-        icon: 'ri-file-list-3-line'
-      },
-      {
-        label: 'User List',
-        href: '/apps/user/list',
-        icon: 'ri-file-user-line'
-      },
-      {
-        label: 'Roles & Permissions',
-        href: '/apps/roles',
-        icon: 'ri-lock-unlock-line'
-      }
-    ]
-  },
-  {
-    sectionLabel: 'Hotel',
-    items: [
-      {
-        label: 'Mi perfil',
-        href: '/apps/profile',
-        icon: 'ri-user-3-line'
+        label: 'Dashboard',
+        href: '/apps/dashboard',
+        icon: 'ri-home-smile-line'
       },
       {
         label: 'Recepción',
         href: '/apps/front-desk',
-        icon: 'ri-hotel-bed-line'
+        icon: 'ri-dashboard-2-line'
       },
       {
         label: 'Reservas',
         href: '/apps/reservations',
         icon: 'ri-calendar-check-line'
+      }
+    ]
+  },
+  {
+    sectionLabel: 'Alojamiento',
+    items: [
+      {
+        label: 'Habitaciones',
+        href: '/apps/rooms',
+        icon: 'ri-hotel-bed-line'
+      },
+      {
+        label: 'Clientes',
+        href: '/apps/clients',
+        icon: 'ri-group-line'
+      },
+      {
+        label: 'Tarifas',
+        href: '/apps/rooms?tab=rates',
+        icon: 'ri-money-dollar-circle-line'
+      }
+    ]
+  },
+  {
+    sectionLabel: 'Finanzas',
+    items: [
+      {
+        label: 'Facturación',
+        href: '/apps/invoicing',
+        icon: 'ri-bill-line'
+      },
+      {
+        label: 'Reportes',
+        href: '/apps/reports',
+        icon: 'ri-file-chart-line'
       },
       {
         label: 'Suscripción',
@@ -97,27 +82,22 @@ const defaultSuggestions: DefaultSuggestionsType[] = [
     ]
   },
   {
-    sectionLabel: 'Forms & Charts',
+    sectionLabel: 'Administración',
     items: [
       {
-        label: 'Form Layouts',
-        href: '/forms/form-layouts',
-        icon: 'ri-file-text-line'
+        label: 'Hotel',
+        href: '/apps/hotel',
+        icon: 'ri-building-4-line'
       },
       {
-        label: 'Form Validation',
-        href: '/forms/form-validation',
-        icon: 'ri-checkbox-multiple-line'
+        label: 'Personal',
+        href: '/apps/staff',
+        icon: 'ri-id-card-line'
       },
       {
-        label: 'Form Wizard',
-        href: '/forms/form-wizard',
-        icon: 'ri-equalizer-line'
-      },
-      {
-        label: 'Apex Charts',
-        href: '/charts/apex-charts',
-        icon: 'ri-line-chart-line'
+        label: 'Mi perfil',
+        href: '/apps/profile',
+        icon: 'ri-user-3-line'
       }
     ]
   }

@@ -148,9 +148,8 @@ const HotelDashboardPage = () => {
 
   return (
     <Grid container spacing={6}>
-      <Grid size={{ xs: 12 }} className='flex flex-col gap-1'>
+      <Grid size={{ xs: 12 }}>
         <Typography variant='h4'>Dashboard</Typography>
-        <Typography>Lo que recepción y administración miran al empezar el turno.</Typography>
       </Grid>
 
       {loading && !frontDesk ? (
