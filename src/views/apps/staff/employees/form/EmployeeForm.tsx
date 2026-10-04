@@ -204,8 +204,18 @@ const EmployeeForm = ({ uuid }: Props) => {
         await employeesApi.update(propertyId, uuid, payload)
         toast.success('Empleado actualizado.')
       } else {
-        await employeesApi.create(propertyId, payload)
-        toast.success('Empleado creado.')
+        const created = await employeesApi.create(propertyId, payload)
+
+        if (created.existingAccount) {
+          toast.info(
+            payload.password
+              ? 'Empleado creado. Este correo ya tenía una cuenta en DLS Hotels: ingresará con su contraseña actual (o con Google); la contraseña que escribiste no se aplicó.'
+              : 'Empleado creado. Este correo ya tenía una cuenta en DLS Hotels: ingresará con su contraseña actual (o con Google).',
+            { autoClose: 10000 }
+          )
+        } else {
+          toast.success('Empleado creado.')
+        }
       }
 
       goBack()
@@ -557,6 +567,11 @@ const EmployeeForm = ({ uuid }: Props) => {
                         label={isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña (opcional)'}
                         placeholder='Si se omite, solo podrá entrar con Google'
                         disabled={isView || isSubmitting}
+                        helperText={
+                          isEdit || isView
+                            ? undefined
+                            : 'Si el correo ya tiene cuenta en DLS Hotels, conservará su contraseña actual.'
+                        }
                         {...(errors.password && { error: true, helperText: errors.password.message })}
                       />
                     )}

@@ -103,6 +103,12 @@ export interface Employee {
   updatedAt: string
 }
 
+export interface CreatedEmployee extends Employee {
+
+  /** El correo ya tenía cuenta: se vinculó y conserva su contraseña actual. */
+  existingAccount: boolean
+}
+
 export interface EmployeeRoleAssignment {
   roleId: number
   isPrimary?: boolean

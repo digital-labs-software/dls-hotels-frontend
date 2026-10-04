@@ -4,6 +4,7 @@ import type { ApiError, DocumentType } from '@/types/apps/clientsTypes'
 import { DOCUMENT_TYPES } from '@/types/apps/clientsTypes'
 import type { Paginated } from '@/types/apps/pagination'
 import type {
+  CreatedEmployee,
   CreateEmployeeInput,
   CreateRoleInput,
   Employee,
@@ -148,6 +149,7 @@ const toEmployeePayload = (body: CreateEmployeeInput | UpdateEmployeeInput) => {
   if (body.email !== undefined) payload.email = body.email.trim()
   if (body.firstName !== undefined) payload.firstName = body.firstName.trim()
   if (body.lastName !== undefined) payload.lastName = body.lastName.trim()
+
   if (body.password !== undefined) {
     const password = body.password?.trim()
 
@@ -155,6 +157,7 @@ const toEmployeePayload = (body: CreateEmployeeInput | UpdateEmployeeInput) => {
       payload.password = password
     }
   }
+
   if (body.documentType !== undefined) payload.documentType = body.documentType || null
   if (body.documentNumber !== undefined) payload.documentNumber = emptyToNull(body.documentNumber)
   if (body.phone !== undefined) payload.phone = emptyToNull(body.phone)
@@ -238,14 +241,14 @@ export const employeesApi = {
   get: async (propertyId: number, uuid: string, token?: string) => {
     return normalizeEmployee(await request<Employee>(`/properties/${propertyId}/employees/${uuid}`, {}, token))
   },
-  create: async (propertyId: number, body: CreateEmployeeInput, token?: string) => {
-    return normalizeEmployee(
-      await request<Employee>(
-        `/properties/${propertyId}/employees`,
-        { method: 'POST', body: JSON.stringify(toEmployeePayload(body)) },
-        token
-      )
+  create: async (propertyId: number, body: CreateEmployeeInput, token?: string): Promise<CreatedEmployee> => {
+    const created = await request<CreatedEmployee>(
+      `/properties/${propertyId}/employees`,
+      { method: 'POST', body: JSON.stringify(toEmployeePayload(body)) },
+      token
     )
+
+    return { ...normalizeEmployee(created), existingAccount: !!created.existingAccount }
   },
   update: async (propertyId: number, uuid: string, body: UpdateEmployeeInput, token?: string) => {
     return normalizeEmployee(
