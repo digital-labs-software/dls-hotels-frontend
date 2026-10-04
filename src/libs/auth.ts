@@ -5,6 +5,7 @@ import type { NextAuthOptions } from 'next-auth'
 
 // Lib Imports
 import { loginWithGoogle, loginWithPassword } from '@/libs/authApi'
+import { authCookies } from '@/libs/authCookies'
 
 // Type Imports
 import type { NestAuthUser } from '@/types/apps/authTypes'
@@ -66,6 +67,8 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60
   },
+
+  cookies: authCookies,
 
   pages: {
     signIn: '/pages/auth/login-v1'
