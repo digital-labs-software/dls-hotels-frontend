@@ -61,7 +61,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
   const theme = useTheme()
   const { settings } = useSettings()
   const params = useParams()
-  const { subscriptionSuspended, canViewSubscription, canViewStaff } = useSubscriptionAccess()
+  const { subscriptionSuspended, canViewSubscription, canViewStaff, canViewInvoices } = useSubscriptionAccess()
 
   // Vars
   const { skin } = settings
@@ -188,14 +188,16 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           </MenuItem>
         </SubMenu>
         <SubMenu label={dictionary['navigation'].finance} icon={<i className='ri-bill-line' />}>
-          <MenuItem
-            href={`/${locale}/apps/invoicing`}
-            exactMatch={false}
-            activeUrl='/apps/invoicing'
-            icon={<i className='ri-bill-line' />}
-          >
-            {dictionary['navigation'].invoicing}
-          </MenuItem>
+          {canViewInvoices ? (
+            <MenuItem
+              href={`/${locale}/apps/invoicing`}
+              exactMatch={false}
+              activeUrl='/apps/invoicing'
+              icon={<i className='ri-bill-line' />}
+            >
+              {dictionary['navigation'].invoicing}
+            </MenuItem>
+          ) : null}
           <MenuItem
             href={`/${locale}/apps/reports`}
             exactMatch={false}

@@ -18,6 +18,8 @@
     "finance": "Finances",
     "administration": "Administration",
     "invoicing": "Facturation",
+    "invoicingIssue": "Nouveau justificatif",
+    "invoicingSettings": "Séries et SUNAT",
     "account": "Compte",
     "logout": "Se déconnecter",
     "maintenance": "Catalogues",

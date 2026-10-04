@@ -1,14 +1,14 @@
 import type { Metadata } from 'next'
 
-import InvoicingComingSoon from '@views/apps/invoicing/InvoicingComingSoon'
+import InvoicingListClient from '@views/apps/invoicing/InvoicingListClient'
 
 export const metadata: Metadata = {
   title: 'Facturación',
-  description: 'Emisión de boletas y facturas electrónicas'
+  description: 'Boletas, facturas y notas electrónicas'
 }
 
 const InvoicingPage = () => {
-  return <InvoicingComingSoon />
+  return <InvoicingListClient />
 }
 
 export default InvoicingPage

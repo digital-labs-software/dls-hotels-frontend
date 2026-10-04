@@ -18,6 +18,8 @@
     "finance": "المالية",
     "administration": "الإدارة",
     "invoicing": "الفوترة",
+    "invoicingIssue": "مستند جديد",
+    "invoicingSettings": "السلاسل و SUNAT",
     "account": "الحساب",
     "logout": "تسجيل الخروج",
     "maintenance": "الكتالوجات",

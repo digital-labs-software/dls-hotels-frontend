@@ -53,7 +53,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
   const theme = useTheme()
   const verticalNavOptions = useVerticalNav()
   const params = useParams()
-  const { subscriptionSuspended, canViewSubscription, canViewStaff } = useSubscriptionAccess()
+  const { subscriptionSuspended, canViewSubscription, canViewStaff, canViewInvoices } = useSubscriptionAccess()
   const handleLogout = useHotelLogout()
 
   // Vars
@@ -167,14 +167,16 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           </MenuItem>
         </MenuSection>
         <MenuSection label={dictionary['navigation'].finance}>
-          <MenuItem
-            href={`/${locale}/apps/invoicing`}
-            exactMatch={false}
-            activeUrl='/apps/invoicing'
-            icon={<i className='ri-bill-line' />}
-          >
-            {dictionary['navigation'].invoicing}
-          </MenuItem>
+          {canViewInvoices ? (
+            <MenuItem
+              href={`/${locale}/apps/invoicing`}
+              exactMatch={false}
+              activeUrl='/apps/invoicing'
+              icon={<i className='ri-bill-line' />}
+            >
+              {dictionary['navigation'].invoicing}
+            </MenuItem>
+          ) : null}
           <MenuItem
             href={`/${locale}/apps/reports`}
             exactMatch={false}

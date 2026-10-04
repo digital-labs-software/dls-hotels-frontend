@@ -11,6 +11,7 @@ import { getAuthMe } from '@/libs/authApi'
 import { isSubscriptionSuspendedError, notifySubscriptionSuspended } from '@/libs/subscriptionSuspended'
 import { SUBSCRIPTION_PAY, SUBSCRIPTION_SUSPENDED_EVENT, SUBSCRIPTION_VIEW } from '@/types/apps/billingTypes'
 import { EMPLOYEES_MANAGE, EMPLOYEES_VIEW, ROLES_MANAGE, ROLES_VIEW } from '@/types/apps/staffTypes'
+import { INVOICES_ISSUE, INVOICES_SETTINGS, INVOICES_VIEW, INVOICES_VOID } from '@/types/apps/einvoiceTypes'
 
 type SubscriptionAccessValue = {
   me: NestAuthUser | null
@@ -23,6 +24,10 @@ type SubscriptionAccessValue = {
   canViewRoles: boolean
   canManageRoles: boolean
   canViewStaff: boolean
+  canViewInvoices: boolean
+  canIssueInvoices: boolean
+  canVoidInvoices: boolean
+  canSettingsInvoices: boolean
   loaded: boolean
   refreshAccess: () => Promise<void>
 }
@@ -38,6 +43,10 @@ const SubscriptionAccessContext = createContext<SubscriptionAccessValue>({
   canViewRoles: true,
   canManageRoles: true,
   canViewStaff: true,
+  canViewInvoices: true,
+  canIssueInvoices: true,
+  canVoidInvoices: true,
+  canSettingsInvoices: true,
   loaded: false,
   refreshAccess: async () => undefined
 })
@@ -134,6 +143,14 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
   const canViewRoles =
     canManageRoles || canManageEmployees || !hasPermissionCatalog || permissions.includes(ROLES_VIEW)
   const canViewStaff = canViewEmployees || canViewRoles
+  const canIssueInvoices = !hasPermissionCatalog || permissions.includes(INVOICES_ISSUE)
+  const canVoidInvoices = !hasPermissionCatalog || permissions.includes(INVOICES_VOID)
+  const canSettingsInvoices = !hasPermissionCatalog || permissions.includes(INVOICES_SETTINGS)
+  const canViewInvoices =
+    canIssueInvoices ||
+    canSettingsInvoices ||
+    !hasPermissionCatalog ||
+    permissions.includes(INVOICES_VIEW)
 
   const value = useMemo(
     () => ({
@@ -147,6 +164,10 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
       canViewRoles,
       canManageRoles,
       canViewStaff,
+      canViewInvoices,
+      canIssueInvoices,
+      canVoidInvoices,
+      canSettingsInvoices,
       loaded,
       refreshAccess
     }),
@@ -156,8 +177,12 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
       canPaySubscription,
       canViewEmployees,
       canViewRoles,
+      canIssueInvoices,
+      canSettingsInvoices,
+      canViewInvoices,
       canViewStaff,
       canViewSubscription,
+      canVoidInvoices,
       loaded,
       me,
       permissions,

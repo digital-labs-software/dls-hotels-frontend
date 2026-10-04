@@ -101,6 +101,20 @@ const data: SearchData[] = [
     section: 'Finanzas'
   },
   {
+    id: 'invoicing-issue',
+    name: 'Nuevo comprobante',
+    url: '/apps/invoicing/issue',
+    icon: 'ri-file-add-line',
+    section: 'Finanzas'
+  },
+  {
+    id: 'invoicing-settings',
+    name: 'Series y SUNAT',
+    url: '/apps/hotel/einvoice',
+    icon: 'ri-settings-3-line',
+    section: 'Administración'
+  },
+  {
     id: 'reports',
     name: 'Reportes',
     url: '/apps/reports',

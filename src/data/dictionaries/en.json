@@ -18,6 +18,8 @@
     "finance": "Finanzas",
     "administration": "Administración",
     "invoicing": "Facturación",
+    "invoicingIssue": "Nuevo comprobante",
+    "invoicingSettings": "Series y SUNAT",
     "account": "Cuenta",
     "logout": "Cerrar sesión",
     "maintenance": "Catálogos",

@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -25,6 +28,9 @@ import { PROPERTY_CATEGORY_LABELS } from '@/types/apps/hotelSettingsTypes'
 import { getHotelSettingsApiErrorMessage, hotelSettingsApi, locationApi } from '@/libs/hotelSettingsApi'
 import { getUploadsApiErrorMessage, uploadHotelLogo } from '@/libs/uploadsApi'
 import HotelLogoField from './HotelLogoField'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { getLocalizedUrl } from '@/utils/i18n'
+import type { Locale } from '@configs/i18n'
 
 type FormValues = {
   tradeName: string
@@ -113,6 +119,8 @@ const buildChangedPayload = (initial: FormValues, current: FormValues): UpdatePr
 
 const HotelSettingsForm = () => {
   const { data: session, status: sessionStatus } = useSession()
+  const { lang: locale } = useParams()
+  const { canSettingsInvoices } = useSubscriptionAccess()
   const propertyId = session?.user?.propertyId ?? 1
 
   const [loading, setLoading] = useState(true)
@@ -489,6 +497,24 @@ const HotelSettingsForm = () => {
               <TextField fullWidth label='Razón social' value={settings.businessName || '—'} disabled />
             </CardContent>
           </Card>
+
+          {canSettingsInvoices ? (
+            <Card className='mbe-6'>
+              <CardHeader title='Series y SUNAT' subheader='IGV, series y NubeFact' />
+              <CardContent className='flex flex-col gap-3'>
+                <Typography color='text.secondary'>
+                  Se configura al activar el hotel o cambiar series e IGV. Para emitir boletas o facturas, usa Facturación.
+                </Typography>
+                <Button
+                  variant='outlined'
+                  component={Link}
+                  href={getLocalizedUrl('/apps/hotel/einvoice', locale as Locale)}
+                >
+                  Abrir Series y SUNAT
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader title='Horarios' />

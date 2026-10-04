@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
+import Link from 'next/link'
 
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
@@ -34,6 +36,9 @@ import GuestPicker from '@views/apps/front-desk/GuestPicker'
 import AssignReservationRoomDialog from './AssignReservationRoomDialog'
 import CompanyPicker from './CompanyPicker'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { getLocalizedUrl } from '@/utils/i18n'
+import type { Locale } from '@configs/i18n'
 
 type Props = {
   open: boolean
@@ -58,6 +63,8 @@ const ReservationDrawer = ({
 }: Props) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const { lang: locale } = useParams()
+  const { canIssueInvoices } = useSubscriptionAccess()
   const [reservation, setReservation] = useState<Reservation | null>(null)
   const [payments, setPayments] = useState<FrontDeskPayment[]>([])
   const [loading, setLoading] = useState(false)
@@ -432,6 +439,15 @@ const ReservationDrawer = ({
                 <Button variant='outlined' onClick={() => onPay(reservation.uuid, reservation.balance)}>
                   Registrar pago
                 </Button>
+                {canIssueInvoices ? (
+                  <Button
+                    variant='outlined'
+                    component={Link}
+                    href={getLocalizedUrl(`/apps/invoicing/issue?reservation=${reservation.uuid}`, locale as Locale)}
+                  >
+                    Facturar
+                  </Button>
+                ) : null}
                 {canCancel ? (
                   <Button color='error' variant='outlined' onClick={() => setCancelOpen(true)}>
                     Cancelar reserva

@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -20,6 +22,9 @@ import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import BalanceChip from './BalanceChip'
 import GuestPicker from './GuestPicker'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { getLocalizedUrl } from '@/utils/i18n'
+import type { Locale } from '@configs/i18n'
 
 type Props = {
   open: boolean
@@ -32,6 +37,8 @@ type Props = {
 }
 
 const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheckOut }: Props) => {
+  const { lang: locale } = useParams()
+  const { canIssueInvoices } = useSubscriptionAccess()
   const [reservation, setReservation] = useState<Reservation | null>(null)
   const [payments, setPayments] = useState<FrontDeskPayment[]>([])
   const [loading, setLoading] = useState(false)
@@ -187,6 +194,15 @@ const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheck
                 <Button variant='contained' onClick={() => stay && onPay(stay)}>
                   Registrar pago
                 </Button>
+                {canIssueInvoices && stay ? (
+                  <Button
+                    variant='outlined'
+                    component={Link}
+                    href={getLocalizedUrl(`/apps/invoicing/issue?reservation=${stay.reservationUuid}`, locale as Locale)}
+                  >
+                    Facturar
+                  </Button>
+                ) : null}
                 {stay?.status === 'CHECKED_IN' ? (
                   <Button color='warning' variant='outlined' onClick={() => stay && onCheckOut(stay)}>
                     Check-out
