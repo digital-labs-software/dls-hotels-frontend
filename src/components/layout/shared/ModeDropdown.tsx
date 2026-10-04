@@ -57,14 +57,19 @@ const ModeDropdown = () => {
     }
   }
 
+  const modeLabels: Record<Mode, string> = {
+    light: 'Modo claro',
+    dark: 'Modo oscuro',
+    system: 'Modo del sistema'
+  }
+
   return (
     <>
       <Tooltip
-        title={settings.mode + ' Mode'}
+        title={modeLabels[settings.mode] || 'Modo'}
         onOpen={() => setTooltipOpen(true)}
         onClose={() => setTooltipOpen(false)}
         open={open ? false : tooltipOpen ? true : false}
-        PopperProps={{ className: 'capitalize' }}
       >
         <IconButton ref={anchorRef} onClick={handleToggle} className='!text-textPrimary'>
           <i className={getModeIcon()} />
@@ -92,7 +97,7 @@ const ModeDropdown = () => {
                     selected={settings.mode === 'light'}
                   >
                     <i className='ri-sun-line' />
-                    Light
+                    Claro
                   </MenuItem>
                   <MenuItem
                     className='gap-3'
@@ -100,7 +105,7 @@ const ModeDropdown = () => {
                     selected={settings.mode === 'dark'}
                   >
                     <i className='ri-moon-clear-line' />
-                    Dark
+                    Oscuro
                   </MenuItem>
                   <MenuItem
                     className='gap-3'
@@ -108,7 +113,7 @@ const ModeDropdown = () => {
                     selected={settings.mode === 'system'}
                   >
                     <i className='ri-computer-line' />
-                    System
+                    Sistema
                   </MenuItem>
                 </MenuList>
               </ClickAwayListener>

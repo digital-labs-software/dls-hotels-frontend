@@ -19,6 +19,7 @@ import VerticalFooter from '@components/layout/vertical/Footer'
 import HorizontalFooter from '@components/layout/horizontal/Footer'
 import Customizer from '@core/components/customizer'
 import ScrollToTop from '@core/components/scroll-to-top'
+import SupportChatWidget from '@components/layout/shared/SupportChatWidget'
 import AuthGuard from '@/hocs/AuthGuard'
 
 // Config Imports
@@ -70,6 +71,7 @@ const Layout = async (props: ChildrenType & { params: Promise<{ lang: string }> 
             <i className='ri-arrow-up-line' />
           </Button>
         </ScrollToTop>
+        <SupportChatWidget />
         <Customizer dir={direction} />
       </AuthGuard>
     </Providers>

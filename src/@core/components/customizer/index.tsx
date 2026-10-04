@@ -90,7 +90,7 @@ const DebouncedColorPicker = (props: DebouncedColorPickerProps) => {
         color={!isColorFromPrimaryConfig ? (settings.primaryColor ?? primaryColorConfig[0].main) : '#eee'}
         onChange={setDebouncedColor}
         prefixed
-        placeholder='Type a color'
+        placeholder='Escribe un color'
       />
     </>
   )
@@ -175,13 +175,13 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
           [styles.smallScreen]: isMobileScreen
         })}
       >
-        <div className={styles.toggler} onClick={handleToggle}>
+        <div className={styles.toggler} onClick={handleToggle} title='Personalizar tema' role='button' aria-label='Personalizar tema'>
           <i className='ri-settings-5-line text-[22px]' />
         </div>
         <div className={styles.header}>
           <div className='flex flex-col'>
-            <h6 className={styles.customizerTitle}>Theme Customizer</h6>
-            <p className={styles.customizerSubtitle}>Customize & Preview in Real Time</p>
+            <h6 className={styles.customizerTitle}>Personalizar tema</h6>
+            <p className={styles.customizerSubtitle}>Personaliza y previsualiza en tiempo real</p>
           </div>
           <div className='flex gap-4'>
             <div onClick={resetSettings} className='relative flex cursor-pointer'>
@@ -198,9 +198,9 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
         >
           <div className={styles.customizerBody}>
             <div className='flex flex-col gap-6'>
-              <Chip label='Theming' size='small' color='primary' variant='tonal' className='self-start rounded-sm' />
+              <Chip label='Apariencia' size='small' color='primary' variant='tonal' className='self-start rounded-sm' />
               <div className='flex flex-col gap-2.5'>
-                <p className='font-medium'>Primary Color</p>
+                <p className='font-medium'>Color principal</p>
                 <div className='flex items-center justify-between'>
                   {primaryColorConfig.map(item => (
                     <div
@@ -261,7 +261,7 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                 </div>
               </div>
               <div className='flex flex-col gap-2.5'>
-                <p className='font-medium'>Mode</p>
+                <p className='font-medium'>Modo</p>
                 <div className='flex items-center justify-between'>
                   <div className='flex flex-col items-start gap-0.5'>
                     <div
@@ -273,7 +273,7 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                       <i className='ri-sun-line text-[30px]' />
                     </div>
                     <p className={styles.itemLabel} onClick={() => handleChange('mode', 'light')}>
-                      Light
+                      Claro
                     </p>
                   </div>
                   <div className='flex flex-col items-start gap-0.5'>
@@ -286,7 +286,7 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                       <i className='ri-moon-clear-line text-[30px]' />
                     </div>
                     <p className={styles.itemLabel} onClick={() => handleChange('mode', 'dark')}>
-                      Dark
+                      Oscuro
                     </p>
                   </div>
                   <div className='flex flex-col items-start gap-0.5'>
@@ -299,13 +299,13 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                       <i className='ri-computer-line text-[30px]' />
                     </div>
                     <p className={styles.itemLabel} onClick={() => handleChange('mode', 'system')}>
-                      System
+                      Sistema
                     </p>
                   </div>
                 </div>
               </div>
               <div className='flex flex-col gap-2.5'>
-                <p className='font-medium'>Skin</p>
+                <p className='font-medium'>Estilo</p>
                 <div className='flex items-center gap-4'>
                   <div className='flex flex-col items-start gap-0.5'>
                     <div
@@ -315,7 +315,7 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                       <SkinDefault />
                     </div>
                     <p className={styles.itemLabel} onClick={() => handleChange('skin', 'default')}>
-                      Default
+                      Predeterminado
                     </p>
                   </div>
                   <div className='flex flex-col items-start gap-0.5'>
@@ -326,7 +326,7 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                       <SkinBordered />
                     </div>
                     <p className={styles.itemLabel} onClick={() => handleChange('skin', 'bordered')}>
-                      Bordered
+                      Con borde
                     </p>
                   </div>
                 </div>
@@ -336,7 +336,7 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
               settings.layout === 'horizontal' ? null : (
                 <div className='flex items-center justify-between'>
                   <label className='font-medium cursor-pointer' htmlFor='customizer-semi-dark'>
-                    Semi Dark
+                    Semi oscuro
                   </label>
                   <Switch
                     id='customizer-semi-dark'
@@ -348,9 +348,9 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
             </div>
             <hr className={styles.hr} />
             <div className='flex flex-col gap-6'>
-              <Chip label='Layout' size='small' color='primary' variant='tonal' className='self-start rounded-sm' />
+              <Chip label='Diseño' size='small' color='primary' variant='tonal' className='self-start rounded-sm' />
               <div className='flex flex-col gap-2.5'>
-                <p className='font-medium'>Layouts</p>
+                <p className='font-medium'>Disposición</p>
                 <div className='flex items-center justify-between'>
                   <div className='flex flex-col items-start gap-0.5'>
                     <div
@@ -371,7 +371,7 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                       <LayoutCollapsed />
                     </div>
                     <p className={styles.itemLabel} onClick={() => handleChange('layout', 'collapsed')}>
-                      Collapsed
+                      Contraído
                     </p>
                   </div>
                   <div className='flex flex-col items-start gap-0.5'>
@@ -388,7 +388,7 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                 </div>
               </div>
               <div className='flex flex-col gap-2.5'>
-                <p className='font-medium'>Content</p>
+                <p className='font-medium'>Contenido</p>
                 <div className='flex items-center gap-4'>
                   <div className='flex flex-col items-start gap-0.5'>
                     <div
@@ -415,7 +415,7 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                         })
                       }
                     >
-                      Compact
+                      Compacto
                     </p>
                   </div>
                   <div className='flex flex-col items-start gap-0.5'>
@@ -433,14 +433,14 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                         updateSettings({ navbarContentWidth: 'wide', contentWidth: 'wide', footerContentWidth: 'wide' })
                       }
                     >
-                      Wide
+                      Amplio
                     </p>
                   </div>
                 </div>
               </div>
               {!disableDirection && (
                 <div className='flex flex-col gap-2.5'>
-                  <p className='font-medium'>Direction</p>
+                  <p className='font-medium'>Dirección</p>
                   <div className='flex items-center gap-4'>
                     <Link href={getLocalePath(pathName, 'en')}>
                       <div className='flex flex-col items-start gap-0.5'>
@@ -452,8 +452,8 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                           <DirectionLtr />
                         </div>
                         <p className={styles.itemLabel}>
-                          Left to Right <br />
-                          (English)
+                          Izquierda a derecha <br />
+                          (Inglés)
                         </p>
                       </div>
                     </Link>
@@ -467,8 +467,8 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                           <DirectionRtl />
                         </div>
                         <p className={styles.itemLabel}>
-                          Right to Left <br />
-                          (Arabic)
+                          Derecha a izquierda <br />
+                          (Árabe)
                         </p>
                       </div>
                     </Link>

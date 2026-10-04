@@ -404,7 +404,7 @@ const ReservationsPage = () => {
       </Card>
 
       {isMobile ? (
-        <Fab color='primary' sx={{ position: 'fixed', right: 24, bottom: 24 }} onClick={() => openWizard()}>
+        <Fab color='primary' sx={{ position: 'fixed', right: 96, bottom: 24 }} onClick={() => openWizard()}>
           <i className='ri-add-line' />
         </Fab>
       ) : null}
