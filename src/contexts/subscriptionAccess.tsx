@@ -6,29 +6,44 @@ import type { ReactNode } from 'react'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 
+import type { NestAuthUser } from '@/types/apps/authTypes'
 import { getAuthMe } from '@/libs/authApi'
 import { isSubscriptionSuspendedError, notifySubscriptionSuspended } from '@/libs/subscriptionSuspended'
 import { SUBSCRIPTION_PAY, SUBSCRIPTION_SUSPENDED_EVENT, SUBSCRIPTION_VIEW } from '@/types/apps/billingTypes'
+import { EMPLOYEES_MANAGE, EMPLOYEES_VIEW, ROLES_MANAGE, ROLES_VIEW } from '@/types/apps/staffTypes'
 
 type SubscriptionAccessValue = {
+  me: NestAuthUser | null
   permissions: string[]
   subscriptionSuspended: boolean
   canViewSubscription: boolean
   canPaySubscription: boolean
+  canViewEmployees: boolean
+  canManageEmployees: boolean
+  canViewRoles: boolean
+  canManageRoles: boolean
+  canViewStaff: boolean
   loaded: boolean
   refreshAccess: () => Promise<void>
 }
 
 const SubscriptionAccessContext = createContext<SubscriptionAccessValue>({
+  me: null,
   permissions: [],
   subscriptionSuspended: false,
   canViewSubscription: true,
   canPaySubscription: true,
+  canViewEmployees: true,
+  canManageEmployees: true,
+  canViewRoles: true,
+  canManageRoles: true,
+  canViewStaff: true,
   loaded: false,
   refreshAccess: async () => undefined
 })
 
-const isBillingPath = (pathname?: string | null) => Boolean(pathname && pathname.includes('/apps/billing'))
+const isAllowedWhenSuspended = (pathname?: string | null) =>
+  Boolean(pathname && (pathname.includes('/apps/billing') || pathname.includes('/apps/profile')))
 
 export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }) => {
   const { data: session, status } = useSession()
@@ -37,6 +52,7 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
   const params = useParams()
   const locale = typeof params?.lang === 'string' ? params.lang : 'en'
 
+  const [me, setMe] = useState<NestAuthUser | null>(null)
   const [permissions, setPermissions] = useState<string[]>(session?.user?.permissions || [])
   const [subscriptionSuspended, setSubscriptionSuspended] = useState(Boolean(session?.user?.subscriptionSuspended))
   const [loaded, setLoaded] = useState(false)
@@ -45,17 +61,19 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
 
   const refreshAccess = useCallback(async () => {
     if (!session?.accessToken) {
+      setMe(null)
       setLoaded(true)
 
       return
     }
 
     try {
-      const me = await getAuthMe(session.accessToken)
-      const nextPermissions = Array.isArray(me.permissions) ? me.permissions : []
+      const nextMe = await getAuthMe(session.accessToken)
+      const nextPermissions = Array.isArray(nextMe.permissions) ? nextMe.permissions : []
 
+      setMe(nextMe)
       setPermissions(nextPermissions)
-      setSubscriptionSuspended(Boolean(me.subscriptionSuspended))
+      setSubscriptionSuspended(Boolean(nextMe.subscriptionSuspended))
     } catch (error) {
       if (isSubscriptionSuspendedError(error)) {
         setSubscriptionSuspended(true)
@@ -75,6 +93,7 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
     }
 
     if (status === 'unauthenticated') {
+      setMe(null)
       setLoaded(true)
 
       return
@@ -97,7 +116,7 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
   }, [])
 
   useEffect(() => {
-    if (!subscriptionSuspended || !pathname || isBillingPath(pathname)) {
+    if (!subscriptionSuspended || !pathname || isAllowedWhenSuspended(pathname)) {
       return
     }
 
@@ -108,17 +127,43 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
   const canViewSubscription =
     subscriptionSuspended || !hasPermissionCatalog || permissions.includes(SUBSCRIPTION_VIEW)
   const canPaySubscription = !hasPermissionCatalog || permissions.includes(SUBSCRIPTION_PAY)
+  const canManageEmployees = !hasPermissionCatalog || permissions.includes(EMPLOYEES_MANAGE)
+  const canViewEmployees =
+    canManageEmployees || !hasPermissionCatalog || permissions.includes(EMPLOYEES_VIEW)
+  const canManageRoles = !hasPermissionCatalog || permissions.includes(ROLES_MANAGE)
+  const canViewRoles =
+    canManageRoles || canManageEmployees || !hasPermissionCatalog || permissions.includes(ROLES_VIEW)
+  const canViewStaff = canViewEmployees || canViewRoles
 
   const value = useMemo(
     () => ({
+      me,
       permissions,
       subscriptionSuspended,
       canViewSubscription,
       canPaySubscription,
+      canViewEmployees,
+      canManageEmployees,
+      canViewRoles,
+      canManageRoles,
+      canViewStaff,
       loaded,
       refreshAccess
     }),
-    [canPaySubscription, canViewSubscription, loaded, permissions, refreshAccess, subscriptionSuspended]
+    [
+      canManageEmployees,
+      canManageRoles,
+      canPaySubscription,
+      canViewEmployees,
+      canViewRoles,
+      canViewStaff,
+      canViewSubscription,
+      loaded,
+      me,
+      permissions,
+      refreshAccess,
+      subscriptionSuspended
+    ]
   )
 
   return <SubscriptionAccessContext.Provider value={value}>{children}</SubscriptionAccessContext.Provider>

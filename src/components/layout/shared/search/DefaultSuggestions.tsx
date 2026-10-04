@@ -72,27 +72,27 @@ const defaultSuggestions: DefaultSuggestionsType[] = [
     ]
   },
   {
-    sectionLabel: 'Pages',
+    sectionLabel: 'Hotel',
     items: [
       {
-        label: 'User Profile',
-        href: '/pages/user-profile',
+        label: 'Mi perfil',
+        href: '/apps/profile',
         icon: 'ri-user-3-line'
       },
       {
-        label: 'Account Settings',
-        href: '/pages/account-settings',
-        icon: 'ri-settings-4-line'
+        label: 'Recepción',
+        href: '/apps/front-desk',
+        icon: 'ri-hotel-bed-line'
       },
       {
-        label: 'Pricing',
-        href: '/pages/pricing',
-        icon: 'ri-money-dollar-circle-line'
+        label: 'Reservas',
+        href: '/apps/reservations',
+        icon: 'ri-calendar-check-line'
       },
       {
-        label: 'FAQ',
-        href: '/pages/faq',
-        icon: 'ri-question-line'
+        label: 'Suscripción',
+        href: '/apps/billing',
+        icon: 'ri-secure-payment-line'
       }
     ]
   },

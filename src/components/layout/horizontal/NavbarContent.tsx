@@ -60,10 +60,10 @@ const shortcuts: ShortcutsType[] = [
     subtitle: 'Recepción'
   },
   {
-    url: '/pages/account-settings',
-    icon: 'ri-settings-4-line',
-    title: 'Settings',
-    subtitle: 'Account Settings'
+    url: '/apps/profile',
+    icon: 'ri-user-3-line',
+    title: 'Mi perfil',
+    subtitle: 'Datos del empleado'
   }
 ]
 

@@ -43,6 +43,7 @@ import type { Locale } from '@configs/i18n'
 import { DOCUMENT_TYPE_LABELS } from '@/types/apps/clientsTypes'
 import type { Employee } from '@/types/apps/staffTypes'
 import { employeesApi, getStaffApiErrorMessage } from '@/libs/staffApi'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
 import tableStyles from '@core/styles/table.module.css'
 
@@ -126,7 +127,9 @@ const columnHelper = createColumnHelper<EmployeeWithAction>()
 const EmployeeListTable = () => {
   const { data: session, status: sessionStatus } = useSession()
   const propertyId = session?.user?.propertyId ?? 1
+  const myEmployeeUuid = session?.user?.employeeUuid
   const { lang: locale } = useParams()
+  const { canManageEmployees } = useSubscriptionAccess()
 
   const [employees, setEmployees] = useState<Employee[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
@@ -182,7 +185,12 @@ const EmployeeListTable = () => {
         cell: ({ row }) => (
           <Typography
             component={Link}
-            href={getLocalizedUrl(`/apps/staff/employees/edit/${row.original.uuid}`, locale as Locale)}
+            href={getLocalizedUrl(
+              canManageEmployees
+                ? `/apps/staff/employees/edit/${row.original.uuid}`
+                : `/apps/staff/employees/edit/${row.original.uuid}?mode=view`,
+              locale as Locale
+            )}
             color='text.primary'
             className='font-medium hover:text-primary'
           >
@@ -246,23 +254,27 @@ const EmployeeListTable = () => {
             >
               <i className='ri-eye-line text-textSecondary' />
             </IconButton>
-            <IconButton
-              size='small'
-              component={Link}
-              href={getLocalizedUrl(`/apps/staff/employees/edit/${row.original.uuid}`, locale as Locale)}
-              title='Editar'
-            >
-              <i className='ri-edit-box-line text-textSecondary' />
-            </IconButton>
-            <IconButton size='small' onClick={() => setEmployeeToDelete(row.original)} title='Eliminar'>
-              <i className='ri-delete-bin-7-line text-textSecondary' />
-            </IconButton>
+            {canManageEmployees ? (
+              <IconButton
+                size='small'
+                component={Link}
+                href={getLocalizedUrl(`/apps/staff/employees/edit/${row.original.uuid}`, locale as Locale)}
+                title='Editar'
+              >
+                <i className='ri-edit-box-line text-textSecondary' />
+              </IconButton>
+            ) : null}
+            {canManageEmployees && row.original.uuid !== myEmployeeUuid ? (
+              <IconButton size='small' onClick={() => setEmployeeToDelete(row.original)} title='Eliminar'>
+                <i className='ri-delete-bin-7-line text-textSecondary' />
+              </IconButton>
+            ) : null}
           </div>
         ),
         enableSorting: false
       })
     ],
-    [locale]
+    [canManageEmployees, locale, myEmployeeUuid]
   )
 
   const table = useReactTable({
@@ -312,15 +324,17 @@ const EmployeeListTable = () => {
             >
               Actualizar
             </Button>
-            <Button
-              variant='contained'
-              component={Link}
-              href={getLocalizedUrl('/apps/staff/employees/add', locale as Locale)}
-              startIcon={<i className='ri-add-line' />}
-              className='max-sm:is-full is-auto'
-            >
-              Nuevo empleado
-            </Button>
+            {canManageEmployees ? (
+              <Button
+                variant='contained'
+                component={Link}
+                href={getLocalizedUrl('/apps/staff/employees/add', locale as Locale)}
+                startIcon={<i className='ri-add-line' />}
+                className='max-sm:is-full is-auto'
+              >
+                Nuevo empleado
+              </Button>
+            ) : null}
           </div>
         </div>
         <Divider />

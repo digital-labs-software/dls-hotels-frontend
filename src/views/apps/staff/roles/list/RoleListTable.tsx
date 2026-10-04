@@ -22,6 +22,7 @@ import { toast } from 'react-toastify'
 import type { Locale } from '@configs/i18n'
 import type { Role } from '@/types/apps/staffTypes'
 import { employeesApi, getStaffApiErrorMessage, permissionsApi, rolesApi } from '@/libs/staffApi'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
 
 type RoleFilter = 'all' | 'withEmployees' | 'withoutEmployees'
@@ -58,6 +59,7 @@ const RoleListTable = () => {
   const { data: session, status: sessionStatus } = useSession()
   const propertyId = session?.user?.propertyId ?? 1
   const { lang: locale } = useParams()
+  const { canManageRoles, canViewEmployees } = useSubscriptionAccess()
 
   const [roles, setRoles] = useState<Role[]>([])
   const [employeeCountByRoleId, setEmployeeCountByRoleId] = useState<Record<number, number>>({})
@@ -72,7 +74,7 @@ const RoleListTable = () => {
     try {
       const [nextRoles, employees, permissions] = await Promise.all([
         rolesApi.list(propertyId),
-        employeesApi.list(propertyId),
+        canViewEmployees ? employeesApi.list(propertyId) : Promise.resolve([]),
         permissionsApi.list()
       ])
 
@@ -93,7 +95,7 @@ const RoleListTable = () => {
     } finally {
       setLoading(false)
     }
-  }, [propertyId])
+  }, [canViewEmployees, propertyId])
 
   useEffect(() => {
     if (sessionStatus === 'loading') {
@@ -138,15 +140,17 @@ const RoleListTable = () => {
               <MenuItem value='withoutEmployees'>Sin empleados</MenuItem>
             </Select>
           </FormControl>
-          <Button
-            variant='contained'
-            component={Link}
-            href={getLocalizedUrl('/apps/staff/roles/add', locale as Locale)}
-            startIcon={<i className='ri-add-line' />}
-            className='max-sm:is-full is-auto'
-          >
-            Nuevo rol
-          </Button>
+          {canManageRoles ? (
+            <Button
+              variant='contained'
+              component={Link}
+              href={getLocalizedUrl('/apps/staff/roles/add', locale as Locale)}
+              startIcon={<i className='ri-add-line' />}
+              className='max-sm:is-full is-auto'
+            >
+              Nuevo rol
+            </Button>
+          ) : null}
         </div>
       </div>
       <Divider />
@@ -189,7 +193,12 @@ const RoleListTable = () => {
                 filteredRoles.map(role => {
                   const assigned = role.permissions.length
                   const employeeCount = employeeCountByRoleId[role.id] ?? 0
-                  const href = getLocalizedUrl(`/apps/staff/roles/edit/${role.uuid}`, locale as Locale)
+                  const href = getLocalizedUrl(
+                    canManageRoles
+                      ? `/apps/staff/roles/edit/${role.uuid}`
+                      : `/apps/staff/roles/edit/${role.uuid}?mode=view`,
+                    locale as Locale
+                  )
 
                   return (
                     <tr key={role.uuid} className='border-bs'>
@@ -216,7 +225,7 @@ const RoleListTable = () => {
                       </td>
                       <td className='px-5 py-4 text-end'>
                         <Button component={Link} href={href} size='small'>
-                          Editar
+                          {canManageRoles ? 'Editar' : 'Ver'}
                         </Button>
                       </td>
                     </tr>

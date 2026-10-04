@@ -2,6 +2,11 @@ import type { DocumentType } from '@/types/apps/clientsTypes'
 
 export type { DocumentType }
 
+export const EMPLOYEES_VIEW = 'employees.view'
+export const EMPLOYEES_MANAGE = 'employees.manage'
+export const ROLES_VIEW = 'roles.view'
+export const ROLES_MANAGE = 'roles.manage'
+
 export interface RolePermission {
   id: number
   uuid: string

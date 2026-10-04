@@ -14,7 +14,7 @@ const applyNestUserToToken = (token: Record<string, unknown>, data: NestAuthUser
   token.sub = data.id
   token.email = data.email
   token.name = data.name
-  token.picture = data.image
+  token.picture = data.image || token.picture
   token.accessToken = data.accessToken
   token.propertyId = data.propertyId
   token.propertyName = data.propertyName
@@ -81,9 +81,14 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const data = await loginWithGoogle(account.id_token)
+          const googleImage = user.image
 
           // Attach Nest payload onto user so jwt callback can persist it
           Object.assign(user, data)
+
+          if (!user.image && googleImage) {
+            user.image = googleImage
+          }
 
           return true
         } catch (error: unknown) {
@@ -96,8 +101,14 @@ export const authOptions: NextAuthOptions = {
 
     async jwt({ token, user, account }) {
       if (user) {
+        const incomingImage = user.image || token.picture
+
         applyNestUserToToken(token as Record<string, unknown>, user as NestAuthUser)
         token.authProvider = account?.provider === 'google' ? 'google' : 'credentials'
+
+        if (!token.picture && incomingImage) {
+          token.picture = incomingImage
+        }
 
         if (account?.provider === 'google') {
           token.googleToken = account.access_token ?? account.id_token

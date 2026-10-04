@@ -1,5 +1,16 @@
 export type AuthProvider = 'credentials' | 'google'
 
+export type NestAuthPerson = {
+  firstName?: string
+  lastName?: string
+  phone?: string | null
+  email?: string | null
+  address?: string | null
+  documentType?: string | null
+  documentNumber?: string | null
+  birthDate?: string | null
+}
+
 export type NestAuthUser = {
   id: string
   email: string
@@ -12,4 +23,24 @@ export type NestAuthUser = {
   accessToken: string
   permissions?: string[]
   subscriptionSuspended?: boolean
+  person?: NestAuthPerson
+  employee?: {
+    uuid?: string
+    jobTitle?: string | null
+    hireDate?: string | null
+    person?: NestAuthPerson
+    user?: {
+      email?: string
+      photoUrl?: string | null
+    } | null
+    roles?: Array<{
+      uuid: string
+      name: string
+      isPrimary?: boolean
+    }>
+  }
+  property?: {
+    name?: string
+    tradeName?: string | null
+  }
 }

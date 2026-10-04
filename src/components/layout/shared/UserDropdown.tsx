@@ -29,6 +29,7 @@ import type { Locale } from '@configs/i18n'
 
 // Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 
 // Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
@@ -54,8 +55,13 @@ const UserDropdown = () => {
   // Hooks
   const router = useRouter()
   const { data: session } = useSession()
+  const { me } = useSubscriptionAccess()
   const { settings } = useSettings()
   const { lang: locale } = useParams()
+  const displayName = me?.name || session?.user?.name || ''
+  const displayEmail = me?.email || session?.user?.email || ''
+  const displayImage = me?.image || session?.user?.image || ''
+  const displayHotel = me?.propertyName || session?.user?.propertyName || ''
 
   const handleDropdownOpen = () => {
     !open ? setOpen(true) : setOpen(false)
@@ -105,8 +111,8 @@ const UserDropdown = () => {
       >
         <Avatar
           ref={anchorRef}
-          alt={session?.user?.name || ''}
-          src={session?.user?.image || ''}
+          alt={displayName}
+          src={displayImage}
           onClick={handleDropdownOpen}
           className='cursor-pointer bs-[38px] is-[38px]'
         />
@@ -130,31 +136,25 @@ const UserDropdown = () => {
               <ClickAwayListener onClickAway={e => handleDropdownClose(e as MouseEvent | TouchEvent)}>
                 <MenuList>
                   <div className='flex items-center plb-2 pli-4 gap-2' tabIndex={-1}>
-                    <Avatar alt={session?.user?.name || ''} src={session?.user?.image || ''} />
+                    <Avatar alt={displayName} src={displayImage} />
                     <div className='flex items-start flex-col'>
                       <Typography className='font-medium' color='text.primary'>
-                        {session?.user?.name || ''}
+                        {displayName}
                       </Typography>
-                      <Typography variant='caption'>{session?.user?.email || ''}</Typography>
+                      <Typography variant='caption'>{displayEmail}</Typography>
+                      {displayHotel ? (
+                        <Typography variant='caption' color='text.secondary'>
+                          {displayHotel}
+                        </Typography>
+                      ) : null}
                     </div>
                   </div>
                   <Divider className='mlb-1' />
-                  <MenuItem className='gap-3' onClick={e => handleDropdownClose(e, '/pages/user-profile')}>
+                  <MenuItem className='gap-3' onClick={e => handleDropdownClose(e, '/apps/profile')}>
                     <i className='ri-user-3-line' />
-                    <Typography color='text.primary'>My Profile</Typography>
+                    <Typography color='text.primary'>Mi perfil</Typography>
                   </MenuItem>
-                  <MenuItem className='gap-3' onClick={e => handleDropdownClose(e, '/pages/account-settings')}>
-                    <i className='ri-settings-4-line' />
-                    <Typography color='text.primary'>Settings</Typography>
-                  </MenuItem>
-                  <MenuItem className='gap-3' onClick={e => handleDropdownClose(e, '/pages/pricing')}>
-                    <i className='ri-money-dollar-circle-line' />
-                    <Typography color='text.primary'>Pricing</Typography>
-                  </MenuItem>
-                  <MenuItem className='gap-3' onClick={e => handleDropdownClose(e, '/pages/faq')}>
-                    <i className='ri-question-line' />
-                    <Typography color='text.primary'>FAQ</Typography>
-                  </MenuItem>
+                  {/* Settings, Pricing y FAQ de la plantilla: no se usan en v1 (billing está en Suscripción). */}
                   <div className='flex items-center plb-2 pli-4'>
                     <Button
                       fullWidth
@@ -165,7 +165,7 @@ const UserDropdown = () => {
                       onClick={handleUserLogout}
                       sx={{ '& .MuiButton-endIcon': { marginInlineStart: 1.5 } }}
                     >
-                      Logout
+                      Cerrar sesión
                     </Button>
                   </div>
                 </MenuList>

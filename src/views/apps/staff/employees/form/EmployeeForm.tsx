@@ -30,6 +30,7 @@ import type { DocumentType } from '@/types/apps/clientsTypes'
 import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPES } from '@/types/apps/clientsTypes'
 import type { Role } from '@/types/apps/staffTypes'
 import { employeesApi, getStaffApiErrorMessage, rolesApi } from '@/libs/staffApi'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
 
 type FormValues = {
@@ -60,8 +61,9 @@ const EmployeeForm = ({ uuid }: Props) => {
   const searchParams = useSearchParams()
   const { lang: locale } = useParams()
   const { data: session, status: sessionStatus } = useSession()
+  const { canManageEmployees, canViewEmployees, loaded: accessLoaded } = useSubscriptionAccess()
   const propertyId = session?.user?.propertyId ?? 1
-  const isView = searchParams.get('mode') === 'view'
+  const isView = searchParams.get('mode') === 'view' || (accessLoaded && !canManageEmployees)
   const isEdit = Boolean(uuid) && !isView
   const [loading, setLoading] = useState(true)
   const [roles, setRoles] = useState<Role[]>([])
@@ -97,7 +99,19 @@ const EmployeeForm = ({ uuid }: Props) => {
   const roleIds = watch('roleIds')
 
   useEffect(() => {
-    if (sessionStatus === 'loading') {
+    if (sessionStatus === 'loading' || !accessLoaded) {
+      return
+    }
+
+    if (!canViewEmployees) {
+      router.replace(getLocalizedUrl('/apps/dashboard', locale as Locale))
+
+      return
+    }
+
+    if (!uuid && !canManageEmployees) {
+      router.replace(getLocalizedUrl('/apps/staff', locale as Locale))
+
       return
     }
 
@@ -142,7 +156,7 @@ const EmployeeForm = ({ uuid }: Props) => {
     }
 
     load()
-  }, [locale, propertyId, reset, router, sessionStatus, uuid])
+  }, [accessLoaded, canManageEmployees, canViewEmployees, locale, propertyId, reset, router, sessionStatus, uuid])
 
   const goBack = () => {
     router.push(getLocalizedUrl('/apps/staff', locale as Locale))

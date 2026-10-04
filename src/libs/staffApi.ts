@@ -65,7 +65,7 @@ const normalizeRole = (role: Role): Role => ({
   permissions: Array.isArray(role.permissions) ? role.permissions : []
 })
 
-const normalizeEmployee = (employee: Employee): Employee => ({
+export const normalizeEmployee = (employee: Employee): Employee => ({
   ...employee,
   jobTitle: employee.jobTitle ?? null,
   hireDate: employee.hireDate ?? null,

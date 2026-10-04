@@ -15,6 +15,7 @@ import type { Locale } from '@configs/i18n'
 import CustomTabList from '@core/components/mui/TabList'
 import EmployeeListClient from '@views/apps/staff/employees/list/EmployeeListClient'
 import RoleListClient from '@views/apps/staff/roles/list/RoleListClient'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
 
 const STAFF_TABS = ['employees', 'roles'] as const
@@ -33,14 +34,40 @@ const isStaffTab = (value?: string): value is StaffTab => {
 const StaffCatalog = ({ defaultTab }: { defaultTab?: string }) => {
   const router = useRouter()
   const { lang: locale } = useParams()
-  const [activeTab, setActiveTab] = useState<StaffTab>(isStaffTab(defaultTab) ? defaultTab : 'employees')
+  const { canViewEmployees, canViewRoles, canViewStaff, loaded } = useSubscriptionAccess()
+  const firstAllowed: StaffTab = canViewEmployees ? 'employees' : 'roles'
+  const [activeTab, setActiveTab] = useState<StaffTab>(
+    isStaffTab(defaultTab) && (defaultTab === 'employees' ? canViewEmployees : canViewRoles) ? defaultTab : firstAllowed
+  )
 
   useEffect(() => {
-    setActiveTab(isStaffTab(defaultTab) ? defaultTab : 'employees')
-  }, [defaultTab])
+    if (!loaded) {
+      return
+    }
+
+    if (!canViewStaff) {
+      router.replace(getLocalizedUrl('/apps/dashboard', locale as Locale))
+
+      return
+    }
+
+    const requested = isStaffTab(defaultTab) ? defaultTab : firstAllowed
+    const next =
+      requested === 'employees' ? (canViewEmployees ? 'employees' : 'roles') : canViewRoles ? 'roles' : 'employees'
+
+    setActiveTab(next)
+  }, [canViewEmployees, canViewRoles, canViewStaff, defaultTab, firstAllowed, loaded, locale, router])
 
   const handleChange = (_event: SyntheticEvent, value: string) => {
     if (!isStaffTab(value)) {
+      return
+    }
+
+    if (value === 'employees' && !canViewEmployees) {
+      return
+    }
+
+    if (value === 'roles' && !canViewRoles) {
       return
     }
 
@@ -49,6 +76,10 @@ const StaffCatalog = ({ defaultTab }: { defaultTab?: string }) => {
     const baseUrl = getLocalizedUrl('/apps/staff', locale as Locale)
 
     router.replace(value === 'employees' ? baseUrl : `${baseUrl}?tab=${value}`)
+  }
+
+  if (!loaded || !canViewStaff) {
+    return null
   }
 
   return (
@@ -62,24 +93,28 @@ const StaffCatalog = ({ defaultTab }: { defaultTab?: string }) => {
         </div>
         <TabContext value={activeTab}>
           <CustomTabList onChange={handleChange} variant='scrollable' pill='true'>
-            <Tab
-              label={
-                <div className='flex items-center gap-1.5'>
-                  <i className='ri-id-card-line text-lg' />
-                  Empleados
-                </div>
-              }
-              value='employees'
-            />
-            <Tab
-              label={
-                <div className='flex items-center gap-1.5'>
-                  <i className='ri-shield-user-line text-lg' />
-                  Roles y permisos
-                </div>
-              }
-              value='roles'
-            />
+            {canViewEmployees ? (
+              <Tab
+                label={
+                  <div className='flex items-center gap-1.5'>
+                    <i className='ri-id-card-line text-lg' />
+                    Empleados
+                  </div>
+                }
+                value='employees'
+              />
+            ) : null}
+            {canViewRoles ? (
+              <Tab
+                label={
+                  <div className='flex items-center gap-1.5'>
+                    <i className='ri-shield-user-line text-lg' />
+                    Roles y permisos
+                  </div>
+                }
+                value='roles'
+              />
+            ) : null}
           </CustomTabList>
 
           <TabPanel value={activeTab} className='p-0'>
