@@ -52,11 +52,11 @@ type ErrorType = {
 type FormData = InferInput<typeof schema>
 
 const schema = object({
-  email: pipe(string(), minLength(1, 'This field is required'), email('Please enter a valid email address')),
+  email: pipe(string(), minLength(1, 'Este campo es obligatorio'), email('Ingresa un correo válido')),
   password: pipe(
     string(),
-    nonEmpty('This field is required'),
-    minLength(5, 'Password must be at least 5 characters long')
+    nonEmpty('Este campo es obligatorio'),
+    minLength(5, 'La contraseña debe tener al menos 5 caracteres')
   )
 })
 
@@ -206,9 +206,9 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
             <Logo />
           </Link>
           <div className='flex flex-col gap-5'>
-            <div>
-              <Typography variant='h4'>{`Welcome to ${themeConfig.templateName}!👋🏻`}</Typography>
-              <Typography className='mbs-1'>Sign in with your hotel staff account</Typography>
+            <div className='text-center'>
+              <Typography variant='h4'>{`Bienvenido a ${themeConfig.templateName}`}</Typography>
+              <Typography className='mbs-1'>Inicia sesión con tu cuenta de personal</Typography>
             </div>
 
             {errorState?.message?.[0] ? (
@@ -233,7 +233,7 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
                     autoFocus
                     fullWidth
                     type='email'
-                    label='Email'
+                    label='Correo'
                     onChange={e => {
                       field.onChange(e.target.value)
                       errorState !== null && setErrorState(null)
@@ -253,7 +253,7 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
                   <TextField
                     {...field}
                     fullWidth
-                    label='Password'
+                    label='Contraseña'
                     id='login-v1-password'
                     type={isPasswordShown ? 'text' : 'password'}
                     onChange={e => {
@@ -281,20 +281,20 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
                 )}
               />
               <div className='flex justify-between items-center gap-x-3 gap-y-1 flex-wrap'>
-                <FormControlLabel control={<Checkbox />} label='Remember me' />
+                <FormControlLabel control={<Checkbox />} label='Recordarme' />
                 <Typography
                   className='text-end'
                   color='primary.main'
                   component={Link}
                   href={getLocalizedUrl('/pages/auth/forgot-password-v1', locale as Locale)}
                 >
-                  Forgot password?
+                  ¿Olvidaste tu contraseña?
                 </Typography>
               </div>
               <Button fullWidth variant='contained' type='submit' disabled={isSubmitting}>
-                {isSubmitting ? 'Signing in...' : 'Log In'}
+                {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
               </Button>
-              <Divider className='gap-3'>or</Divider>
+              <Divider className='gap-3'>o</Divider>
               <Button
                 fullWidth
                 color='secondary'
@@ -303,7 +303,7 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
                 sx={{ '& .MuiButton-startIcon': { marginInlineEnd: 3 } }}
                 onClick={() => signIn('google', { callbackUrl: getLocalizedUrl('/', locale as Locale) })}
               >
-                Sign in with Google
+                Iniciar sesión con Google
               </Button>
             </form>
           </div>

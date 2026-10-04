@@ -52,11 +52,11 @@ type ErrorType = {
 type FormData = InferInput<typeof schema>
 
 const schema = object({
-  email: pipe(string(), minLength(1, 'This field is required'), email('Please enter a valid email address')),
+  email: pipe(string(), minLength(1, 'Este campo es obligatorio'), email('Ingresa un correo válido')),
   password: pipe(
     string(),
-    nonEmpty('This field is required'),
-    minLength(5, 'Password must be at least 5 characters long')
+    nonEmpty('Este campo es obligatorio'),
+    minLength(5, 'La contraseña debe tener al menos 5 caracteres')
   )
 })
 
@@ -152,9 +152,9 @@ const Login = ({ mode }: { mode: Mode }) => {
           <Logo />
         </div>
         <div className='flex flex-col gap-5 is-full sm:is-auto md:is-full sm:max-is-[400px] md:max-is-[unset]'>
-          <div>
-            <Typography variant='h4'>{`Welcome to ${themeConfig.templateName}!👋🏻`}</Typography>
-            <Typography>Please sign-in to your account and start the adventure</Typography>
+          <div className='text-center'>
+            <Typography variant='h4'>{`Bienvenido a ${themeConfig.templateName}`}</Typography>
+            <Typography>Inicia sesión con tu cuenta de personal</Typography>
           </div>
           <Alert icon={false} className='bg-primaryLight'>
             <Typography variant='body2' color='primary.main'>
@@ -180,7 +180,7 @@ const Login = ({ mode }: { mode: Mode }) => {
                   fullWidth
                   autoFocus
                   type='email'
-                  label='Email'
+                  label='Correo'
                   onChange={e => {
                     field.onChange(e.target.value)
                     errorState !== null && setErrorState(null)
@@ -200,7 +200,7 @@ const Login = ({ mode }: { mode: Mode }) => {
                 <TextField
                   {...field}
                   fullWidth
-                  label='Password'
+                  label='Contraseña'
                   id='login-password'
                   type={isPasswordShown ? 'text' : 'password'}
                   onChange={e => {
@@ -229,22 +229,22 @@ const Login = ({ mode }: { mode: Mode }) => {
               )}
             />
             <div className='flex justify-between items-center flex-wrap gap-x-3 gap-y-1'>
-              <FormControlLabel control={<Checkbox defaultChecked />} label='Remember me' />
+              <FormControlLabel control={<Checkbox defaultChecked />} label='Recordarme' />
               <Typography className='text-end' color='primary.main' component={Link} href='/forgot-password'>
-                Forgot password?
+                ¿Olvidaste tu contraseña?
               </Typography>
             </div>
             <Button fullWidth variant='contained' type='submit'>
-              Log In
+              Iniciar sesión
             </Button>
             <div className='flex justify-center items-center flex-wrap gap-2'>
-              <Typography>New on our platform?</Typography>
+              <Typography>¿Nuevo en la plataforma?</Typography>
               <Typography component={Link} href='/register' color='primary.main'>
-                Create an account
+                Crear una cuenta
               </Typography>
             </div>
           </form>
-          <Divider className='gap-3'>or</Divider>
+          <Divider className='gap-3'>o</Divider>
           <Button
             color='secondary'
             className='self-center text-textPrimary'
@@ -252,7 +252,7 @@ const Login = ({ mode }: { mode: Mode }) => {
             sx={{ '& .MuiButton-startIcon': { marginInlineEnd: 3 } }}
             onClick={() => signIn('google')}
           >
-            Sign in with Google
+            Iniciar sesión con Google
           </Button>
         </div>
       </div>

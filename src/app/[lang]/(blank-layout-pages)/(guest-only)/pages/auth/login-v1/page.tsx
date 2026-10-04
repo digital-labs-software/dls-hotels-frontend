@@ -8,8 +8,8 @@ import LoginV1 from '@views/pages/auth/LoginV1'
 import { getServerMode } from '@core/utils/serverHelpers'
 
 export const metadata: Metadata = {
-  title: 'Login',
-  description: 'Login to your hotel staff account'
+  title: 'Iniciar sesión',
+  description: 'Inicia sesión con tu cuenta de personal del hotel'
 }
 
 const LoginV1Page = async () => {

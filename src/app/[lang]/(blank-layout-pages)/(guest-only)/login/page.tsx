@@ -9,8 +9,8 @@ import type { Locale } from '@configs/i18n'
 import { getLocalizedUrl } from '@/utils/i18n'
 
 export const metadata: Metadata = {
-  title: 'Login',
-  description: 'Login to your hotel staff account'
+  title: 'Iniciar sesión',
+  description: 'Inicia sesión con tu cuenta de personal del hotel'
 }
 
 type Props = {
