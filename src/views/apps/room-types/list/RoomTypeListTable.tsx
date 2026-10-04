@@ -292,7 +292,7 @@ const RoomTypeListTable = () => {
               startIcon={<i className='ri-add-line' />}
               onClick={() => openDrawer('create')}
             >
-              Agregar tipo
+              Nuevo tipo
             </Button>
           </div>
         </CardContent>

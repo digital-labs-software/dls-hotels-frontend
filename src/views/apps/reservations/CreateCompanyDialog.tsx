@@ -80,7 +80,7 @@ const CreateCompanyDialog = ({ open, propertyId, onClose, onCreated }: Props) =>
 
   return (
     <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='xs'>
-      <DialogTitle>Crear empresa</DialogTitle>
+      <DialogTitle>Nueva empresa</DialogTitle>
       <DialogContent className='flex flex-col gap-4 pt-4'>
         <TextField label='Razón social' value={businessName} onChange={e => setBusinessName(e.target.value)} />
         <FormControl fullWidth>
@@ -108,7 +108,7 @@ const CreateCompanyDialog = ({ open, propertyId, onClose, onCreated }: Props) =>
           Cancelar
         </Button>
         <Button variant='contained' disabled={saving} onClick={handleSubmit}>
-          {saving ? <CircularProgress size={20} color='inherit' /> : 'Crear'}
+          {saving ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
         </Button>
       </DialogActions>
     </Dialog>

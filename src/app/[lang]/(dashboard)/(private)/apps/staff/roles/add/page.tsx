@@ -4,7 +4,7 @@ import RoleFormClient from '@views/apps/staff/roles/form/RoleFormClient'
 
 export const metadata: Metadata = {
   title: 'Nuevo rol',
-  description: 'Crear un rol'
+  description: 'Registrar un rol'
 }
 
 const RolesAddPage = () => {

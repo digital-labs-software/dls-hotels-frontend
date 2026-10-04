@@ -39,7 +39,7 @@ type Props = {
 }
 
 const titles: Record<RoomTypeDrawerMode, string> = {
-  create: 'Agregar tipo de habitación',
+  create: 'Nuevo tipo de habitación',
   edit: 'Editar tipo de habitación',
   view: 'Ver tipo de habitación'
 }
@@ -328,7 +328,7 @@ const RoomTypeFormDrawer = (props: Props) => {
           <div className='flex items-center gap-4'>
             {!isView ? (
               <Button variant='contained' type='submit' disabled={isSubmitting || !propertyId}>
-                {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Agregar'}
+                {isSubmitting ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
               </Button>
             ) : null}
             <Button variant='outlined' color='secondary' type='button' onClick={handleReset} disabled={isSubmitting}>

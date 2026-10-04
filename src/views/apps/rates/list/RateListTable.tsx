@@ -336,7 +336,7 @@ const RateListTable = () => {
               startIcon={<i className='ri-add-line' />}
               onClick={() => openDrawer('create')}
             >
-              Agregar tarifa
+              Nueva tarifa
             </Button>
           </div>
         </CardContent>

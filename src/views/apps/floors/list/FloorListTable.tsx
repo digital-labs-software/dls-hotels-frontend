@@ -282,7 +282,7 @@ const FloorListTable = () => {
               startIcon={<i className='ri-add-line' />}
               onClick={() => openDrawer('create')}
             >
-              Agregar nivel
+              Nuevo nivel
             </Button>
           </div>
         </CardContent>

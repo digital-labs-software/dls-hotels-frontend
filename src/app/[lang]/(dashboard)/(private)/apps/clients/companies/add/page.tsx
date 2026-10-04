@@ -4,7 +4,7 @@ import CompanyFormClient from '@views/apps/clients/companies/form/CompanyFormCli
 
 export const metadata: Metadata = {
   title: 'Nueva empresa',
-  description: 'Crear una empresa'
+  description: 'Registrar una empresa'
 }
 
 const CompaniesAddPage = () => {

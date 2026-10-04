@@ -216,7 +216,7 @@ const RoomForm = ({ uuid }: Props) => {
     }
   }
 
-  const title = isView ? 'Ver habitación' : isEdit ? 'Editar habitación' : 'Agregar habitación'
+  const title = isView ? 'Ver habitación' : isEdit ? 'Editar habitación' : 'Nueva habitación'
 
   if (loading) {
     return (
@@ -249,7 +249,7 @@ const RoomForm = ({ uuid }: Props) => {
               </Button>
               {!isView ? (
                 <Button variant='contained' type='submit' disabled={isSubmitting}>
-                  {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Publicar habitación'}
+                  {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Guardar habitación'}
                 </Button>
               ) : null}
             </div>

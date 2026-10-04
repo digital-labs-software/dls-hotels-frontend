@@ -75,7 +75,7 @@ const CompanyPicker = ({
       getOptionLabel={companyLabel}
       isOptionEqualToValue={(option, selected) => option.id === selected.id}
       inputValue={inputValue}
-      noOptionsText={canSearch ? 'Sin resultados → Crear empresa' : 'Escribe al menos 2 caracteres'}
+      noOptionsText={canSearch ? 'Sin resultados → Nueva empresa' : 'Escribe al menos 2 caracteres'}
       onInputChange={(_, next) => setInputValue(next)}
       onChange={(_, company) => {
         setValue(company)

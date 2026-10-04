@@ -4,7 +4,7 @@ import EmployeeFormClient from '@views/apps/staff/employees/form/EmployeeFormCli
 
 export const metadata: Metadata = {
   title: 'Nuevo empleado',
-  description: 'Crear un empleado'
+  description: 'Registrar un empleado'
 }
 
 const EmployeesAddPage = () => {

@@ -530,13 +530,13 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                   onDelete={() => setGuest(null)}
                 />
               ) : (
-                <Button onClick={() => setCreateGuestOpen(true)}>+ Crear huésped</Button>
+                <Button onClick={() => setCreateGuestOpen(true)}>+ Nuevo huésped</Button>
               )}
               <CompanyPicker propertyId={propertyId} onSelect={setCompany} />
               {company ? (
                 <Chip label={company.businessName} onDelete={() => setCompany(null)} />
               ) : (
-                <Button onClick={() => setCreateCompanyOpen(true)}>+ Crear empresa</Button>
+                <Button onClick={() => setCreateCompanyOpen(true)}>+ Nueva empresa</Button>
               )}
             </div>
           ) : null}
@@ -620,7 +620,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
             </Button>
           ) : (
             <Button variant='contained' disabled={saving} onClick={handleCreate}>
-              {saving ? <CircularProgress size={20} color='inherit' /> : 'Crear reserva'}
+              {saving ? <CircularProgress size={20} color='inherit' /> : 'Guardar reserva'}
             </Button>
           )}
         </DialogActions>

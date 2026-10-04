@@ -86,7 +86,7 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated }: Props) => {
 
   return (
     <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='xs'>
-      <DialogTitle>Crear huésped</DialogTitle>
+      <DialogTitle>Nuevo huésped</DialogTitle>
       <DialogContent className='flex flex-col gap-4 pt-4'>
         <TextField label='Nombres' value={firstName} onChange={e => setFirstName(e.target.value)} />
         <TextField label='Apellidos' value={lastName} onChange={e => setLastName(e.target.value)} />
@@ -115,7 +115,7 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated }: Props) => {
           Cancelar
         </Button>
         <Button variant='contained' disabled={saving} onClick={handleSubmit}>
-          {saving ? <CircularProgress size={20} color='inherit' /> : 'Crear'}
+          {saving ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
         </Button>
       </DialogActions>
     </Dialog>

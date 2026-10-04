@@ -275,7 +275,7 @@ const HotelRoleListTable = () => {
               startIcon={<i className='ri-add-line' />}
               onClick={() => openDrawer('create')}
             >
-              Agregar rol
+              Nuevo rol
             </Button>
           </div>
         </CardContent>

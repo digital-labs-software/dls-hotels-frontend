@@ -39,7 +39,7 @@ type Props = {
 }
 
 const titles: Record<FloorDrawerMode, string> = {
-  create: 'Agregar nivel',
+  create: 'Nuevo nivel',
   edit: 'Editar nivel',
   view: 'Ver nivel'
 }
@@ -192,7 +192,7 @@ const FloorFormDrawer = (props: Props) => {
           <div className='flex items-center gap-4'>
             {!isView ? (
               <Button variant='contained' type='submit' disabled={isSubmitting || !propertyId}>
-                {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Agregar'}
+                {isSubmitting ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
               </Button>
             ) : null}
             <Button variant='outlined' color='secondary' type='button' onClick={handleReset} disabled={isSubmitting}>

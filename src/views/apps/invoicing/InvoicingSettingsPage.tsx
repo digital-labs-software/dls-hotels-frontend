@@ -345,7 +345,7 @@ const InvoicingSettingsPage = () => {
                 .catch(error => toast.error(getEinvoiceApiErrorMessage(error)))
             }
           >
-            Crear
+            Guardar
           </Button>
         </DialogActions>
       </Dialog>

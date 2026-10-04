@@ -351,7 +351,7 @@ const RoomListTable = () => {
               startIcon={<i className='ri-add-line' />}
               className='max-sm:is-full is-auto'
             >
-              Agregar habitación
+              Nueva habitación
             </Button>
           </div>
         </div>

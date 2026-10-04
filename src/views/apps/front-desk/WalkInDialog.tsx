@@ -337,7 +337,7 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
         <div className='flex items-center justify-between'>
           <Typography className='font-medium'>Acompañantes</Typography>
           <Button size='small' startIcon={<i className='ri-add-line' />} onClick={() => setCompanions(prev => [...prev, emptyPerson()])}>
-            Agregar
+            Agregar acompañante
           </Button>
         </div>
         {companions.map((companion, index) => (
