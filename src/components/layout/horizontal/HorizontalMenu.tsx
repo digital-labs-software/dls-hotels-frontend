@@ -19,6 +19,7 @@ import VerticalNavContent from './VerticalNavContent'
 import useVerticalNav from '@menu/hooks/useVerticalNav'
 import { useSettings } from '@core/hooks/useSettings'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { useSupport } from '@/contexts/supportContext'
 
 // Styled Component Imports
 import StyledHorizontalNavExpandIcon from '@menu/styles/horizontal/StyledHorizontalNavExpandIcon'
@@ -62,6 +63,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
   const { settings } = useSettings()
   const params = useParams()
   const { subscriptionSuspended, canViewSubscription, canViewStaff, canViewInvoices } = useSubscriptionAccess()
+  const { unread: supportUnread } = useSupport()
 
   // Vars
   const { skin } = settings
@@ -76,6 +78,18 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
       icon={<i className='ri-secure-payment-line' />}
     >
       {dictionary['navigation'].subscription}
+    </MenuItem>
+  )
+
+  const supportItem = (
+    <MenuItem
+      href={`/${locale}/apps/support`}
+      exactMatch={false}
+      activeUrl='/apps/support'
+      icon={<i className='ri-customer-service-2-line' />}
+      suffix={supportUnread.tickets > 0 ? <Chip label={supportUnread.tickets} size='small' color='error' /> : undefined}
+    >
+      {dictionary['navigation'].support}
     </MenuItem>
   )
 
@@ -109,6 +123,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           }}
         >
           {subscriptionItem}
+          {supportItem}
         </Menu>
       </HorizontalNav>
     )
@@ -228,6 +243,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
             {dictionary['navigation'].hotel}
           </MenuItem>
         </SubMenu>
+        {supportItem}
           {/* Plantilla Materio oculta en v1. Las rutas siguen existiendo. */}
           {false && (
             <>

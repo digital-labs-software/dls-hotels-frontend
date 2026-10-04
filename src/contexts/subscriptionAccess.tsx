@@ -52,7 +52,10 @@ const SubscriptionAccessContext = createContext<SubscriptionAccessValue>({
 })
 
 const isAllowedWhenSuspended = (pathname?: string | null) =>
-  Boolean(pathname && (pathname.includes('/apps/billing') || pathname.includes('/apps/profile')))
+  Boolean(
+    pathname &&
+      (pathname.includes('/apps/billing') || pathname.includes('/apps/profile') || pathname.includes('/apps/support'))
+  )
 
 export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }) => {
   const { data: session, status } = useSession()

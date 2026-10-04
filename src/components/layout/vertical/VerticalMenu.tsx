@@ -20,6 +20,7 @@ import { Menu, SubMenu, MenuItem, MenuSection } from '@menu/vertical-menu'
 // Hook Imports
 import useVerticalNav from '@menu/hooks/useVerticalNav'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { useSupport } from '@/contexts/supportContext'
 import useHotelLogout from '@components/layout/shared/useHotelLogout'
 
 // Styled Component Imports
@@ -55,10 +56,23 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
   const params = useParams()
   const { subscriptionSuspended, canViewSubscription, canViewStaff, canViewInvoices } = useSubscriptionAccess()
   const handleLogout = useHotelLogout()
+  const { unread: supportUnread } = useSupport()
 
   // Vars
   const { isBreakpointReached, transitionDuration } = verticalNavOptions
   const { lang: locale } = params
+
+  const supportItem = (
+    <MenuItem
+      href={`/${locale}/apps/support`}
+      exactMatch={false}
+      activeUrl='/apps/support'
+      icon={<i className='ri-customer-service-2-line' />}
+      suffix={supportUnread.tickets > 0 ? <Chip label={supportUnread.tickets} size='small' color='error' /> : undefined}
+    >
+      {dictionary['navigation'].support}
+    </MenuItem>
+  )
 
   const ScrollWrapper = isBreakpointReached ? 'div' : PerfectScrollbar
   const scrollWrapperProps = isBreakpointReached
@@ -89,6 +103,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].subscription}
           </MenuItem>
+          {supportItem}
           <MenuSection label={dictionary['navigation'].account}>
             <MenuItem icon={<i className='ri-logout-box-r-line' />} onClick={() => void handleLogout()}>
               {dictionary['navigation'].logout}
@@ -217,6 +232,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           </MenuItem>
         </MenuSection>
         <MenuSection label={dictionary['navigation'].account}>
+          {supportItem}
           <MenuItem icon={<i className='ri-logout-box-r-line' />} onClick={() => void handleLogout()}>
             {dictionary['navigation'].logout}
           </MenuItem>
