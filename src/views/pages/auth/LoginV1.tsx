@@ -31,6 +31,7 @@ import type { InferInput } from 'valibot'
 // Type Imports
 import type { Mode } from '@core/types'
 import type { Locale } from '@configs/i18n'
+import type { LoginError } from '@/types/apps/authTypes'
 
 // Component Imports
 import Logo from '@components/layout/shared/Logo'
@@ -45,10 +46,6 @@ import { useImageVariant } from '@core/hooks/useImageVariant'
 // Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
-type ErrorType = {
-  message: string[]
-}
-
 type FormData = InferInput<typeof schema>
 
 const schema = object({
@@ -60,77 +57,42 @@ const schema = object({
   )
 })
 
-const NEXT_AUTH_GENERIC_ERRORS: Record<string, string> = {
-  OAuthSignin: 'No se pudo conectar con Google. En esta red el certificado HTTPS falla; reinicia el frontend.',
-  OAuthCallback: 'Acceso no autorizado.',
-  Callback: 'Acceso no autorizado.',
-  AccessDenied: 'Acceso no autorizado.',
-  OAuthAccountNotLinked: 'Acceso no autorizado.',
-  Configuration: 'Error de configuración de autenticación.',
-  Default: 'No se pudo iniciar sesión.'
+const DEFAULT_LOGIN_ERROR = 'No se pudo iniciar sesión. Inténtalo de nuevo en unos segundos.'
+
+/** Textos propios del frontend; el resto de casos usa el mensaje en español que envía el backend. */
+const LOGIN_ERROR_MESSAGES: Record<string, string> = {
+  NETWORK: 'No pudimos conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo.',
+  GOOGLE_VERIFICATION_FAILED: 'No pudimos validar tu cuenta de Google. Inténtalo de nuevo.',
+
+  // Códigos propios de NextAuth (flujo de Google)
+  OAuthSignin: 'No pudimos conectar con Google. Inténtalo de nuevo en unos segundos.',
+  OAuthCallback: 'No pudimos completar el inicio de sesión con Google. Inténtalo de nuevo.',
+  Callback: 'No pudimos completar el inicio de sesión con Google. Inténtalo de nuevo.',
+  OAuthAccountNotLinked: 'No pudimos completar el inicio de sesión con Google. Inténtalo de nuevo.',
+  AccessDenied: 'Se canceló el inicio de sesión con Google.',
+  Configuration: 'El inicio de sesión no está disponible en este momento. Inténtalo más tarde.'
 }
 
-const parseAuthError = (raw?: string | null): ErrorType => {
-  if (!raw) {
-    return { message: ['No se pudo iniciar sesión.'] }
-  }
+const toLoginError = (raw?: string | null): LoginError => {
+  if (!raw) return { code: 'UNKNOWN', message: DEFAULT_LOGIN_ERROR }
 
-  const generic = NEXT_AUTH_GENERIC_ERRORS[raw]
-
-  if (generic) {
-    return { message: [generic] }
-  }
-
-  const fromObject = (parsed: Record<string, unknown>): string[] => {
-    const lines: string[] = []
-    const status = parsed.statusCode ?? parsed.status
-    const errorName = typeof parsed.error === 'string' ? parsed.error : null
-
-    if (status || errorName) {
-      lines.push([status ? `HTTP ${status}` : null, errorName].filter(Boolean).join(' — '))
-    }
-
-    if (Array.isArray(parsed.message)) {
-      lines.push(...parsed.message.map(item => String(item)))
-    } else if (typeof parsed.message === 'string') {
-      lines.push(parsed.message)
-    }
-
-    if (typeof parsed.path === 'string') {
-      lines.push(`Ruta: ${parsed.path}`)
-    }
-
-    return lines.length ? lines : [JSON.stringify(parsed)]
-  }
+  if (LOGIN_ERROR_MESSAGES[raw]) return { code: raw, message: LOGIN_ERROR_MESSAGES[raw] }
 
   try {
-    const decoded = decodeURIComponent(raw)
-    const parsed = JSON.parse(decoded)
+    const parsed = JSON.parse(raw) as Partial<LoginError>
+    const code = typeof parsed.code === 'string' ? parsed.code : 'UNKNOWN'
+    const message = LOGIN_ERROR_MESSAGES[code] ?? (parsed.message || DEFAULT_LOGIN_ERROR)
 
-    if (parsed && typeof parsed === 'object') {
-      return { message: fromObject(parsed as Record<string, unknown>) }
-    }
-
-    return { message: [typeof parsed === 'string' ? parsed : raw] }
+    return { code, message }
   } catch {
-    try {
-      const parsed = JSON.parse(raw)
-
-      if (parsed && typeof parsed === 'object') {
-        return { message: fromObject(parsed as Record<string, unknown>) }
-      }
-    } catch {
-      // plain string from Nest / NextAuth
-    }
-
-    return { message: [raw] }
+    return { code: 'UNKNOWN', message: DEFAULT_LOGIN_ERROR }
   }
 }
 
 const LoginV1 = ({ mode }: { mode: Mode }) => {
   // States
   const [isPasswordShown, setIsPasswordShown] = useState(false)
-  const [errorState, setErrorState] = useState<ErrorType | null>(null)
+  const [errorState, setErrorState] = useState<LoginError | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Vars
@@ -146,6 +108,8 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
   const {
     control,
     handleSubmit,
+    setValue,
+    setFocus,
     formState: { errors }
   } = useForm<FormData>({
     resolver: valibotResolver(schema),
@@ -163,7 +127,7 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
       return
     }
 
-    setErrorState(parseAuthError(errorParam))
+    setErrorState(toLoginError(errorParam))
 
     const params = new URLSearchParams(searchParams.toString())
 
@@ -194,7 +158,14 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
 
       router.replace(getLocalizedUrl(redirectURL, locale as Locale))
     } else {
-      setErrorState(parseAuthError(res?.error))
+      const error = toLoginError(res?.error)
+
+      setErrorState(error)
+
+      if (error.code === 'INVALID_CREDENTIALS') {
+        setValue('password', '')
+        setFocus('password')
+      }
     }
   }
 
@@ -211,9 +182,9 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
               <Typography className='mbs-1'>Inicia sesión con tu cuenta de personal</Typography>
             </div>
 
-            {errorState?.message?.[0] ? (
-              <Alert severity='error' icon={false} sx={{ whiteSpace: 'pre-wrap', alignItems: 'flex-start' }}>
-                {errorState.message.join('\n')}
+            {errorState ? (
+              <Alert severity={errorState.code === 'GOOGLE_ONLY' ? 'info' : 'error'} role='alert'>
+                {errorState.message}
               </Alert>
             ) : null}
 

@@ -8,7 +8,7 @@ import { loginWithGoogle, loginWithPassword } from '@/libs/authApi'
 import { authCookies } from '@/libs/authCookies'
 
 // Type Imports
-import type { NestAuthUser } from '@/types/apps/authTypes'
+import type { LoginError, NestAuthUser } from '@/types/apps/authTypes'
 
 const applyNestUserToToken = (token: Record<string, unknown>, data: NestAuthUser) => {
   token.id = data.id
@@ -25,19 +25,27 @@ const applyNestUserToToken = (token: Record<string, unknown>, data: NestAuthUser
   token.subscriptionSuspended = Boolean(data.subscriptionSuspended)
 }
 
-const toNestErrorPayload = (error: unknown) => {
-  if (error && typeof error === 'object' && 'message' in error) {
-    return error
+/**
+ * Lo único que llega a la pantalla de login: un código y el mensaje para el usuario.
+ * El detalle técnico (status, ruta, error de red) se queda en el log del servidor de Next.
+ */
+const toLoginError = (error: unknown, path: string): LoginError => {
+  if (error && typeof error === 'object' && 'statusCode' in error) {
+    const { code, message, statusCode } = error as { code?: unknown; message?: unknown; statusCode?: unknown }
+    const text = Array.isArray(message) ? String(message[0] ?? '') : typeof message === 'string' ? message : ''
+
+    if (statusCode !== 401) console.warn(`[auth] ${path} respondió ${String(statusCode)}`, error)
+
+    return { code: typeof code === 'string' ? code : 'UNAUTHORIZED', message: text }
   }
 
-  return { statusCode: 401, message: ['Acceso no autorizado.'], error: 'Unauthorized' }
+  console.error(`[auth] ${path} sin respuesta del backend`, error)
+
+  return { code: 'NETWORK', message: '' }
 }
 
-const loginErrorRedirect = (error: unknown) => {
-  const payload = toNestErrorPayload(error)
-
-  return `/pages/auth/login-v1?error=${encodeURIComponent(JSON.stringify(payload))}`
-}
+const loginErrorRedirect = (error: LoginError) =>
+  `/pages/auth/login-v1?error=${encodeURIComponent(JSON.stringify(error))}`
 
 export const authOptions: NextAuthOptions = {
   // Source of truth is NestJS (users / persons / employees) — do not use PrismaAdapter
@@ -52,7 +60,7 @@ export const authOptions: NextAuthOptions = {
         try {
           return await loginWithPassword(email, password)
         } catch (e: unknown) {
-          throw new Error(JSON.stringify(toNestErrorPayload(e)))
+          throw new Error(JSON.stringify(toLoginError(e, '/auth/login')))
         }
       }
     }),
@@ -79,7 +87,9 @@ export const authOptions: NextAuthOptions = {
       // Google: validate against Nest before creating a NextAuth session
       if (account?.provider === 'google') {
         if (!account.id_token) {
-          return loginErrorRedirect({ message: ['No se recibió el token de Google.'] })
+          console.error('[auth] Google no devolvió id_token')
+
+          return loginErrorRedirect({ code: 'GOOGLE_VERIFICATION_FAILED', message: '' })
         }
 
         try {
@@ -95,7 +105,7 @@ export const authOptions: NextAuthOptions = {
 
           return true
         } catch (error: unknown) {
-          return loginErrorRedirect(error)
+          return loginErrorRedirect(toLoginError(error, '/auth/google'))
         }
       }
 

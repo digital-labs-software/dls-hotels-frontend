@@ -1,5 +1,11 @@
 export type AuthProvider = 'credentials' | 'google'
 
+/** Error de inicio de sesión tal como lo recibe la pantalla de login: código + mensaje en español. */
+export type LoginError = {
+  code: string
+  message: string
+}
+
 export type NestAuthPerson = {
   firstName?: string
   lastName?: string

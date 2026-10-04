@@ -26,7 +26,7 @@ export async function loginWithPassword(email: string, password: string): Promis
     body: JSON.stringify({ email, password })
   })
 
-  const data = await res.json()
+  const data = await res.json().catch(() => null)
 
   if (!res.ok) {
     throw toApiError(data, res, '/auth/login')
@@ -42,7 +42,7 @@ export async function loginWithGoogle(idToken: string): Promise<NestAuthUser> {
     body: JSON.stringify({ idToken })
   })
 
-  const data = await res.json()
+  const data = await res.json().catch(() => null)
 
   if (!res.ok) {
     throw toApiError(data, res, '/auth/google')
