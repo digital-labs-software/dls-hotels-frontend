@@ -43,7 +43,8 @@ const BillingPage = () => {
   const { canPaySubscription, refreshAccess } = useSubscriptionAccess()
   const propertyId = session?.user?.propertyId ?? 1
 
-  const [tab, setTab] = useState<BillingTab>(isBillingTab(searchParams.get('tab')) ? searchParams.get('tab')! : 'plan')
+  const tabFromUrl = searchParams.get('tab')
+  const [tab, setTab] = useState<BillingTab>(isBillingTab(tabFromUrl) ? tabFromUrl : 'plan')
   const [data, setData] = useState<BillingSubscriptionResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)

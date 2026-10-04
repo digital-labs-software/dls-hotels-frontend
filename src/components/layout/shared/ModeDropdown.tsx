@@ -66,7 +66,7 @@ const ModeDropdown = () => {
   return (
     <>
       <Tooltip
-        title={modeLabels[settings.mode] || 'Modo'}
+        title={(settings.mode && modeLabels[settings.mode]) || 'Modo'}
         onOpen={() => setTooltipOpen(true)}
         onClose={() => setTooltipOpen(false)}
         open={open ? false : tooltipOpen ? true : false}

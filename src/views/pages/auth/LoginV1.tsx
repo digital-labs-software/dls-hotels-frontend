@@ -58,11 +58,14 @@ const schema = object({
 })
 
 const DEFAULT_LOGIN_ERROR = 'No se pudo iniciar sesión. Inténtalo de nuevo en unos segundos.'
+const LOGIN_ERROR_STORAGE_KEY = 'dls-hotel-login-error'
 
 /** Textos propios del frontend; el resto de casos usa el mensaje en español que envía el backend. */
 const LOGIN_ERROR_MESSAGES: Record<string, string> = {
   NETWORK: 'No pudimos conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo.',
   GOOGLE_VERIFICATION_FAILED: 'No pudimos validar tu cuenta de Google. Inténtalo de nuevo.',
+  INVALID_CREDENTIALS: 'El correo o la contraseña no son correctos. Revísalos e inténtalo de nuevo.',
+  CredentialsSignin: 'El correo o la contraseña no son correctos. Revísalos e inténtalo de nuevo.',
 
   // Códigos propios de NextAuth (flujo de Google)
   OAuthSignin: 'No pudimos conectar con Google. Inténtalo de nuevo en unos segundos.',
@@ -71,6 +74,32 @@ const LOGIN_ERROR_MESSAGES: Record<string, string> = {
   OAuthAccountNotLinked: 'No pudimos completar el inicio de sesión con Google. Inténtalo de nuevo.',
   AccessDenied: 'Se canceló el inicio de sesión con Google.',
   Configuration: 'El inicio de sesión no está disponible en este momento. Inténtalo más tarde.'
+}
+
+const readStoredLoginError = (): LoginError | null => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const raw = sessionStorage.getItem(LOGIN_ERROR_STORAGE_KEY)
+
+    return raw ? (JSON.parse(raw) as LoginError) : null
+  } catch {
+    return null
+  }
+}
+
+const persistLoginError = (error: LoginError | null) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (error) {
+    sessionStorage.setItem(LOGIN_ERROR_STORAGE_KEY, JSON.stringify(error))
+  } else {
+    sessionStorage.removeItem(LOGIN_ERROR_STORAGE_KEY)
+  }
 }
 
 const toLoginError = (raw?: string | null): LoginError => {
@@ -119,31 +148,41 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
     }
   })
 
-  // Show Nest / NextAuth errors returned via query (Google redirect flow)
+  // Show Nest / NextAuth errors from the query or a previous attempt.
+  // history.replaceState avoids a remount (router.replace in production wipes this alert).
   useEffect(() => {
     const errorParam = searchParams.get('error')
 
     if (!errorParam) {
+      const stored = readStoredLoginError()
+
+      if (stored) {
+        setErrorState(stored)
+      }
+
       return
     }
 
-    setErrorState(toLoginError(errorParam))
+    const next = toLoginError(errorParam)
 
-    const params = new URLSearchParams(searchParams.toString())
+    setErrorState(next)
+    persistLoginError(next)
+
+    const params = new URLSearchParams(window.location.search)
 
     params.delete('error')
 
     const query = params.toString()
-    const path = getLocalizedUrl('/pages/auth/login-v1', locale as Locale)
 
-    router.replace(query ? `${path}?${query}` : path)
-  }, [searchParams, locale, router])
+    window.history.replaceState(null, '', query ? `${window.location.pathname}?${query}` : window.location.pathname)
+  }, [searchParams])
 
   const handleClickShowPassword = () => setIsPasswordShown(show => !show)
 
   const onSubmit: SubmitHandler<FormData> = async (data: FormData) => {
     setIsSubmitting(true)
     setErrorState(null)
+    persistLoginError(null)
 
     const res = await signIn('credentials', {
       email: data.email,
@@ -154,6 +193,8 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
     setIsSubmitting(false)
 
     if (res && res.ok && res.error === null) {
+      persistLoginError(null)
+
       const redirectURL = searchParams.get('redirectTo') ?? '/'
 
       router.replace(getLocalizedUrl(redirectURL, locale as Locale))
@@ -161,8 +202,9 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
       const error = toLoginError(res?.error)
 
       setErrorState(error)
+      persistLoginError(error)
 
-      if (error.code === 'INVALID_CREDENTIALS') {
+      if (error.code === 'INVALID_CREDENTIALS' || error.code === 'CredentialsSignin') {
         setValue('password', '')
         setFocus('password')
       }
@@ -207,7 +249,6 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
                     label='Correo'
                     onChange={e => {
                       field.onChange(e.target.value)
-                      errorState !== null && setErrorState(null)
                     }}
                     {...(errors.email && {
                       error: true,
@@ -229,7 +270,6 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
                     type={isPasswordShown ? 'text' : 'password'}
                     onChange={e => {
                       field.onChange(e.target.value)
-                      errorState !== null && setErrorState(null)
                     }}
                     slotProps={{
                       input: {

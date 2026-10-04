@@ -1,3 +1,6 @@
+// React Imports
+import type { ElementType } from 'react'
+
 // Next Imports
 import { useParams } from 'next/navigation'
 
@@ -74,11 +77,11 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
     </MenuItem>
   )
 
-  const ScrollWrapper = isBreakpointReached ? 'div' : PerfectScrollbar
+  const ScrollWrapper = (isBreakpointReached ? 'div' : PerfectScrollbar) as ElementType
   const scrollWrapperProps = isBreakpointReached
     ? {
         className: 'bs-full overflow-y-auto overflow-x-hidden',
-        onScroll: (container: HTMLElement) => scrollMenu(container, false)
+        onScroll: (event: { currentTarget: HTMLElement }) => scrollMenu(event.currentTarget, false)
       }
     : {
         options: { wheelPropagation: false, suppressScrollX: true },
@@ -117,17 +120,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
   return (
     // eslint-disable-next-line lines-around-comment
     /* Custom scrollbar instead of browser scroll, remove if you want browser scroll only */
-    <ScrollWrapper
-      {...(isBreakpointReached
-        ? {
-            className: 'bs-full overflow-y-auto overflow-x-hidden',
-            onScroll: container => scrollMenu(container, false)
-          }
-        : {
-            options: { wheelPropagation: false, suppressScrollX: true },
-            onScrollY: container => scrollMenu(container, true)
-          })}
-    >
+    <ScrollWrapper {...scrollWrapperProps}>
       {/* Incase you also want to scroll NavHeader to scroll with Vertical Menu, remove NavHeader from above and paste it below this comment */}
       {/* Vertical Menu */}
       <Menu
