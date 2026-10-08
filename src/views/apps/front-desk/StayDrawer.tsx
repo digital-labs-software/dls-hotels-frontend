@@ -205,7 +205,7 @@ const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheck
                 ) : null}
                 {stay?.status === 'CHECKED_IN' ? (
                   <Button color='warning' variant='outlined' onClick={() => stay && onCheckOut(stay)}>
-                    Check-out
+                    Check-out (salida)
                   </Button>
                 ) : null}
               </div>
@@ -238,7 +238,7 @@ const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheck
               <Typography className='font-medium'>Ajustar estadía</Typography>
               <TextField
                 type='date'
-                label='Salida'
+                label='Check-out (salida)'
                 value={checkOutDate}
                 onChange={e => setCheckOutDate(e.target.value)}
                 slotProps={{ inputLabel: { shrink: true } }}

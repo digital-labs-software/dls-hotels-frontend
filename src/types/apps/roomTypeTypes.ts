@@ -9,6 +9,7 @@ export type RoomType = {
   maxChildren: number
   maxOccupancy: number | null
   displayOrder: number
+  isActive: boolean
   createdAt: string
   updatedAt: string
 }
@@ -31,4 +32,5 @@ export type UpdateRoomTypeDto = {
   maxChildren?: number
   maxOccupancy?: number | null
   displayOrder?: number
+  isActive?: boolean
 }

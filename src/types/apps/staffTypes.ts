@@ -96,6 +96,7 @@ export interface Employee {
   jobTitle: string | null
   hireDate: string | null
   terminationDate: string | null
+  isActive: boolean
   person: EmployeePerson
   user: EmployeeUser | null
   roles: EmployeeRole[]
@@ -130,4 +131,6 @@ export interface CreateEmployeeInput {
   roles?: EmployeeRoleAssignment[]
 }
 
-export type UpdateEmployeeInput = Partial<CreateEmployeeInput>
+export type UpdateEmployeeInput = Partial<CreateEmployeeInput> & {
+  isActive?: boolean
+}

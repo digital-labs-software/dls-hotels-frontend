@@ -498,7 +498,7 @@ const EmployeeForm = ({ uuid }: Props) => {
                     {...field}
                     fullWidth
                     type='date'
-                    label='Fecha de contratación'
+                    label='Fecha de ingreso'
                     slotProps={{ inputLabel: { shrink: true } }}
                     disabled={isView || isSubmitting}
                   />
@@ -512,7 +512,7 @@ const EmployeeForm = ({ uuid }: Props) => {
                     {...field}
                     fullWidth
                     type='date'
-                    label='Fecha de cese'
+                    label='Fecha de salida'
                     slotProps={{ inputLabel: { shrink: true } }}
                     disabled={isView || isSubmitting}
                   />

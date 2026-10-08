@@ -317,7 +317,7 @@ const RoleForm = ({ uuid }: Props) => {
                         {...field}
                         fullWidth
                         label='Descripción'
-                        placeholder='Check-in, reservas y huéspedes'
+                        placeholder='Check-in (ingreso), reservas y huéspedes'
                         disabled={isView || isSubmitting}
                       />
                     )}

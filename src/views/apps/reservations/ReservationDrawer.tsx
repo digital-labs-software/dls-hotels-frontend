@@ -201,9 +201,9 @@ const ReservationDrawer = ({
 
     try {
       await reservationsApi.checkIn(propertyId, reservation.uuid, line.uuid)
-      await afterAction('Check-in registrado.')
+      await afterAction('Check-in (ingreso) registrado.')
     } catch (error) {
-      toast.error(getReservationsApiErrorMessage(error, 'No se pudo hacer el check-in.'))
+      toast.error(getReservationsApiErrorMessage(error, 'No se pudo registrar el ingreso (check-in).'))
     } finally {
       setSaving(false)
     }
@@ -216,9 +216,9 @@ const ReservationDrawer = ({
 
     try {
       await reservationsApi.checkOut(propertyId, reservation.uuid, line.uuid)
-      await afterAction('Check-out registrado.')
+      await afterAction('Check-out (salida) registrado.')
     } catch (error) {
-      toast.error(getReservationsApiErrorMessage(error, 'No se pudo hacer el check-out.'))
+      toast.error(getReservationsApiErrorMessage(error, 'No se pudo registrar la salida (check-out).'))
     } finally {
       setSaving(false)
     }
@@ -601,7 +601,7 @@ const CardLine = ({
           <TextField
             type='date'
             size='small'
-            label='Salida'
+            label='Check-out (salida)'
             value={checkOutDate}
             onChange={e => setCheckOutDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
@@ -635,12 +635,12 @@ const CardLine = ({
         ) : null}
         {canCheckIn ? (
           <Button size='small' variant='contained' disabled={saving} onClick={onCheckIn}>
-            Check-in
+            Check-in (ingreso)
           </Button>
         ) : null}
         {canCheckOut ? (
           <Button size='small' variant='contained' disabled={saving} onClick={onCheckOut}>
-            Check-out
+            Check-out (salida)
           </Button>
         ) : null}
         {status === 'CONFIRMED' ? (

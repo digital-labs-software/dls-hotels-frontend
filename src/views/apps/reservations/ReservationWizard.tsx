@@ -340,14 +340,14 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
             <TextField
               type='date'
-              label='Ingreso'
+              label='Check-in (ingreso)'
               value={room.checkInDate}
               onChange={e => updateRoom(room.key, { checkInDate: e.target.value, checkOutDate: addDays(e.target.value, 1) })}
               slotProps={{ inputLabel: { shrink: true } }}
             />
             <TextField
               type='date'
-              label='Salida'
+              label='Check-out (salida)'
               value={room.checkOutDate}
               onChange={e => updateRoom(room.key, { checkOutDate: e.target.value })}
               slotProps={{ inputLabel: { shrink: true } }}
@@ -369,14 +369,14 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
             <TextField
               type='date'
-              label='Ingreso'
+              label='Check-in (ingreso)'
               value={room.checkInDate}
               onChange={e => updateRoom(room.key, { checkInDate: e.target.value })}
               slotProps={{ inputLabel: { shrink: true } }}
             />
             <TextField
               type='date'
-              label='Salida'
+              label='Check-out (salida)'
               value={room.checkOutDate}
               onChange={e => updateRoom(room.key, { checkOutDate: e.target.value })}
               slotProps={{ inputLabel: { shrink: true } }}

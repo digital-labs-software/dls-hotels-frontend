@@ -5,13 +5,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import FormControl from '@mui/material/FormControl'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import Grid from '@mui/material/Grid'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
+import Switch from '@mui/material/Switch'
 import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -43,7 +44,7 @@ import type { RoomType } from '@/types/apps/roomTypeTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import RateFormDrawer from './RateFormDrawer'
 import type { RateDrawerMode } from './RateFormDrawer'
-import { deleteRate, getRate, getRatesApiErrorMessage, listRates } from '@/libs/ratesApi'
+import { deleteRate, getRate, getRatesApiErrorMessage, listRates, updateRate } from '@/libs/ratesApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
 import tableStyles from '@core/styles/table.module.css'
 
@@ -116,6 +117,7 @@ const RateListTable = () => {
   const [total, setTotal] = useState(0)
   const [roomTypeFilter, setRoomTypeFilter] = useState<number | ''>('')
   const [activeFilter, setActiveFilter] = useState<'' | 'true' | 'false'>('')
+  const [pendingUuid, setPendingUuid] = useState<string | null>(null)
 
   const fetchRates = useCallback(async () => {
     setLoading(true)
@@ -150,6 +152,22 @@ const RateListTable = () => {
 
     fetchRates()
   }, [fetchRates, status])
+
+  const handleToggleActive = async (rate: Rate, isActive: boolean) => {
+    setPendingUuid(rate.uuid)
+    setData(prev => prev.map(item => (item.uuid === rate.uuid ? { ...item, isActive } : item)))
+
+    try {
+      const updated = await updateRate(propertyId, rate.uuid, { isActive })
+
+      setData(prev => prev.map(item => (item.uuid === updated.uuid ? updated : item)))
+    } catch (error) {
+      setData(prev => prev.map(item => (item.uuid === rate.uuid ? rate : item)))
+      toast.error(getRatesApiErrorMessage(error, 'No se pudo cambiar el estado de la tarifa.'))
+    } finally {
+      setPendingUuid(null)
+    }
+  }
 
   const openDrawer = async (mode: RateDrawerMode, rate?: Rate) => {
     setDrawerMode(mode)
@@ -216,10 +234,16 @@ const RateListTable = () => {
       columnHelper.accessor('isActive', {
         header: 'Estado',
         cell: ({ row }) => (
-          <Chip
-            variant='tonal'
-            size='small'
-            color={row.original.isActive ? 'success' : 'secondary'}
+          <FormControlLabel
+            sx={{ m: 0 }}
+            control={
+              <Switch
+                size='small'
+                checked={row.original.isActive}
+                disabled={pendingUuid === row.original.uuid}
+                onChange={(_, checked) => handleToggleActive(row.original, checked)}
+              />
+            }
             label={row.original.isActive ? 'Activa' : 'Inactiva'}
           />
         )
@@ -243,7 +267,7 @@ const RateListTable = () => {
       })
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data]
+    [data, pendingUuid]
   )
 
   const table = useReactTable({

@@ -9,6 +9,8 @@ import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Switch from '@mui/material/Switch'
 import IconButton from '@mui/material/IconButton'
 import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
@@ -136,6 +138,7 @@ const EmployeeListTable = () => {
   const [loading, setLoading] = useState(true)
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [pendingUuid, setPendingUuid] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -157,6 +160,22 @@ const EmployeeListTable = () => {
 
     fetchData()
   }, [fetchData, sessionStatus])
+
+  const handleToggleActive = async (employee: Employee, isActive: boolean) => {
+    setPendingUuid(employee.uuid)
+    setEmployees(prev => prev.map(item => (item.uuid === employee.uuid ? { ...item, isActive } : item)))
+
+    try {
+      const updated = await employeesApi.update(propertyId, employee.uuid, { isActive })
+
+      setEmployees(prev => prev.map(item => (item.uuid === updated.uuid ? updated : item)))
+    } catch (error) {
+      setEmployees(prev => prev.map(item => (item.uuid === employee.uuid ? employee : item)))
+      toast.error(getStaffApiErrorMessage(error, 'No se pudo cambiar el estado del empleado.'))
+    } finally {
+      setPendingUuid(null)
+    }
+  }
 
   const handleConfirmDelete = async () => {
     if (!employeeToDelete) {
@@ -233,13 +252,33 @@ const EmployeeListTable = () => {
         header: 'Correo',
         cell: ({ row }) => <Typography>{row.original.user?.email || row.original.person.email || '—'}</Typography>
       }),
-      columnHelper.accessor(row => (isTerminated(row.terminationDate) ? 'Cesado' : 'Activo'), {
+      columnHelper.accessor(row => (isTerminated(row.terminationDate) ? 'Retirado' : row.isActive ? 'Activo' : 'Inactivo'), {
         id: 'status',
         header: 'Estado',
         cell: ({ row }) => {
           const terminated = isTerminated(row.original.terminationDate)
 
-          return <Chip size='small' variant='tonal' color={terminated ? 'error' : 'success'} label={terminated ? 'Cesado' : 'Activo'} />
+          if (terminated) {
+            return <Chip size='small' variant='tonal' color='error' label='Retirado' />
+          }
+
+          const isSelf = row.original.uuid === myEmployeeUuid
+
+          return (
+            <FormControlLabel
+              sx={{ m: 0 }}
+              control={
+                <Switch
+                  size='small'
+                  checked={row.original.isActive}
+                  disabled={!canManageEmployees || isSelf || pendingUuid === row.original.uuid}
+                  onChange={(_, checked) => handleToggleActive(row.original, checked)}
+                />
+              }
+              label={row.original.isActive ? 'Activo' : 'Inactivo'}
+              title={isSelf ? 'No puedes desactivar tu propio acceso' : 'Pausa el acceso sin eliminar al empleado'}
+            />
+          )
         }
       }),
       columnHelper.accessor('action', {
@@ -274,7 +313,7 @@ const EmployeeListTable = () => {
         enableSorting: false
       })
     ],
-    [canManageEmployees, locale, myEmployeeUuid]
+    [canManageEmployees, locale, myEmployeeUuid, pendingUuid, propertyId]
   )
 
   const table = useReactTable({

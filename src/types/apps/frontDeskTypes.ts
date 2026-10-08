@@ -38,8 +38,8 @@ export const RACK_STATUS_LABELS: Record<RackStatus, string> = {
 export const STAY_STATUS_LABELS: Record<StayStatus, string> = {
   PENDING: 'Pendiente',
   CONFIRMED: 'Confirmada',
-  CHECKED_IN: 'En casa',
-  CHECKED_OUT: 'Check-out',
+  CHECKED_IN: 'Check-in (en casa)',
+  CHECKED_OUT: 'Check-out (salida)',
   CANCELLED: 'Cancelada',
   NO_SHOW: 'No se presentó'
 }

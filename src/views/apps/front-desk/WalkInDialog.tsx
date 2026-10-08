@@ -292,7 +292,7 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
           <TextField
             fullWidth
             type='date'
-            label='Salida'
+            label='Check-out (salida)'
             value={checkOutDate}
             onChange={e => setCheckOutDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}

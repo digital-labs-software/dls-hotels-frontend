@@ -57,7 +57,8 @@ const normalizeRoomType = (item: RoomType): RoomType => ({
   basePrice: toNumber(item.basePrice),
   maxAdults: toNumber(item.maxAdults, 1),
   maxChildren: toNumber(item.maxChildren),
-  maxOccupancy: toNullableNumber(item.maxOccupancy)
+  maxOccupancy: toNullableNumber(item.maxOccupancy),
+  isActive: item.isActive !== false
 })
 
 const emptyMeta = (total = 0): PageMeta => ({
@@ -101,6 +102,7 @@ const toPayload = (body: CreateRoomTypeDto | UpdateRoomTypeDto) => {
   if (body.maxChildren !== undefined) payload.maxChildren = Number(body.maxChildren)
   if (body.maxOccupancy !== undefined) payload.maxOccupancy = body.maxOccupancy === null ? null : Number(body.maxOccupancy)
   if (body.displayOrder !== undefined) payload.displayOrder = Number(body.displayOrder)
+  if ('isActive' in body && body.isActive !== undefined) payload.isActive = body.isActive
 
   return payload
 }

@@ -3,6 +3,17 @@ import type { Theme } from '@mui/material/styles'
 
 const tablePagination: Theme['components'] = {
   MuiTablePagination: {
+    defaultProps: {
+      labelRowsPerPage: 'Filas:',
+      labelDisplayedRows: ({ from, to, count }) => `${from}–${to} de ${count !== -1 ? count : `más de ${to}`}`,
+      getItemAriaLabel: type => {
+        if (type === 'first') return 'Primera página'
+        if (type === 'last') return 'Última página'
+        if (type === 'next') return 'Página siguiente'
+
+        return 'Página anterior'
+      }
+    },
     styleOverrides: {
       toolbar: ({ theme }) => ({
         paddingInlineEnd: `${theme.spacing(3)} !important`

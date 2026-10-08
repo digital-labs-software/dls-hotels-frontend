@@ -8,7 +8,9 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
 import TablePagination from '@mui/material/TablePagination'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
+import Switch from '@mui/material/Switch'
 import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -43,7 +45,8 @@ import {
   deleteRoomType,
   getRoomType,
   getRoomTypesApiErrorMessage,
-  listRoomTypes
+  listRoomTypes,
+  updateRoomType
 } from '@/libs/roomTypesApi'
 import tableStyles from '@core/styles/table.module.css'
 
@@ -110,6 +113,7 @@ const RoomTypeListTable = () => {
   const [selectedRoomType, setSelectedRoomType] = useState<RoomType | null>(null)
   const [roomTypeToDelete, setRoomTypeToDelete] = useState<RoomType | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [pendingUuid, setPendingUuid] = useState<string | null>(null)
 
   const fetchRoomTypes = useCallback(async () => {
     setLoading(true)
@@ -148,6 +152,22 @@ const RoomTypeListTable = () => {
         toast.error(getRoomTypesApiErrorMessage(error, 'No se encontró el tipo de habitación solicitado.'))
         setDrawerOpen(false)
       }
+    }
+  }
+
+  const handleToggleActive = async (roomType: RoomType, isActive: boolean) => {
+    setPendingUuid(roomType.uuid)
+    setData(prev => prev.map(item => (item.uuid === roomType.uuid ? { ...item, isActive } : item)))
+
+    try {
+      const updated = await updateRoomType(propertyId, roomType.uuid, { isActive })
+
+      setData(prev => prev.map(item => (item.uuid === updated.uuid ? updated : item)))
+    } catch (error) {
+      setData(prev => prev.map(item => (item.uuid === roomType.uuid ? roomType : item)))
+      toast.error(getRoomTypesApiErrorMessage(error, 'No se pudo cambiar el estado del tipo de habitación.'))
+    } finally {
+      setPendingUuid(null)
     }
   }
 
@@ -216,6 +236,24 @@ const RoomTypeListTable = () => {
         header: 'Orden',
         cell: ({ row }) => <Typography>{row.original.displayOrder}</Typography>
       }),
+      columnHelper.accessor('isActive', {
+        header: 'Estado',
+        cell: ({ row }) => (
+          <FormControlLabel
+            sx={{ m: 0 }}
+            control={
+              <Switch
+                size='small'
+                checked={row.original.isActive}
+                disabled={pendingUuid === row.original.uuid}
+                onChange={(_, checked) => handleToggleActive(row.original, checked)}
+              />
+            }
+            label={row.original.isActive ? 'Activo' : 'Inactivo'}
+            title='Un tipo inactivo no aparece al crear habitaciones ni reservas'
+          />
+        )
+      }),
       columnHelper.accessor('action', {
         header: 'Acciones',
         cell: ({ row }) => (
@@ -235,7 +273,7 @@ const RoomTypeListTable = () => {
       })
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data]
+    [data, pendingUuid]
   )
 
   const table = useReactTable({

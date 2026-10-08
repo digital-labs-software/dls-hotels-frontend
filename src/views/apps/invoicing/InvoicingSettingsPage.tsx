@@ -209,9 +209,28 @@ const InvoicingSettingsPage = () => {
                           <TableCell>{seriesPurposeLabel(item.series, item.documentType)}</TableCell>
                           <TableCell>{item.nextNumber}</TableCell>
                           <TableCell>
-                            <div className='flex flex-wrap gap-1'>
+                            <div className='flex flex-wrap items-center gap-1'>
                               {item.isDefault ? <Chip size='small' color='primary' label='Por defecto' /> : null}
-                              <Chip size='small' variant='tonal' color={item.isActive ? 'success' : 'secondary'} label={item.isActive ? 'Activa' : 'Inactiva'} />
+                              <FormControlLabel
+                                sx={{ m: 0 }}
+                                control={
+                                  <Switch
+                                    size='small'
+                                    checked={item.isActive}
+                                    onChange={(_, checked) =>
+                                      void einvoiceApi
+                                        .updateSeries(propertyId, item.uuid, { isActive: checked })
+                                        .then(updated =>
+                                          setSeries(current =>
+                                            current.map(row => (row.uuid === updated.uuid ? updated : row))
+                                          )
+                                        )
+                                        .catch(error => toast.error(getEinvoiceApiErrorMessage(error)))
+                                    }
+                                  />
+                                }
+                                label={item.isActive ? 'Activa' : 'Inactiva'}
+                              />
                             </div>
                           </TableCell>
                           <TableCell align='right'>
@@ -229,18 +248,6 @@ const InvoicingSettingsPage = () => {
                                   Predeterminar
                                 </Button>
                               ) : null}
-                              <Button
-                                size='small'
-                                color='secondary'
-                                onClick={() =>
-                                  void einvoiceApi
-                                    .updateSeries(propertyId, item.uuid, { isActive: !item.isActive })
-                                    .then(load)
-                                    .catch(error => toast.error(getEinvoiceApiErrorMessage(error)))
-                                }
-                              >
-                                {item.isActive ? 'Desactivar' : 'Activar'}
-                              </Button>
                               {!item.used ? (
                                 <Button
                                   size='small'

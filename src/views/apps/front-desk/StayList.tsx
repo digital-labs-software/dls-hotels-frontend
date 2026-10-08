@@ -68,7 +68,7 @@ const StayList = ({ kind, stays, onOpenStay, onCheckIn, onCheckOut, onAssign, on
             ) : null}
             {kind === 'arrivals' ? (
               <Button size='small' variant='contained' onClick={() => onCheckIn(stay)}>
-                Check-in
+                Check-in (ingreso)
               </Button>
             ) : null}
             {kind === 'arrivals' ? (
@@ -78,7 +78,7 @@ const StayList = ({ kind, stays, onOpenStay, onCheckIn, onCheckOut, onAssign, on
             ) : null}
             {kind === 'departures' || kind === 'inHouse' ? (
               <Button size='small' color='warning' variant='contained' onClick={() => onCheckOut(stay)}>
-                Check-out
+                Check-out (salida)
               </Button>
             ) : null}
             <Button size='small' onClick={() => onPay(stay)}>

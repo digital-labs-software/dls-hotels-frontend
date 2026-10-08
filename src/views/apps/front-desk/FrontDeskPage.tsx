@@ -331,10 +331,10 @@ const FrontDeskPage = () => {
                   onCheckIn={async stay => {
                     try {
                       await frontDeskApi.checkIn(propertyId, stay.reservationUuid, stay.reservationRoomUuid)
-                      toast.success(`Check-in · ${stay.reservationCode}`)
+                      toast.success(`Check-in (ingreso) · ${stay.reservationCode}`)
                       fetchOverview()
                     } catch (error) {
-                      toast.error(getFrontDeskApiErrorMessage(error, 'No se pudo hacer el check-in.'))
+                      toast.error(getFrontDeskApiErrorMessage(error, 'No se pudo registrar el ingreso (check-in).'))
                     }
                   }}
                   onCheckOut={stay => {
@@ -421,15 +421,15 @@ const FrontDeskPage = () => {
 
               try {
                 await frontDeskApi.checkIn(propertyId, menuRoom.arrival.reservationUuid, menuRoom.arrival.reservationRoomUuid)
-                toast.success(`Check-in · ${menuRoom.arrival.reservationCode}`)
+                toast.success(`Check-in (ingreso) · ${menuRoom.arrival.reservationCode}`)
                 closeMenu()
                 fetchOverview()
               } catch (error) {
-                toast.error(getFrontDeskApiErrorMessage(error, 'No se pudo hacer el check-in.'))
+                toast.error(getFrontDeskApiErrorMessage(error, 'No se pudo registrar el ingreso (check-in).'))
               }
             }}
           >
-            Check-in de la llegada
+            Check-in (ingreso) de la llegada
           </MenuItem>
         ) : null}
         {menuRoom?.arrival ? (
@@ -460,7 +460,7 @@ const FrontDeskPage = () => {
               closeMenu()
             }}
           >
-            Check-out
+            Check-out (salida)
           </MenuItem>
         ) : null}
         {menuRoom?.displayStatus === 'OCCUPIED' && menuRoom.currentStay ? (

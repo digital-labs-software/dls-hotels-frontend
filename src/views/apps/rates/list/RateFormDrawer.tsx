@@ -201,11 +201,13 @@ const RateFormDrawer = (props: Props) => {
                   labelId='rate-room-type'
                   disabled={isView || isEdit || isSubmitting}
                 >
-                  {roomTypes.map(type => (
-                    <MenuItem key={type.uuid} value={type.id}>
-                      {type.name} · {formatRoomPrice(type.basePrice)}
-                    </MenuItem>
-                  ))}
+                  {roomTypes
+                    .filter(type => type.isActive || type.id === rate?.roomTypeId)
+                    .map(type => (
+                      <MenuItem key={type.uuid} value={type.id}>
+                        {type.name} · {formatRoomPrice(type.basePrice)}
+                      </MenuItem>
+                    ))}
                 </Select>
               )}
             />

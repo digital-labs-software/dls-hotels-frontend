@@ -71,6 +71,7 @@ export const normalizeEmployee = (employee: Employee): Employee => ({
   jobTitle: employee.jobTitle ?? null,
   hireDate: employee.hireDate ?? null,
   terminationDate: employee.terminationDate ?? null,
+  isActive: employee.isActive !== false,
   person: {
     ...employee.person,
     documentType: normalizeDocumentType(employee.person?.documentType),
@@ -167,6 +168,7 @@ const toEmployeePayload = (body: CreateEmployeeInput | UpdateEmployeeInput) => {
   if (body.hireDate !== undefined) payload.hireDate = emptyToNull(body.hireDate)
   if (body.terminationDate !== undefined) payload.terminationDate = emptyToNull(body.terminationDate)
   if (body.roles !== undefined) payload.roles = body.roles
+  if ('isActive' in body && body.isActive !== undefined) payload.isActive = body.isActive
 
   return payload
 }

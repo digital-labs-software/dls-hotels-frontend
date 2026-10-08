@@ -378,11 +378,13 @@ const RoomForm = ({ uuid }: Props) => {
                   rules={{ required: 'El tipo es obligatorio.' }}
                   render={({ field }) => (
                     <Select {...field} label='Tipo' labelId='room-type' disabled={isView || isSubmitting}>
-                      {roomTypes.map(type => (
-                        <MenuItem key={type.uuid} value={type.id}>
-                          {type.name} · {formatRoomPrice(type.basePrice)}
-                        </MenuItem>
-                      ))}
+                      {roomTypes
+                        .filter(type => type.isActive || type.id === Number(roomTypeId))
+                        .map(type => (
+                          <MenuItem key={type.uuid} value={type.id}>
+                            {type.name} · {formatRoomPrice(type.basePrice)}
+                          </MenuItem>
+                        ))}
                     </Select>
                   )}
                 />

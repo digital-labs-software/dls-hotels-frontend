@@ -109,7 +109,7 @@ const NewTicketDialog = ({ open, status, submitting, onClose, onSubmit }: Props)
 
           <TextField
             label='Asunto'
-            placeholder='Ej. No puedo hacer check-in de la habitación 201'
+            placeholder='Ej. No puedo registrar el check-in (ingreso) de la habitación 201'
             value={subject}
             onChange={event => setSubject(event.target.value)}
             slotProps={{ htmlInput: { maxLength: 150 } }}

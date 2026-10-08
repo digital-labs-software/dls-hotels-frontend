@@ -137,8 +137,8 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
                 <TableCell>Código</TableCell>
                 <TableCell>Titular</TableCell>
                 <TableCell>Empresa</TableCell>
-                <TableCell>Ingreso</TableCell>
-                <TableCell>Salida</TableCell>
+                <TableCell>Check-in (ingreso)</TableCell>
+                <TableCell>Check-out (salida)</TableCell>
                 <TableCell>Noches</TableCell>
                 <TableCell>Habitaciones</TableCell>
                 <TableCell>Total</TableCell>

@@ -10,12 +10,7 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CardHeader from '@mui/material/CardHeader'
 import CircularProgress from '@mui/material/CircularProgress'
-import FormControl from '@mui/material/FormControl'
-import FormHelperText from '@mui/material/FormHelperText'
 import Grid from '@mui/material/Grid'
-import InputLabel from '@mui/material/InputLabel'
-import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
@@ -23,9 +18,9 @@ import { Controller, useForm } from 'react-hook-form'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
-import type { GeoItem, PropertySettings, UpdatePropertySettingsInput } from '@/types/apps/hotelSettingsTypes'
+import type { PropertySettings, UpdatePropertySettingsInput } from '@/types/apps/hotelSettingsTypes'
 import { PROPERTY_CATEGORY_LABELS } from '@/types/apps/hotelSettingsTypes'
-import { getHotelSettingsApiErrorMessage, hotelSettingsApi, locationApi } from '@/libs/hotelSettingsApi'
+import { getHotelSettingsApiErrorMessage, hotelSettingsApi } from '@/libs/hotelSettingsApi'
 import { getUploadsApiErrorMessage, uploadHotelLogo } from '@/libs/uploadsApi'
 import HotelLogoField from './HotelLogoField'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
@@ -40,9 +35,6 @@ type FormValues = {
   email: string
   website: string
   address: string
-  departmentId: number | ''
-  provinceId: number | ''
-  districtId: number | ''
   checkInTime: string
   checkOutTime: string
 }
@@ -64,19 +56,12 @@ const toFormValues = (settings: PropertySettings): FormValues => ({
   email: settings.email ?? '',
   website: settings.website ?? '',
   address: settings.address ?? '',
-  departmentId: settings.location?.departmentId ?? '',
-  provinceId: settings.location?.provinceId ?? '',
-  districtId: settings.districtId ?? settings.location?.districtId ?? '',
   checkInTime: settings.checkInTime,
   checkOutTime: settings.checkOutTime
 })
 
 const buildChangedPayload = (initial: FormValues, current: FormValues): UpdatePropertySettingsInput => {
   const payload: UpdatePropertySettingsInput = {}
-
-  if (Number(current.districtId) !== Number(initial.districtId)) {
-    payload.districtId = Number(current.districtId)
-  }
 
   if (current.address.trim() !== initial.address.trim()) {
     payload.address = current.address.trim()
@@ -126,11 +111,6 @@ const HotelSettingsForm = () => {
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<PropertySettings | null>(null)
   const [initialValues, setInitialValues] = useState<FormValues | null>(null)
-  const [departments, setDepartments] = useState<GeoItem[]>([])
-  const [provinces, setProvinces] = useState<GeoItem[]>([])
-  const [districts, setDistricts] = useState<GeoItem[]>([])
-  const [loadingProvinces, setLoadingProvinces] = useState(false)
-  const [loadingDistricts, setLoadingDistricts] = useState(false)
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [removeLogo, setRemoveLogo] = useState(false)
   const [logoFieldKey, setLogoFieldKey] = useState(0)
@@ -139,8 +119,6 @@ const HotelSettingsForm = () => {
     control,
     handleSubmit,
     reset,
-    setValue,
-    watch,
     formState: { errors, isSubmitting }
   } = useForm<FormValues>({
     defaultValues: {
@@ -151,16 +129,10 @@ const HotelSettingsForm = () => {
       email: '',
       website: '',
       address: '',
-      departmentId: '',
-      provinceId: '',
-      districtId: '',
       checkInTime: '14:00',
       checkOutTime: '12:00'
     }
   })
-
-  const departmentId = watch('departmentId')
-  const provinceId = watch('provinceId')
 
   useEffect(() => {
     if (sessionStatus === 'loading') {
@@ -169,21 +141,10 @@ const HotelSettingsForm = () => {
 
     const load = async () => {
       try {
-        const [nextSettings, nextDepartments] = await Promise.all([
-          hotelSettingsApi.get(propertyId),
-          locationApi.departments()
-        ])
-
+        const nextSettings = await hotelSettingsApi.get(propertyId)
         const values = toFormValues(nextSettings)
-        const [nextProvinces, nextDistricts] = await Promise.all([
-          values.departmentId ? locationApi.provincesByDepartment(Number(values.departmentId)) : Promise.resolve([]),
-          values.provinceId ? locationApi.districtsByProvince(Number(values.provinceId)) : Promise.resolve([])
-        ])
 
         setSettings(nextSettings)
-        setDepartments(nextDepartments)
-        setProvinces(nextProvinces)
-        setDistricts(nextDistricts)
         setInitialValues(values)
         reset(values)
       } catch (error) {
@@ -195,52 +156,6 @@ const HotelSettingsForm = () => {
 
     load()
   }, [propertyId, reset, sessionStatus])
-
-  const handleDepartmentChange = async (value: number | '') => {
-    setValue('departmentId', value)
-    setValue('provinceId', '')
-    setValue('districtId', '')
-    setDistricts([])
-
-    if (!value) {
-      setProvinces([])
-
-      return
-    }
-
-    setLoadingProvinces(true)
-
-    try {
-      setProvinces(await locationApi.provincesByDepartment(Number(value)))
-    } catch (error) {
-      toast.error(getHotelSettingsApiErrorMessage(error, 'No se pudieron cargar las provincias.'))
-      setProvinces([])
-    } finally {
-      setLoadingProvinces(false)
-    }
-  }
-
-  const handleProvinceChange = async (value: number | '') => {
-    setValue('provinceId', value)
-    setValue('districtId', '')
-
-    if (!value) {
-      setDistricts([])
-
-      return
-    }
-
-    setLoadingDistricts(true)
-
-    try {
-      setDistricts(await locationApi.districtsByProvince(Number(value)))
-    } catch (error) {
-      toast.error(getHotelSettingsApiErrorMessage(error, 'No se pudieron cargar los distritos.'))
-      setDistricts([])
-    } finally {
-      setLoadingDistricts(false)
-    }
-  }
 
   const onSubmit = async (data: FormValues) => {
     if (!initialValues) {
@@ -311,7 +226,7 @@ const HotelSettingsForm = () => {
           <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col gap-6'>
             <div>
               <Typography variant='h4' className='mbe-1'>
-                {settings.tradeName || settings.name}
+                {settings.name}
               </Typography>
               <Typography>Datos del hotel. Algunos campos solo los cambia el panel DLS.</Typography>
             </div>
@@ -341,7 +256,7 @@ const HotelSettingsForm = () => {
           </div>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={{ xs: 12, md: 8 }} className='flex flex-col gap-6'>
           <Card>
             <CardHeader title='Identidad y contacto' />
             <CardContent>
@@ -479,6 +394,40 @@ const HotelSettingsForm = () => {
               </Grid>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader title='Ubicación' subheader='El distrito lo registra DLS. Puedes corregir la calle.' />
+            <CardContent>
+              <Grid container spacing={5}>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField fullWidth label='Departamento' value={settings.location?.departmentName || '—'} disabled />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField fullWidth label='Provincia' value={settings.location?.provinceName || '—'} disabled />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField fullWidth label='Distrito' value={settings.location?.districtName || '—'} disabled />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+              <Controller
+                name='address'
+                control={control}
+                rules={{ required: 'La dirección es obligatoria.' }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label='Dirección'
+                    placeholder='Av. Costanera 123'
+                    disabled={isSubmitting}
+                    {...(errors.address && { error: true, helperText: errors.address.message })}
+                  />
+                )}
+              />
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
         </Grid>
 
         <Grid size={{ xs: 12, md: 4 }}>
@@ -523,7 +472,7 @@ const HotelSettingsForm = () => {
                 name='checkInTime'
                 control={control}
                 rules={{
-                  required: 'La hora de check-in es obligatoria.',
+                  required: 'La hora de ingreso (check-in) es obligatoria.',
                   validate: value => TIME_REGEX.test(value) || 'Usa el formato HH:mm.'
                 }}
                 render={({ field }) => (
@@ -531,7 +480,8 @@ const HotelSettingsForm = () => {
                     {...field}
                     fullWidth
                     type='time'
-                    label='Check-in'
+                    label='Check-in (ingreso)'
+                    helperText={errors.checkInTime ? undefined : 'Hora a la que el huésped entra a la habitación.'}
                     slotProps={{ inputLabel: { shrink: true } }}
                     disabled={isSubmitting}
                     {...(errors.checkInTime && { error: true, helperText: errors.checkInTime.message })}
@@ -542,7 +492,7 @@ const HotelSettingsForm = () => {
                 name='checkOutTime'
                 control={control}
                 rules={{
-                  required: 'La hora de check-out es obligatoria.',
+                  required: 'La hora de salida (check-out) es obligatoria.',
                   validate: value => TIME_REGEX.test(value) || 'Usa el formato HH:mm.'
                 }}
                 render={({ field }) => (
@@ -550,112 +500,14 @@ const HotelSettingsForm = () => {
                     {...field}
                     fullWidth
                     type='time'
-                    label='Check-out'
+                    label='Check-out (salida)'
+                    helperText={errors.checkOutTime ? undefined : 'Hora a la que el huésped deja la habitación.'}
                     slotProps={{ inputLabel: { shrink: true } }}
                     disabled={isSubmitting}
                     {...(errors.checkOutTime && { error: true, helperText: errors.checkOutTime.message })}
                   />
                 )}
               />
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12 }}>
-          <Card>
-            <CardHeader title='Ubicación' />
-            <CardContent>
-              <Grid container spacing={5}>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <FormControl fullWidth error={Boolean(errors.departmentId)}>
-                    <InputLabel id='hotel-department'>Departamento</InputLabel>
-                    <Controller
-                      name='departmentId'
-                      control={control}
-                      rules={{ required: 'El departamento es obligatorio.' }}
-                      render={({ field }) => (
-                        <Select
-                          {...field}
-                          label='Departamento'
-                          labelId='hotel-department'
-                          disabled={isSubmitting}
-                          onChange={event => handleDepartmentChange(event.target.value as number | '')}
-                        >
-                          {departments.map(item => (
-                            <MenuItem key={item.id} value={item.id}>
-                              {item.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      )}
-                    />
-                    {errors.departmentId ? <FormHelperText>{errors.departmentId.message}</FormHelperText> : null}
-                  </FormControl>
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <FormControl fullWidth error={Boolean(errors.provinceId)}>
-                    <InputLabel id='hotel-province'>Provincia</InputLabel>
-                    <Controller
-                      name='provinceId'
-                      control={control}
-                      rules={{ required: 'La provincia es obligatoria.' }}
-                      render={({ field }) => (
-                        <Select
-                          {...field}
-                          label='Provincia'
-                          labelId='hotel-province'
-                          disabled={isSubmitting || !departmentId || loadingProvinces}
-                          onChange={event => handleProvinceChange(event.target.value as number | '')}
-                        >
-                          {provinces.map(item => (
-                            <MenuItem key={item.id} value={item.id}>
-                              {item.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      )}
-                    />
-                    {errors.provinceId ? <FormHelperText>{errors.provinceId.message}</FormHelperText> : null}
-                  </FormControl>
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <FormControl fullWidth error={Boolean(errors.districtId)}>
-                    <InputLabel id='hotel-district'>Distrito</InputLabel>
-                    <Controller
-                      name='districtId'
-                      control={control}
-                      rules={{ required: 'El distrito es obligatorio.' }}
-                      render={({ field }) => (
-                        <Select {...field} label='Distrito' labelId='hotel-district' disabled={isSubmitting || !provinceId || loadingDistricts}>
-                          {districts.map(item => (
-                            <MenuItem key={item.id} value={item.id}>
-                              {item.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      )}
-                    />
-                    {errors.districtId ? <FormHelperText>{errors.districtId.message}</FormHelperText> : null}
-                  </FormControl>
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <Controller
-                    name='address'
-                    control={control}
-                    rules={{ required: 'La dirección es obligatoria.' }}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        label='Dirección'
-                        placeholder='Av. Costanera 123, Miraflores'
-                        disabled={isSubmitting}
-                        {...(errors.address && { error: true, helperText: errors.address.message })}
-                      />
-                    )}
-                  />
-                </Grid>
-              </Grid>
             </CardContent>
           </Card>
         </Grid>
