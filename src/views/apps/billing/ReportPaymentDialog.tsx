@@ -20,6 +20,7 @@ import { useDropzone } from 'react-dropzone'
 import { toast } from 'react-toastify'
 
 import AppReactDropzone from '@/libs/styles/AppReactDropzone'
+import DateField from '@/components/date-picker/DateField'
 import { billingApi, getBillingApiErrorMessage, uploadVoucherToCloudinary, validateVoucherFile } from '@/libs/billingApi'
 import type { BillingPaymentSummary, PaymentOptions, VoucherMethod } from '@/types/apps/billingTypes'
 import {
@@ -178,13 +179,7 @@ const ReportPaymentDialog = ({ open, propertyId, payment, today, paymentOptions,
           </Select>
         </FormControl>
         <TextField label='Monto' value={amount} onChange={e => setAmount(e.target.value)} />
-        <TextField
-          type='date'
-          label='Fecha de operación'
-          value={operationDate}
-          onChange={e => setOperationDate(e.target.value)}
-          inputProps={{ max: today }}
-        />
+        <DateField label='Fecha de operación' value={operationDate} onChange={setOperationDate} maxDate={today} fullWidth />
         <TextField
           label='N.º de operación'
           value={reference}

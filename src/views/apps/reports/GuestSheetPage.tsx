@@ -6,7 +6,6 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CircularProgress from '@mui/material/CircularProgress'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
 import { useSession } from 'next-auth/react'
@@ -15,6 +14,7 @@ import { toast } from 'react-toastify'
 import type { GuestSheet } from '@/types/apps/reportTypes'
 import { formatFrontDeskDate, limaToday } from '@/types/apps/frontDeskTypes'
 import { getReportsApiErrorMessage, reportsApi } from '@/libs/reportsApi'
+import DateField from '@/components/date-picker/DateField'
 import { GUEST_SHEET_COLUMNS, downloadGuestSheetPdf, stayRowValues } from './guestSheetPdf'
 import { downloadGuestSheetXlsx } from './guestSheetExcel'
 
@@ -89,13 +89,7 @@ const GuestSheetPage = () => {
           <Typography>Parte de huéspedes del día. Visualízalo o descárgalo en PDF o Excel.</Typography>
         </div>
         <div className='flex flex-wrap items-end gap-3'>
-          <TextField
-            type='date'
-            label='Fecha'
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
-          />
+          <DateField label='Fecha' value={date} onChange={setDate} />
           <Button variant='outlined' color='secondary' startIcon={<i className='ri-eye-line' />} onClick={load} disabled={loading}>
             Visualizar
           </Button>

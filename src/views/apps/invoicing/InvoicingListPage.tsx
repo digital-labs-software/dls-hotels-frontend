@@ -31,6 +31,7 @@ import type { Locale } from '@configs/i18n'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { einvoiceApi, getEinvoiceApiErrorMessage } from '@/libs/einvoiceApi'
 import { getLocalizedUrl } from '@/utils/i18n'
+import DateField from '@/components/date-picker/DateField'
 import type { Einvoice } from '@/types/apps/einvoiceTypes'
 import { EINVOICE_ISSUE_TYPES, EINVOICE_STATUSES } from '@/types/apps/einvoiceTypes'
 import {
@@ -179,25 +180,24 @@ const InvoicingListPage = () => {
                 ))}
               </Select>
             </FormControl>
-            <TextField
-              type='date'
+            <DateField
               label='Desde'
               value={from}
-              onChange={event => {
+              clearable
+              onChange={value => {
                 setPage(1)
-                setFrom(event.target.value)
+                setFrom(value)
               }}
-              slotProps={{ inputLabel: { shrink: true } }}
             />
-            <TextField
-              type='date'
+            <DateField
               label='Hasta'
               value={to}
-              onChange={event => {
+              clearable
+              minDate={from || undefined}
+              onChange={value => {
                 setPage(1)
-                setTo(event.target.value)
+                setTo(value)
               }}
-              slotProps={{ inputLabel: { shrink: true } }}
             />
             <TextField
               label='Buscar'

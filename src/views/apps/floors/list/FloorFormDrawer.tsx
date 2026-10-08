@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 
 // MUI Imports
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import Drawer from '@mui/material/Drawer'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
@@ -18,15 +19,18 @@ import { toast } from 'react-toastify'
 
 // Type Imports
 import type { Floor } from '@/types/apps/floorTypes'
+import { numberedFloorName } from '@/types/apps/floorTypes'
 
 // API Imports
 import { createFloor, getFloorsApiErrorMessage, updateFloor } from '@/libs/floorsApi'
+
+// Util Imports
+import { sameCatalogName, toCatalogName } from '@/utils/string'
 
 export type FloorDrawerMode = 'create' | 'edit' | 'view'
 
 type FormValues = {
   name: string
-  displayOrder: number
 }
 
 type Props = {
@@ -34,18 +38,21 @@ type Props = {
   mode: FloorDrawerMode
   propertyId: number
   floor?: Floor | null
+  floors: Floor[]
   onClose: () => void
   onSuccess: (floor: Floor) => void
 }
 
 const titles: Record<FloorDrawerMode, string> = {
-  create: 'Nuevo nivel',
-  edit: 'Editar nivel',
-  view: 'Ver nivel'
+  create: 'Nuevo piso',
+  edit: 'Editar piso',
+  view: 'Ver piso'
 }
 
+const commonFloorNames = ['Planta baja', 'Sótano', 'Azotea']
+
 const FloorFormDrawer = (props: Props) => {
-  const { open, mode, propertyId, floor, onClose, onSuccess } = props
+  const { open, mode, propertyId, floor, floors, onClose, onSuccess } = props
   const isView = mode === 'view'
   const isEdit = mode === 'edit'
 
@@ -53,35 +60,36 @@ const FloorFormDrawer = (props: Props) => {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting }
   } = useForm<FormValues>({
     defaultValues: {
-      name: '',
-      displayOrder: 1
+      name: ''
     }
   })
+
+  const otherFloors = floors.filter(item => !isEdit || item.uuid !== floor?.uuid)
+  const isTaken = (name: string) => otherFloors.some(item => sameCatalogName(item.name, name))
+
+  let nextNumber = 1
+
+  while (isTaken(numberedFloorName(nextNumber))) {
+    nextNumber += 1
+  }
+
+  const suggestions = [numberedFloorName(nextNumber), ...commonFloorNames.filter(name => !isTaken(name))]
 
   useEffect(() => {
     if (!open) {
       return
     }
 
-    if ((isEdit || isView) && floor) {
-      reset({
-        name: floor.name,
-        displayOrder: floor.displayOrder
-      })
-    } else {
-      reset({
-        name: '',
-        displayOrder: 1
-      })
-    }
+    reset({ name: (isEdit || isView) && floor ? floor.name : '' })
   }, [open, mode, floor, isEdit, isView, reset])
 
   const handleReset = () => {
     onClose()
-    reset({ name: '', displayOrder: 1 })
+    reset({ name: '' })
   }
 
   const onSubmit = async (data: FormValues) => {
@@ -90,21 +98,18 @@ const FloorFormDrawer = (props: Props) => {
     }
 
     try {
-      const payload = {
-        name: data.name.trim(),
-        displayOrder: Number(data.displayOrder)
-      }
+      const payload = { name: toCatalogName(data.name) }
 
       const saved =
         isEdit && floor
           ? await updateFloor(propertyId, floor.uuid, payload)
           : await createFloor(propertyId, payload)
 
-      toast.success(isEdit ? 'Nivel actualizado correctamente.' : 'Nivel creado correctamente.')
+      toast.success(isEdit ? 'Piso actualizado correctamente.' : 'Piso creado correctamente.')
       onSuccess(saved)
       handleReset()
     } catch (error) {
-      toast.error(getFloorsApiErrorMessage(error, 'No se pudo guardar el nivel.'))
+      toast.error(getFloorsApiErrorMessage(error, 'No se pudo guardar el piso.'))
     }
   }
 
@@ -130,8 +135,19 @@ const FloorFormDrawer = (props: Props) => {
             name='name'
             control={control}
             rules={{
-              required: 'El nombre es obligatorio.',
-              maxLength: { value: 50, message: 'Máximo 50 caracteres.' }
+              validate: value => {
+                if (!value.trim()) {
+                  return 'El nombre es obligatorio.'
+                }
+
+                if (toCatalogName(value).length > 50) {
+                  return 'Máximo 50 caracteres.'
+                }
+
+                const duplicate = otherFloors.find(item => sameCatalogName(item.name, value))
+
+                return !duplicate || `Ya existe el piso "${duplicate.name}".`
+              }
             }}
             render={({ field }) => (
               <TextField
@@ -140,36 +156,46 @@ const FloorFormDrawer = (props: Props) => {
                 label='Nombre'
                 placeholder='Piso 1'
                 disabled={isView || isSubmitting}
-                {...(errors.name && { error: true, helperText: errors.name.message })}
+                onBlur={() => {
+                  field.onChange(toCatalogName(field.value))
+                  field.onBlur()
+                }}
+                error={Boolean(errors.name)}
+                helperText={errors.name?.message || 'El piso del hotel. Por ejemplo: Piso 1, Planta baja o Sótano.'}
               />
             )}
           />
 
-          <Controller
-            name='displayOrder'
-            control={control}
-            rules={{
-              required: 'El orden es obligatorio.',
-              min: { value: 1, message: 'El orden mínimo es 1.' },
-              validate: value => Number.isInteger(Number(value)) || 'Debe ser un número entero.'
-            }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                fullWidth
-                type='number'
-                label='Orden de visualización'
-                placeholder='1'
-                disabled={isView || isSubmitting}
-                slotProps={{ htmlInput: { min: 1, step: 1 } }}
-                onChange={e => field.onChange(Number(e.target.value))}
-                {...(errors.displayOrder && { error: true, helperText: errors.displayOrder.message })}
-              />
-            )}
-          />
+          {mode === 'create' ? (
+            <div className='flex flex-wrap items-center gap-2'>
+              <Typography variant='body2' color='text.secondary'>
+                Sugerencias:
+              </Typography>
+              {suggestions.map(name => (
+                <Chip
+                  key={name}
+                  label={name}
+                  size='small'
+                  variant='outlined'
+                  clickable
+                  disabled={isSubmitting}
+                  onClick={() => setValue('name', name, { shouldValidate: true, shouldDirty: true })}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {mode === 'create' ? (
+            <Typography variant='body2' color='text.secondary'>
+              El piso nuevo queda al final de la lista. Para cambiar el orden, arrástrelo en la lista.
+            </Typography>
+          ) : null}
 
           {isView && floor ? (
             <div className='flex flex-col gap-2'>
+              <Typography variant='body2' color='text.secondary'>
+                Posición en la lista: {floor.displayOrder}
+              </Typography>
               <Typography variant='body2' color='text.secondary'>
                 UUID: {floor.uuid}
               </Typography>
@@ -190,14 +216,14 @@ const FloorFormDrawer = (props: Props) => {
           ) : null}
 
           <div className='flex items-center gap-4'>
+            <Button variant='outlined' color='secondary' type='button' onClick={handleReset} disabled={isSubmitting}>
+              {isView ? 'Cerrar' : 'Descartar'}
+            </Button>
             {!isView ? (
               <Button variant='contained' type='submit' disabled={isSubmitting || !propertyId}>
                 {isSubmitting ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
               </Button>
             ) : null}
-            <Button variant='outlined' color='secondary' type='button' onClick={handleReset} disabled={isSubmitting}>
-              {isView ? 'Cerrar' : 'Descartar'}
-            </Button>
           </div>
         </form>
       </div>

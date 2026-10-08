@@ -53,6 +53,7 @@ const normalizeRoomType = (item: RoomType): RoomType => ({
   id: toNumber(item.id),
   propertyId: toNumber(item.propertyId),
   displayOrder: toNumber(item.displayOrder),
+  code: item.code ?? '',
   description: item.description ?? null,
   basePrice: toNumber(item.basePrice),
   maxAdults: toNumber(item.maxAdults, 1),
@@ -96,12 +97,12 @@ const toPayload = (body: CreateRoomTypeDto | UpdateRoomTypeDto) => {
   const payload: UpdateRoomTypeDto = {}
 
   if (body.name !== undefined) payload.name = body.name.trim()
+  if (body.code !== undefined) payload.code = body.code.trim().toUpperCase()
   if (body.description !== undefined) payload.description = body.description?.trim() ? body.description.trim() : null
   if (body.basePrice !== undefined) payload.basePrice = Number(body.basePrice)
   if (body.maxAdults !== undefined) payload.maxAdults = Number(body.maxAdults)
   if (body.maxChildren !== undefined) payload.maxChildren = Number(body.maxChildren)
   if (body.maxOccupancy !== undefined) payload.maxOccupancy = body.maxOccupancy === null ? null : Number(body.maxOccupancy)
-  if (body.displayOrder !== undefined) payload.displayOrder = Number(body.displayOrder)
   if ('isActive' in body && body.isActive !== undefined) payload.isActive = body.isActive
 
   return payload
@@ -167,6 +168,17 @@ export async function updateRoomType(propertyId: number, uuid: string, body: Upd
       token
     )
   )
+}
+
+/** Guarda el orden de la lista: `uuids` son todos los tipos, el primero queda en la posición 1. */
+export async function reorderRoomTypes(propertyId: number, uuids: string[], token?: string) {
+  const roomTypes = await request<RoomType[]>(
+    `/properties/${propertyId}/room-types/order`,
+    { method: 'PUT', body: JSON.stringify({ uuids }) },
+    token
+  )
+
+  return roomTypes.map(normalizeRoomType)
 }
 
 export async function deleteRoomType(propertyId: number, uuid: string, token?: string) {

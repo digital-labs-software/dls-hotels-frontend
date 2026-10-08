@@ -32,6 +32,7 @@ import CompanyPicker from '@views/apps/reservations/CompanyPicker'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { einvoiceApi, getEinvoiceApiErrorMessage } from '@/libs/einvoiceApi'
 import { getLocalizedUrl } from '@/utils/i18n'
+import DateField, { todayIso } from '@/components/date-picker/DateField'
 import type { EinvoiceIssueType, EinvoicePaymentCondition, ReservationBilling } from '@/types/apps/einvoiceTypes'
 import { formatEinvoiceMoney } from './einvoiceLabels'
 
@@ -431,13 +432,7 @@ const IssueInvoicePage = () => {
                   </Select>
                 </FormControl>
                 {paymentCondition === 'CREDIT' ? (
-                  <TextField
-                    type='date'
-                    label='Fecha de vencimiento'
-                    value={dueDate}
-                    onChange={event => setDueDate(event.target.value)}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                  />
+                  <DateField label='Fecha de vencimiento' value={dueDate} onChange={setDueDate} minDate={todayIso()} fullWidth />
                 ) : null}
                 <FormControl fullWidth>
                   <InputLabel id='currency'>Moneda</InputLabel>

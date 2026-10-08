@@ -11,7 +11,7 @@ export type Room = {
   floorId: number
   floorName: string
   number: string
-  basePrice: number | null
+  priceOverride: number | null
   effectivePrice: number
   photoUrl: string | null
   status: RoomStatus
@@ -24,7 +24,7 @@ export type CreateRoomDto = {
   roomTypeId: number
   floorId: number
   number: string
-  basePrice?: number | null
+  priceOverride?: number | null
   photoUrl?: string | null
   status: RoomStatus
   notes?: string | null
@@ -33,7 +33,7 @@ export type CreateRoomDto = {
 export type UpdateRoomDto = {
   roomTypeId?: number
   floorId?: number
-  basePrice?: number | null
+  priceOverride?: number | null
   photoUrl?: string | null
   status?: RoomStatus
   notes?: string | null

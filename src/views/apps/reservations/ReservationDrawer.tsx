@@ -38,6 +38,7 @@ import CompanyPicker from './CompanyPicker'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
+import DateField from '@/components/date-picker/DateField'
 import type { Locale } from '@configs/i18n'
 
 type Props = {
@@ -598,14 +599,7 @@ const CardLine = ({
       ) : null}
       {canMutate ? (
         <div className='grid grid-cols-2 gap-2'>
-          <TextField
-            type='date'
-            size='small'
-            label='Check-out (salida)'
-            value={checkOutDate}
-            onChange={e => setCheckOutDate(e.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
-          />
+          <DateField size='small' label='Check-out (salida)' value={checkOutDate} onChange={setCheckOutDate} fullWidth />
           <TextField size='small' label='Adultos' value={adults} onChange={e => setAdults(e.target.value)} />
           <TextField size='small' label='Niños' value={children} onChange={e => setChildren(e.target.value)} />
           <Button

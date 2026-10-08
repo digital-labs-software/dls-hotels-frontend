@@ -13,6 +13,7 @@ import FormControl from '@mui/material/FormControl'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
+import OutlinedInput from '@mui/material/OutlinedInput'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -24,8 +25,11 @@ import { DOCUMENT_TYPE_LABELS, guestDocumentOptions } from '@/types/apps/clients
 import type { PaymentMethod, RackRoom, WalkInGuest } from '@/types/apps/frontDeskTypes'
 import { addDays, nightsBetween, PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@/types/apps/frontDeskTypes'
 import type { Rate } from '@/types/apps/rateTypes'
+import { formatRateDate, priceSourceLabel, rateEndsDuringStay, ratesValidOn } from '@/types/apps/rateTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
+import { capacityLabel } from '@/types/apps/roomTypeTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
+import DateField from '@/components/date-picker/DateField'
 import GuestPicker from './GuestPicker'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
 import { listRates } from '@/libs/ratesApi'
@@ -112,6 +116,8 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
   const nights = checkOutDate && date ? nightsBetween(date, checkOutDate) : 1
   const unitPrice = Number(pricePerNight || room?.effectivePrice || 0)
   const estimated = unitPrice * nights
+  const validRates = useMemo(() => ratesValidOn(rates, date), [rates, date])
+  const selectedRate = validRates.find(rate => rate.id === rateId)
 
   useEffect(() => {
     if (!open || !room) {
@@ -277,7 +283,7 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
       return ''
     }
 
-    return `máx. ${roomType.maxAdults} adultos, ${roomType.maxChildren} niños`
+    return capacityLabel(roomType).toLowerCase()
   }, [roomType])
 
   return (
@@ -289,13 +295,12 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
           {occupancyHint ? ` (${occupancyHint})` : ''}
         </Typography>
         <div className='flex gap-3'>
-          <TextField
+          <DateField
             fullWidth
-            type='date'
             label='Check-out (salida)'
             value={checkOutDate}
-            onChange={e => setCheckOutDate(e.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
+            minDate={date ? addDays(date, 1) : undefined}
+            onChange={setCheckOutDate}
           />
           <TextField fullWidth label='Noches' value={nights} disabled />
         </div>
@@ -310,33 +315,57 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
             label='Precio por noche'
             value={pricePerNight}
             onChange={e => setPricePerNight(e.target.value)}
+            helperText={priceSourceLabel({
+              price: pricePerNight,
+              rate: selectedRate,
+              roomNumber: room?.number,
+              roomPrice: room?.effectivePrice,
+              typeName: roomType?.name ?? room?.roomTypeName,
+              typePrice: roomType?.basePrice
+            })}
           />
-          <FormControl fullWidth>
-            <InputLabel>Tarifa</InputLabel>
-            <Select
-              label='Tarifa'
-              value={rateId}
-              onChange={e => {
-                const next = Number(e.target.value)
+          {validRates.length > 0 ? (
+            <FormControl fullWidth>
+              <InputLabel shrink>Tarifa</InputLabel>
+              <Select
+                displayEmpty
+                input={<OutlinedInput notched label='Tarifa' />}
+                value={selectedRate ? rateId : ''}
+                onChange={e => {
+                  const value = e.target.value as number | ''
+                  const rate = validRates.find(item => item.id === value)
 
-                setRateId(Number.isFinite(next) ? next : '')
-              }}
-            >
-              <MenuItem value=''>Sin tarifa</MenuItem>
-              {rates.map(rate => (
-                <MenuItem key={rate.uuid} value={rate.id}>
-                  {rate.name} · {formatRoomPrice(rate.price)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+                  setRateId(rate ? rate.id : '')
+                  setPricePerNight(String(rate?.price ?? room?.effectivePrice ?? ''))
+                }}
+              >
+                <MenuItem value=''>Precio de la habitación</MenuItem>
+                {validRates.map(rate => (
+                  <MenuItem key={rate.uuid} value={rate.id}>
+                    {rate.name} · {formatRoomPrice(rate.price)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : null}
         </div>
+        {selectedRate && rateEndsDuringStay(selectedRate, checkOutDate) ? (
+          <Typography variant='body2' color='warning.main'>
+            «{selectedRate.name}» vale hasta el {formatRateDate(selectedRate.validTo)}. La estadía sigue después, pero
+            todas las noches se cobran a {formatRoomPrice(selectedRate.price)}. Si no corresponde, cambie el precio por
+            noche.
+          </Typography>
+        ) : null}
         <Divider />
         {personFields(holder, setHolder, 'Titular')}
         <Divider />
         <div className='flex items-center justify-between'>
           <Typography className='font-medium'>Acompañantes</Typography>
-          <Button size='small' startIcon={<i className='ri-add-line' />} onClick={() => setCompanions(prev => [...prev, emptyPerson()])}>
+          <Button
+            size='small'
+            startIcon={<i className='ri-add-line' />}
+            onClick={() => setCompanions(prev => [...prev, emptyPerson()])}
+          >
             Agregar acompañante
           </Button>
         </div>

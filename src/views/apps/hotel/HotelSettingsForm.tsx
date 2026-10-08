@@ -22,6 +22,7 @@ import type { PropertySettings, UpdatePropertySettingsInput } from '@/types/apps
 import { PROPERTY_CATEGORY_LABELS } from '@/types/apps/hotelSettingsTypes'
 import { getHotelSettingsApiErrorMessage, hotelSettingsApi } from '@/libs/hotelSettingsApi'
 import { getUploadsApiErrorMessage, uploadHotelLogo } from '@/libs/uploadsApi'
+import TimeField from '@/components/date-picker/TimeField'
 import HotelLogoField from './HotelLogoField'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
@@ -476,15 +477,16 @@ const HotelSettingsForm = () => {
                   validate: value => TIME_REGEX.test(value) || 'Usa el formato HH:mm.'
                 }}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
+                  <TimeField
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
                     fullWidth
-                    type='time'
                     label='Check-in (ingreso)'
-                    helperText={errors.checkInTime ? undefined : 'Hora a la que el huésped entra a la habitación.'}
-                    slotProps={{ inputLabel: { shrink: true } }}
                     disabled={isSubmitting}
-                    {...(errors.checkInTime && { error: true, helperText: errors.checkInTime.message })}
+                    error={Boolean(errors.checkInTime)}
+                    helperText={errors.checkInTime?.message || 'Hora a la que el huésped entra a la habitación.'}
                   />
                 )}
               />
@@ -496,15 +498,16 @@ const HotelSettingsForm = () => {
                   validate: value => TIME_REGEX.test(value) || 'Usa el formato HH:mm.'
                 }}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
+                  <TimeField
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
                     fullWidth
-                    type='time'
                     label='Check-out (salida)'
-                    helperText={errors.checkOutTime ? undefined : 'Hora a la que el huésped deja la habitación.'}
-                    slotProps={{ inputLabel: { shrink: true } }}
                     disabled={isSubmitting}
-                    {...(errors.checkOutTime && { error: true, helperText: errors.checkOutTime.message })}
+                    error={Boolean(errors.checkOutTime)}
+                    helperText={errors.checkOutTime?.message || 'Hora a la que el huésped deja la habitación.'}
                   />
                 )}
               />

@@ -55,10 +55,10 @@ const TableFilters = ({
         </Grid>
         <Grid size={{ xs: 12, sm: 4 }}>
           <FormControl fullWidth>
-            <InputLabel id='room-floor-filter'>Nivel</InputLabel>
+            <InputLabel id='room-floor-filter'>Piso</InputLabel>
             <Select
               fullWidth
-              label='Nivel'
+              label='Piso'
               labelId='room-floor-filter'
               value={floorId}
               onChange={e => {

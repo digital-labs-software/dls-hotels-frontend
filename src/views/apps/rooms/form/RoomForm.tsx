@@ -25,6 +25,7 @@ import { toast } from 'react-toastify'
 import type { Locale } from '@configs/i18n'
 import type { Floor } from '@/types/apps/floorTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
+import { capacityLabel } from '@/types/apps/roomTypeTypes'
 import type { RoomStatus } from '@/types/apps/roomsTypes'
 import { formatRoomPrice, ROOM_STATUS_LABELS, ROOM_STATUSES } from '@/types/apps/roomsTypes'
 import { listFloors } from '@/libs/floorsApi'
@@ -39,7 +40,7 @@ type FormValues = {
   floorId: number | ''
   roomTypeId: number | ''
   status: RoomStatus
-  basePrice: string
+  priceOverride: string
   notes: string
 }
 
@@ -81,13 +82,14 @@ const RoomForm = ({ uuid }: Props) => {
       floorId: '',
       roomTypeId: '',
       status: 'AVAILABLE',
-      basePrice: '',
+      priceOverride: '',
       notes: ''
     }
   })
 
   const roomTypeId = useWatch({ control, name: 'roomTypeId' })
   const selectedType = roomTypes.find(type => type.id === Number(roomTypeId))
+  const selectableTypes = roomTypes.filter(type => type.isActive || type.id === Number(roomTypeId))
 
   useEffect(() => {
     if (sessionStatus === 'loading') {
@@ -119,7 +121,7 @@ const RoomForm = ({ uuid }: Props) => {
           floorId: room.floorId,
           roomTypeId: room.roomTypeId,
           status: room.status,
-          basePrice: room.basePrice == null ? '' : String(room.basePrice),
+          priceOverride: room.priceOverride == null ? '' : String(room.priceOverride),
           notes: room.notes ?? ''
         })
       } catch (error) {
@@ -143,12 +145,12 @@ const RoomForm = ({ uuid }: Props) => {
     }
 
     if (data.floorId === '' || data.roomTypeId === '') {
-      toast.error('Selecciona nivel y tipo de habitación.')
+      toast.error('Selecciona piso y tipo de habitación.')
 
       return
     }
 
-    const basePrice = parseOptionalPrice(data.basePrice)
+    const priceOverride = parseOptionalPrice(data.priceOverride)
 
     const savePhoto = async (roomUuid: string) => {
       if (pendingPhoto) {
@@ -170,7 +172,7 @@ const RoomForm = ({ uuid }: Props) => {
           floorId: Number(data.floorId),
           roomTypeId: Number(data.roomTypeId),
           status: data.status,
-          basePrice,
+          priceOverride,
           notes: data.notes.trim() ? data.notes.trim() : null
         })
 
@@ -191,7 +193,7 @@ const RoomForm = ({ uuid }: Props) => {
           roomTypeId: Number(data.roomTypeId),
           number: data.number.trim(),
           status: data.status,
-          basePrice,
+          priceOverride,
           notes: data.notes.trim() ? data.notes.trim() : null
         })
 
@@ -218,6 +220,19 @@ const RoomForm = ({ uuid }: Props) => {
 
   const title = isView ? 'Ver habitación' : isEdit ? 'Editar habitación' : 'Nueva habitación'
 
+  const actions = (
+    <div className='flex flex-wrap max-sm:flex-col gap-4'>
+      <Button variant='outlined' color='secondary' type='button' onClick={goBack}>
+        {isView ? 'Volver' : 'Descartar'}
+      </Button>
+      {!isView ? (
+        <Button variant='contained' type='submit' disabled={isSubmitting}>
+          {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Guardar habitación'}
+        </Button>
+      ) : null}
+    </div>
+  )
+
   if (loading) {
     return (
       <div className='flex justify-center items-center p-10'>
@@ -239,137 +254,18 @@ const RoomForm = ({ uuid }: Props) => {
                 {isView
                   ? 'Consulta los datos de la habitación'
                   : isEdit
-                    ? 'Actualiza tipo, nivel, precio, estado, foto o notas. El número no se puede cambiar.'
+                    ? 'Actualiza tipo, piso, precio, estado, foto o notas. El número no se puede cambiar.'
                     : 'Registra una habitación del hotel. Si eliges foto, se sube después de crearla.'}
               </Typography>
             </div>
-            <div className='flex flex-wrap max-sm:flex-col gap-4'>
-              <Button variant='outlined' color='secondary' type='button' onClick={goBack}>
-                {isView ? 'Volver' : 'Descartar'}
-              </Button>
-              {!isView ? (
-                <Button variant='contained' type='submit' disabled={isSubmitting}>
-                  {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Guardar habitación'}
-                </Button>
-              ) : null}
-            </div>
+            {actions}
           </div>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Card>
-            <CardHeader title='Información de la habitación' />
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card className='bs-full'>
+            <CardHeader title='Organizar' subheader='Qué tipo es, en qué piso está y cómo se encuentra.' />
             <CardContent className='flex flex-col gap-5'>
-              <Controller
-                name='number'
-                control={control}
-                rules={{
-                  required: 'El número es obligatorio.',
-                  maxLength: { value: 20, message: 'Máximo 20 caracteres.' }
-                }}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label='Número'
-                    placeholder='101'
-                    disabled={isView || isEdit || isSubmitting}
-                    {...(errors.number && { error: true, helperText: errors.number.message })}
-                  />
-                )}
-              />
-              <Controller
-                name='basePrice'
-                control={control}
-                rules={{
-                  validate: value => {
-                    if (!value.trim()) {
-                      return true
-                    }
-
-                    if (!/^\d+(\.\d{1,2})?$/.test(value.trim())) {
-                      return 'Usa un número con máximo 2 decimales.'
-                    }
-
-                    return Number(value) >= 0 || 'El precio no puede ser negativo.'
-                  }
-                }}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label='Precio propio (S/ por noche)'
-                    placeholder={selectedType ? String(selectedType.basePrice) : 'Vacío = precio del tipo'}
-                    disabled={isView || isSubmitting}
-                    helperText={
-                      errors.basePrice?.message ||
-                      (selectedType
-                        ? `Si lo dejas vacío se usa el precio del tipo: ${formatRoomPrice(selectedType.basePrice)}`
-                        : 'Si lo dejas vacío se usa el precio del tipo.')
-                    }
-                    {...(errors.basePrice && { error: true })}
-                  />
-                )}
-              />
-              {isView && effectivePrice != null ? (
-                <TextField fullWidth label='Precio efectivo' value={formatRoomPrice(effectivePrice)} disabled />
-              ) : null}
-              <RoomPhotoField
-                photoUrl={removePhoto ? null : photoUrl}
-                disabled={isView || isSubmitting}
-                onFileChange={file => {
-                  setPendingPhoto(file)
-                  setRemovePhoto(false)
-                }}
-                onRemove={() => {
-                  setPendingPhoto(null)
-                  setRemovePhoto(true)
-                  setPhotoUrl(null)
-                }}
-                onInvalidFile={message => toast.error(message)}
-              />
-              <Controller
-                name='notes'
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    multiline
-                    minRows={5}
-                    label='Notas'
-                    placeholder='Vista al mar, balcón privado.'
-                    disabled={isView || isSubmitting}
-                  />
-                )}
-              />
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Card>
-            <CardHeader title='Organizar' />
-            <CardContent className='flex flex-col gap-5'>
-              <FormControl fullWidth error={Boolean(errors.floorId)}>
-                <InputLabel id='room-floor'>Nivel</InputLabel>
-                <Controller
-                  name='floorId'
-                  control={control}
-                  rules={{ required: 'El nivel es obligatorio.' }}
-                  render={({ field }) => (
-                    <Select {...field} label='Nivel' labelId='room-floor' disabled={isView || isSubmitting}>
-                      {floors.map(floor => (
-                        <MenuItem key={floor.uuid} value={floor.id}>
-                          {floor.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  )}
-                />
-                {errors.floorId ? <FormHelperText>{errors.floorId.message}</FormHelperText> : null}
-              </FormControl>
-
               <FormControl fullWidth error={Boolean(errors.roomTypeId)}>
                 <InputLabel id='room-type'>Tipo</InputLabel>
                 <Controller
@@ -378,17 +274,46 @@ const RoomForm = ({ uuid }: Props) => {
                   rules={{ required: 'El tipo es obligatorio.' }}
                   render={({ field }) => (
                     <Select {...field} label='Tipo' labelId='room-type' disabled={isView || isSubmitting}>
-                      {roomTypes
-                        .filter(type => type.isActive || type.id === Number(roomTypeId))
-                        .map(type => (
-                          <MenuItem key={type.uuid} value={type.id}>
-                            {type.name} · {formatRoomPrice(type.basePrice)}
-                          </MenuItem>
-                        ))}
+                      {selectableTypes.map(type => (
+                        <MenuItem key={type.uuid} value={type.id}>
+                          {type.name} · {formatRoomPrice(type.basePrice)}
+                        </MenuItem>
+                      ))}
                     </Select>
                   )}
                 />
-                {errors.roomTypeId ? <FormHelperText>{errors.roomTypeId.message}</FormHelperText> : null}
+                <FormHelperText>
+                  {errors.roomTypeId?.message ||
+                    (selectedType
+                      ? `${capacityLabel(selectedType)} · ${formatRoomPrice(selectedType.basePrice)} por noche.`
+                      : selectableTypes.length === 0
+                        ? 'Primero cree un tipo en la pestaña «Tipos de habitación».'
+                        : 'La categoría. Por ejemplo: Matrimonial, Doble o Triple.')}
+                </FormHelperText>
+              </FormControl>
+
+              <FormControl fullWidth error={Boolean(errors.floorId)}>
+                <InputLabel id='room-floor'>Piso</InputLabel>
+                <Controller
+                  name='floorId'
+                  control={control}
+                  rules={{ required: 'El piso es obligatorio.' }}
+                  render={({ field }) => (
+                    <Select {...field} label='Piso' labelId='room-floor' disabled={isView || isSubmitting}>
+                      {floors.map(floor => (
+                        <MenuItem key={floor.uuid} value={floor.id}>
+                          {floor.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  )}
+                />
+                <FormHelperText>
+                  {errors.floorId?.message ||
+                    (floors.length === 0
+                      ? 'Primero cree un piso en la pestaña «Pisos».'
+                      : 'El piso donde está la habitación.')}
+                </FormHelperText>
               </FormControl>
 
               <FormControl fullWidth>
@@ -407,9 +332,127 @@ const RoomForm = ({ uuid }: Props) => {
                     </Select>
                   )}
                 />
+                <FormHelperText>Si está lista para recibir huéspedes o no.</FormHelperText>
               </FormControl>
             </CardContent>
           </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card className='bs-full'>
+            <CardHeader title='Información de la habitación' subheader='Su número y el precio por noche.' />
+            <CardContent className='flex flex-col gap-5'>
+              <Controller
+                name='number'
+                control={control}
+                rules={{
+                  required: 'El número es obligatorio.',
+                  maxLength: { value: 20, message: 'Máximo 20 caracteres.' }
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label='Número'
+                    placeholder='101'
+                    disabled={isView || isEdit || isSubmitting}
+                    error={Boolean(errors.number)}
+                    helperText={
+                      errors.number?.message || (isEdit ? 'El número no se puede cambiar.' : 'El número que tiene en la puerta.')
+                    }
+                  />
+                )}
+              />
+
+              <Controller
+                name='priceOverride'
+                control={control}
+                rules={{
+                  validate: value => {
+                    if (!value.trim()) {
+                      return true
+                    }
+
+                    if (!/^\d+(\.\d{1,2})?$/.test(value.trim())) {
+                      return 'Usa un número con máximo 2 decimales.'
+                    }
+
+                    return Number(value) >= 0 || 'El precio no puede ser negativo.'
+                  }
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label='Precio propio (S/ por noche, opcional)'
+                    placeholder={selectedType ? String(selectedType.basePrice) : 'Vacío = precio del tipo'}
+                    disabled={isView || isSubmitting}
+                    helperText={
+                      errors.priceOverride?.message ||
+                      (selectedType
+                        ? `Si lo dejas vacío se usa el precio del tipo: ${formatRoomPrice(selectedType.basePrice)}`
+                        : 'Si lo dejas vacío se usa el precio del tipo.')
+                    }
+                    {...(errors.priceOverride && { error: true })}
+                  />
+                )}
+              />
+
+              {isView && effectivePrice != null ? (
+                <TextField fullWidth label='Precio efectivo' value={formatRoomPrice(effectivePrice)} disabled />
+              ) : null}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12 }}>
+          <Card>
+            <CardHeader title='Foto y notas' subheader='Opcional.' />
+            <CardContent>
+              <Grid container spacing={5}>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <RoomPhotoField
+                    photoUrl={removePhoto ? null : photoUrl}
+                    disabled={isView || isSubmitting}
+                    onFileChange={file => {
+                      setPendingPhoto(file)
+                      setRemovePhoto(false)
+                    }}
+                    onRemove={() => {
+                      setPendingPhoto(null)
+                      setRemovePhoto(true)
+                      setPhotoUrl(null)
+                    }}
+                    onInvalidFile={message => toast.error(message)}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }} className='flex flex-col gap-3'>
+                  <Typography variant='body2' color='text.secondary'>
+                    Notas de la habitación
+                  </Typography>
+                  <Controller
+                    name='notes'
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        multiline
+                        minRows={6}
+                        placeholder='Vista al mar, balcón privado.'
+                        disabled={isView || isSubmitting}
+                        slotProps={{ htmlInput: { 'aria-label': 'Notas de la habitación' } }}
+                      />
+                    )}
+                  />
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12 }} className='flex justify-end'>
+          {actions}
         </Grid>
       </Grid>
     </form>

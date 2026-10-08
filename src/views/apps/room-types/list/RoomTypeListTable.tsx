@@ -1,13 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
-import TablePagination from '@mui/material/TablePagination'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import Switch from '@mui/material/Switch'
@@ -18,58 +18,26 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import type { TextFieldProps } from '@mui/material/TextField'
 
-import classnames from 'classnames'
 import { rankItem } from '@tanstack/match-sorter-utils'
-import {
-  createColumnHelper,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-  getFilteredRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFacetedMinMaxValues,
-  getPaginationRowModel,
-  getSortedRowModel
-} from '@tanstack/react-table'
-import type { ColumnDef, FilterFn } from '@tanstack/react-table'
-import type { RankingInfo } from '@tanstack/match-sorter-utils'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
 import type { RoomType } from '@/types/apps/roomTypeTypes'
+import { capacityLabel } from '@/types/apps/roomTypeTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import RoomTypeFormDrawer from './RoomTypeFormDrawer'
 import type { RoomTypeDrawerMode } from './RoomTypeFormDrawer'
+import { MoveButtons, ReorderHint, RowPosition } from '@/components/reorder/ReorderControls'
+import { REORDER_ROW_CLASS, useReorderableRows } from '@/hooks/useReorderableRows'
 import {
   deleteRoomType,
   getRoomType,
   getRoomTypesApiErrorMessage,
   listRoomTypes,
+  reorderRoomTypes,
   updateRoomType
 } from '@/libs/roomTypesApi'
 import tableStyles from '@core/styles/table.module.css'
-
-declare module '@tanstack/table-core' {
-  interface FilterFns {
-    fuzzy: FilterFn<unknown>
-  }
-  interface FilterMeta {
-    itemRank: RankingInfo
-  }
-}
-
-type RoomTypeWithAction = RoomType & {
-  action?: string
-}
-
-const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
-  const itemRank = rankItem(row.getValue(columnId), value)
-
-  addMeta({ itemRank })
-
-  return itemRank.passed
-}
 
 const DebouncedInput = ({
   value: initialValue,
@@ -99,13 +67,10 @@ const DebouncedInput = ({
   return <TextField {...props} value={value} onChange={e => setValue(e.target.value)} size='small' />
 }
 
-const columnHelper = createColumnHelper<RoomTypeWithAction>()
-
 const RoomTypeListTable = () => {
   const { data: session, status } = useSession()
   const propertyId = session?.user?.propertyId ?? 1
 
-  const [data, setData] = useState<RoomType[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -114,6 +79,33 @@ const RoomTypeListTable = () => {
   const [roomTypeToDelete, setRoomTypeToDelete] = useState<RoomType | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [pendingUuid, setPendingUuid] = useState<string | null>(null)
+
+  const searching = globalFilter.trim() !== ''
+
+  const saveOrder = useCallback((uuids: string[]) => reorderRoomTypes(propertyId, uuids), [propertyId])
+
+  const reloadRef = useRef<() => void>(() => {})
+
+  const handleOrderError = useCallback((error: unknown) => {
+    toast.error(getRoomTypesApiErrorMessage(error, 'No se pudo guardar el orden. Se recargará la lista.'))
+    reloadRef.current()
+  }, [])
+
+  const {
+    listRef,
+    rows: data,
+    setRows: setData,
+    moveRow,
+    saving
+  } = useReorderableRows<RoomType>({ save: saveOrder, onError: handleOrderError, disabled: searching })
+
+  const isVisible = (roomType: RoomType) => {
+    const search = globalFilter.trim()
+
+    return !search || rankItem(roomType.name, search).passed || rankItem(roomType.code, search).passed
+  }
+
+  const visibleCount = data.filter(isVisible).length
 
   const fetchRoomTypes = useCallback(async () => {
     setLoading(true)
@@ -128,7 +120,11 @@ const RoomTypeListTable = () => {
     } finally {
       setLoading(false)
     }
-  }, [propertyId])
+  }, [propertyId, setData])
+
+  useEffect(() => {
+    reloadRef.current = fetchRoomTypes
+  }, [fetchRoomTypes])
 
   useEffect(() => {
     if (status === 'loading') {
@@ -191,116 +187,12 @@ const RoomTypeListTable = () => {
   }
 
   const handleDrawerSuccess = (roomType: RoomType) => {
-    setData(prev => {
-      const exists = prev.some(item => item.uuid === roomType.uuid)
-
-      if (exists) {
-        return prev
-          .map(item => (item.uuid === roomType.uuid ? roomType : item))
-          .sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name))
-      }
-
-      return [...prev, roomType].sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name))
-    })
+    setData(prev =>
+      prev.some(item => item.uuid === roomType.uuid)
+        ? prev.map(item => (item.uuid === roomType.uuid ? roomType : item))
+        : [...prev, roomType]
+    )
   }
-
-  const columns = useMemo<ColumnDef<RoomTypeWithAction, any>[]>(
-    () => [
-      columnHelper.accessor('name', {
-        header: 'Tipo',
-        cell: ({ row }) => (
-          <Typography
-            color='text.primary'
-            className='font-medium cursor-pointer hover:text-primary'
-            onClick={() => openDrawer('view', row.original)}
-          >
-            {row.original.name}
-          </Typography>
-        )
-      }),
-      columnHelper.accessor('basePrice', {
-        header: 'Precio',
-        cell: ({ row }) => <Typography>{formatRoomPrice(row.original.basePrice)}</Typography>
-      }),
-      columnHelper.accessor('maxAdults', {
-        header: 'Ocupación',
-        cell: ({ row }) => (
-          <Typography>
-            {row.original.maxAdults} ad.
-            {row.original.maxChildren ? ` / ${row.original.maxChildren} ni.` : ''}
-            {row.original.maxOccupancy != null ? ` · máx. ${row.original.maxOccupancy}` : ''}
-          </Typography>
-        )
-      }),
-      columnHelper.accessor('displayOrder', {
-        header: 'Orden',
-        cell: ({ row }) => <Typography>{row.original.displayOrder}</Typography>
-      }),
-      columnHelper.accessor('isActive', {
-        header: 'Estado',
-        cell: ({ row }) => (
-          <FormControlLabel
-            sx={{ m: 0 }}
-            control={
-              <Switch
-                size='small'
-                checked={row.original.isActive}
-                disabled={pendingUuid === row.original.uuid}
-                onChange={(_, checked) => handleToggleActive(row.original, checked)}
-              />
-            }
-            label={row.original.isActive ? 'Activo' : 'Inactivo'}
-            title='Un tipo inactivo no aparece al crear habitaciones ni reservas'
-          />
-        )
-      }),
-      columnHelper.accessor('action', {
-        header: 'Acciones',
-        cell: ({ row }) => (
-          <div className='flex items-center'>
-            <IconButton size='small' onClick={() => openDrawer('view', row.original)} title='Ver'>
-              <i className='ri-eye-line text-textSecondary' />
-            </IconButton>
-            <IconButton size='small' onClick={() => openDrawer('edit', row.original)} title='Editar'>
-              <i className='ri-edit-box-line text-textSecondary' />
-            </IconButton>
-            <IconButton size='small' onClick={() => setRoomTypeToDelete(row.original)} title='Eliminar'>
-              <i className='ri-delete-bin-7-line text-textSecondary' />
-            </IconButton>
-          </div>
-        ),
-        enableSorting: false
-      })
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, pendingUuid]
-  )
-
-  const table = useReactTable({
-    data,
-    columns,
-    filterFns: {
-      fuzzy: fuzzyFilter
-    },
-    state: {
-      globalFilter
-    },
-    initialState: {
-      pagination: {
-        pageSize: 10
-      }
-    },
-    enableRowSelection: false,
-    globalFilterFn: fuzzyFilter,
-    getCoreRowModel: getCoreRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-    getFacetedMinMaxValues: getFacetedMinMaxValues()
-  })
 
   return (
     <>
@@ -335,78 +227,101 @@ const RoomTypeListTable = () => {
           </div>
         </CardContent>
 
-        {loading ? (
+        <ReorderHint searching={searching} saving={saving} count={data.length} />
+
+        {loading && data.length === 0 ? (
           <div className='flex justify-center items-center p-10'>
             <CircularProgress size={32} />
           </div>
-        ) : (
-          <>
-            <div className='overflow-x-auto'>
-              <table className={tableStyles.table}>
-                <thead>
-                  {table.getHeaderGroups().map(headerGroup => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map(header => (
-                        <th key={header.id}>
-                          {header.isPlaceholder ? null : (
-                            <div
-                              className={classnames({
-                                'flex items-center': header.column.getIsSorted(),
-                                'cursor-pointer select-none': header.column.getCanSort()
-                              })}
-                              onClick={header.column.getToggleSortingHandler()}
-                            >
-                              {flexRender(header.column.columnDef.header, header.getContext())}
-                              {{
-                                asc: <i className='ri-arrow-up-s-line text-xl' />,
-                                desc: <i className='ri-arrow-down-s-line text-xl' />
-                              }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
-                            </div>
-                          )}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                {table.getFilteredRowModel().rows.length === 0 ? (
-                  <tbody>
-                    <tr>
-                      <td colSpan={table.getVisibleFlatColumns().length} className='text-center'>
-                        No hay tipos de habitación registrados
-                      </td>
-                    </tr>
-                  </tbody>
-                ) : (
-                  <tbody>
-                    {table
-                      .getRowModel()
-                      .rows.slice(0, table.getState().pagination.pageSize)
-                      .map(row => (
-                        <tr key={row.id}>
-                          {row.getVisibleCells().map(cell => (
-                            <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
-                          ))}
-                        </tr>
-                      ))}
-                  </tbody>
-                )}
-              </table>
-            </div>
-            <TablePagination
-              rowsPerPageOptions={[10, 25, 50, 100]}
-              component='div'
-              className='border-bs'
-              count={table.getFilteredRowModel().rows.length}
-              rowsPerPage={table.getState().pagination.pageSize}
-              page={table.getState().pagination.pageIndex}
-              labelRowsPerPage='Filas:'
-              onPageChange={(_, page) => {
-                table.setPageIndex(page)
-              }}
-              onRowsPerPageChange={e => table.setPageSize(Number(e.target.value))}
-            />
-          </>
-        )}
+        ) : null}
+
+        <div className='overflow-x-auto' style={loading && data.length === 0 ? { display: 'none' } : undefined}>
+          <table className={tableStyles.table}>
+            <thead>
+              <tr>
+                <th className='is-[110px]'>#</th>
+                <th>Tipo</th>
+                <th>Abreviatura</th>
+                <th>Precio</th>
+                <th>Capacidad</th>
+                <th>Estado</th>
+                <th className='is-[110px]'>Mover</th>
+                <th className='is-[150px]'>Acciones</th>
+              </tr>
+            </thead>
+            <tbody ref={listRef}>
+              {data.map((roomType, index) => (
+                <tr
+                  key={roomType.uuid}
+                  className={REORDER_ROW_CLASS}
+                  style={isVisible(roomType) ? undefined : { display: 'none' }}
+                >
+                  <td>
+                    <RowPosition position={index + 1} disabled={searching} />
+                  </td>
+                  <td>
+                    <Typography
+                      color='text.primary'
+                      className='font-medium cursor-pointer hover:text-primary'
+                      onClick={() => openDrawer('view', roomType)}
+                    >
+                      {roomType.name}
+                    </Typography>
+                  </td>
+                  <td>
+                    <Chip variant='tonal' size='small' color='primary' label={roomType.code} />
+                  </td>
+                  <td>
+                    <Typography>{formatRoomPrice(roomType.basePrice)}</Typography>
+                  </td>
+                  <td>
+                    <Typography>{capacityLabel(roomType)}</Typography>
+                  </td>
+                  <td>
+                    <FormControlLabel
+                      sx={{ m: 0 }}
+                      control={
+                        <Switch
+                          size='small'
+                          checked={roomType.isActive}
+                          disabled={pendingUuid === roomType.uuid}
+                          onChange={(_, checked) => handleToggleActive(roomType, checked)}
+                        />
+                      }
+                      label={roomType.isActive ? 'Activo' : 'Inactivo'}
+                      title='Un tipo inactivo no aparece al crear habitaciones ni reservas'
+                    />
+                  </td>
+                  <td>
+                    <MoveButtons index={index} count={data.length} disabled={searching} onMove={moveRow} />
+                  </td>
+                  <td>
+                    <div className='flex items-center'>
+                      <IconButton size='small' onClick={() => openDrawer('view', roomType)} title='Ver'>
+                        <i className='ri-eye-line text-textSecondary' />
+                      </IconButton>
+                      <IconButton size='small' onClick={() => openDrawer('edit', roomType)} title='Editar'>
+                        <i className='ri-edit-box-line text-textSecondary' />
+                      </IconButton>
+                      <IconButton size='small' onClick={() => setRoomTypeToDelete(roomType)} title='Eliminar'>
+                        <i className='ri-delete-bin-7-line text-textSecondary' />
+                      </IconButton>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {visibleCount === 0 ? (
+                <tr>
+                  <td colSpan={8} className='text-center'>
+                    {data.length > 0
+                      ? 'Ningún tipo coincide con la búsqueda.'
+                      : 'No hay tipos de habitación registrados.'}
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </Card>
 
       <RoomTypeFormDrawer
@@ -414,6 +329,7 @@ const RoomTypeListTable = () => {
         mode={drawerMode}
         propertyId={propertyId}
         roomType={selectedRoomType}
+        roomTypes={data}
         onClose={() => setDrawerOpen(false)}
         onSuccess={handleDrawerSuccess}
       />

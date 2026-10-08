@@ -65,7 +65,7 @@ const normalizeRoom = (room: Room): Room => ({
   floorName: room.floorName || '',
   photoUrl: room.photoUrl ?? null,
   notes: room.notes ?? null,
-  basePrice: toNullableNumber(room.basePrice),
+  priceOverride: toNullableNumber(room.priceOverride),
   effectivePrice: toNumber(room.effectivePrice),
   status: normalizeStatus(room.status)
 })
@@ -123,7 +123,10 @@ const toPayload = (body: CreateRoomDto | UpdateRoomDto) => {
   if (body.status !== undefined) payload.status = body.status
   if (body.photoUrl !== undefined) payload.photoUrl = emptyToNull(body.photoUrl)
   if (body.notes !== undefined) payload.notes = emptyToNull(body.notes)
-  if (body.basePrice !== undefined) payload.basePrice = body.basePrice === null ? null : Number(body.basePrice)
+
+  if (body.priceOverride !== undefined) {
+    payload.priceOverride = body.priceOverride === null ? null : Number(body.priceOverride)
+  }
 
   return payload
 }

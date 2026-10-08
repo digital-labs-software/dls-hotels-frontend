@@ -18,7 +18,7 @@ import RoomTypeListClient from '@views/apps/room-types/list/RoomTypeListClient'
 import RoomListClient from '@views/apps/rooms/list/RoomListClient'
 import { getLocalizedUrl } from '@/utils/i18n'
 
-const ROOM_TABS = ['rooms', 'room-types', 'floors', 'rates'] as const
+const ROOM_TABS = ['rooms', 'rates', 'room-types', 'floors'] as const
 
 type RoomTab = (typeof ROOM_TABS)[number]
 
@@ -71,6 +71,15 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
             <Tab
               label={
                 <div className='flex items-center gap-1.5'>
+                  <i className='ri-money-dollar-circle-line text-lg' />
+                  Tarifas
+                </div>
+              }
+              value='rates'
+            />
+            <Tab
+              label={
+                <div className='flex items-center gap-1.5'>
                   <i className='ri-price-tag-3-line text-lg' />
                   Tipos de habitación
                 </div>
@@ -81,19 +90,10 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
               label={
                 <div className='flex items-center gap-1.5'>
                   <i className='ri-building-4-line text-lg' />
-                  Niveles
+                  Pisos
                 </div>
               }
               value='floors'
-            />
-            <Tab
-              label={
-                <div className='flex items-center gap-1.5'>
-                  <i className='ri-money-dollar-circle-line text-lg' />
-                  Tarifas
-                </div>
-              }
-              value='rates'
             />
           </CustomTabList>
 

@@ -273,6 +273,14 @@ const StyledReactDatePicker = styled(Box)<BoxProps>(({ theme }) => {
           }
         },
       '& .react-datepicker__header__dropdown': {
+        '& .react-datepicker__month-read-view, & .react-datepicker__year-read-view': {
+          border: 0,
+          padding: 0,
+          background: 'transparent',
+          color: 'inherit',
+          font: 'inherit',
+          cursor: 'pointer'
+        },
         '& .react-datepicker__month-dropdown-container:not(:last-child)': {
           marginRight: theme.spacing(8)
         },

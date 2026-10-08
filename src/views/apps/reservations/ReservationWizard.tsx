@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -15,9 +15,11 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
+import OutlinedInput from '@mui/material/OutlinedInput'
 import Select from '@mui/material/Select'
 import Step from '@mui/material/Step'
 import StepLabel from '@mui/material/StepLabel'
@@ -32,6 +34,13 @@ import { toast } from 'react-toastify'
 
 import type { Company, Guest } from '@/types/apps/clientsTypes'
 import type { Rate } from '@/types/apps/rateTypes'
+import {
+  formatRateDate,
+  isRateValidOn,
+  priceSourceLabel,
+  rateEndsDuringStay,
+  ratesValidOn
+} from '@/types/apps/rateTypes'
 import type {
   AvailabilityRoomType,
   CreateReservationRoomBody,
@@ -42,7 +51,6 @@ import type {
 import {
   addDays,
   EXTERNAL_CODE_SOURCES,
-  isRateValidOn,
   nightsBetween,
   PAYMENT_LABELS,
   PAYMENT_METHODS,
@@ -50,6 +58,8 @@ import {
   SOURCE_OPTIONS
 } from '@/types/apps/reservationsTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
+import { capacityLabel } from '@/types/apps/roomTypeTypes'
+import DateField from '@/components/date-picker/DateField'
 import GuestPicker from '@views/apps/front-desk/GuestPicker'
 import CompanyPicker from './CompanyPicker'
 import CreateCompanyDialog from './CreateCompanyDialog'
@@ -61,6 +71,7 @@ type RoomDraft = {
   roomTypeId: number | ''
   roomId: number | '' | 'later'
   rateId: number | ''
+  rateNotice: string
   pricePerNight: string
   checkInDate: string
   checkOutDate: string
@@ -82,6 +93,7 @@ const emptyRoom = (today: string, prefill?: NewReservationPrefill | null): RoomD
   roomTypeId: prefill?.roomTypeId ?? '',
   roomId: prefill?.roomId ?? 'later',
   rateId: '',
+  rateNotice: '',
   pricePerNight: '',
   checkInDate: prefill?.checkInDate || today,
   checkOutDate: prefill?.checkOutDate || addDays(prefill?.checkInDate || today, 1),
@@ -96,6 +108,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   const [rooms, setRooms] = useState<RoomDraft[]>([emptyRoom(today, prefill)])
   const [availability, setAvailability] = useState<AvailabilityRoomType[]>([])
   const [ratesByType, setRatesByType] = useState<Record<number, Rate[]>>({})
+  const requestedRateTypes = useRef(new Set<number>())
   const [loadingAvailability, setLoadingAvailability] = useState(false)
   const [guest, setGuest] = useState<Guest | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
@@ -124,6 +137,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     setRooms([emptyRoom(today, prefill)])
     setAvailability([])
     setRatesByType({})
+    requestedRateTypes.current.clear()
     setGuest(null)
     setCompany(null)
     setSource('PHONE')
@@ -178,22 +192,98 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, primary?.checkInDate, primary?.checkOutDate, primary?.adults, primary?.children])
 
-  const loadRates = async (roomTypeId: number, checkInDate: string) => {
-    if (ratesByType[roomTypeId]) {
+  const loadRates = async (roomTypeId: number) => {
+    if (requestedRateTypes.current.has(roomTypeId)) {
       return
     }
+
+    requestedRateTypes.current.add(roomTypeId)
 
     try {
       const page = await reservationsApi.rates(propertyId, roomTypeId)
 
-      setRatesByType(current => ({
-        ...current,
-        [roomTypeId]: page.data.filter(rate => isRateValidOn(rate.validFrom, rate.validTo, checkInDate))
-      }))
+      setRatesByType(current => ({ ...current, [roomTypeId]: page.data }))
     } catch {
       setRatesByType(current => ({ ...current, [roomTypeId]: [] }))
     }
   }
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    rooms.forEach(room => {
+      if (room.roomTypeId) {
+        loadRates(Number(room.roomTypeId))
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, rooms])
+
+  const ratesForRoom = (room: RoomDraft) =>
+    room.roomTypeId ? ratesValidOn(ratesByType[Number(room.roomTypeId)] ?? [], room.checkInDate) : []
+
+  const roomPriceFor = (room: RoomDraft) => {
+    const type = availability.find(item => item.roomTypeId === Number(room.roomTypeId))
+    const free = type?.freeRooms.find(item => item.id === room.roomId)
+
+    return free?.effectivePrice ?? type?.basePrice
+  }
+
+  useEffect(() => {
+    setRooms(current => {
+      const missing = current.some(room => room.roomTypeId && !room.pricePerNight && roomPriceFor(room) !== undefined)
+
+      if (!missing) {
+        return current
+      }
+
+      return current.map(room => {
+        const price = room.roomTypeId && !room.pricePerNight ? roomPriceFor(room) : undefined
+
+        return price === undefined ? room : { ...room, pricePerNight: String(price) }
+      })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availability])
+
+  useEffect(() => {
+    const expired = new Map<string, Rate>()
+
+    rooms.forEach(room => {
+      const rate =
+        room.rateId === '' ? undefined : ratesByType[Number(room.roomTypeId)]?.find(item => item.id === room.rateId)
+
+      if (rate && !isRateValidOn(rate, room.checkInDate)) {
+        expired.set(room.key, rate)
+      }
+    })
+
+    if (expired.size === 0) {
+      return
+    }
+
+    setRooms(current =>
+      current.map(room => {
+        const rate = expired.get(room.key)
+
+        if (!rate) {
+          return room
+        }
+
+        const price = roomPriceFor(room)
+
+        return {
+          ...room,
+          rateId: '',
+          rateNotice: `Se quitó la tarifa «${rate.name}» porque no aplica para estas fechas. Se usa el precio de la habitación.`,
+          pricePerNight: price === undefined ? room.pricePerNight : String(price)
+        }
+      })
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rooms, ratesByType])
 
   const updateRoom = (key: string, patch: Partial<RoomDraft>) => {
     setRooms(current => current.map(room => (room.key === key ? { ...room, ...patch } : room)))
@@ -209,16 +299,21 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   }, [rooms])
 
   const handleSelectType = (room: RoomDraft, type: AvailabilityRoomType) => {
-    const firstFree = type.freeRooms[0]
-    const nextPrice = firstFree?.effectivePrice ?? type.basePrice
+    const prefilled =
+      prefill?.roomId && prefill.roomTypeId === type.roomTypeId
+        ? type.freeRooms.find(free => free.id === prefill.roomId)
+        : undefined
+
+    const chosen = prefilled ?? type.freeRooms[0]
 
     updateRoom(room.key, {
       roomTypeId: type.roomTypeId,
-      roomId: prefill?.roomId && prefill.roomTypeId === type.roomTypeId ? prefill.roomId : firstFree?.id ?? 'later',
-      pricePerNight: String(nextPrice),
-      rateId: ''
+      roomId: prefill?.roomId && prefill.roomTypeId === type.roomTypeId ? prefill.roomId : (chosen?.id ?? 'later'),
+      pricePerNight: String(chosen?.effectivePrice ?? type.basePrice),
+      rateId: '',
+      rateNotice: ''
     })
-    loadRates(type.roomTypeId, room.checkInDate)
+    loadRates(type.roomTypeId)
   }
 
   const handleSelectRoom = (room: RoomDraft, roomId: number | 'later', type?: AvailabilityRoomType) => {
@@ -226,16 +321,21 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
     updateRoom(room.key, {
       roomId,
-      pricePerNight: room.pricePerNight || String(free?.effectivePrice ?? type?.basePrice ?? '')
+      pricePerNight:
+        room.rateId === '' || !room.pricePerNight
+          ? String(free?.effectivePrice ?? type?.basePrice ?? room.pricePerNight)
+          : room.pricePerNight
     })
   }
 
   const handleSelectRate = (room: RoomDraft, rateId: number | '') => {
     const rate = ratesByType[Number(room.roomTypeId)]?.find(item => item.id === rateId)
+    const roomPrice = roomPriceFor(room)
 
     updateRoom(room.key, {
       rateId,
-      pricePerNight: rate ? String(rate.price) : room.pricePerNight
+      rateNotice: '',
+      pricePerNight: rate ? String(rate.price) : roomPrice !== undefined ? String(roomPrice) : room.pricePerNight
     })
   }
 
@@ -312,7 +412,10 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
       toast.error(message)
 
-      if (String((error as { statusCode?: number })?.statusCode) === '409' || message.toLowerCase().includes('reservad')) {
+      if (
+        String((error as { statusCode?: number })?.statusCode) === '409' ||
+        message.toLowerCase().includes('reservad')
+      ) {
         setStep(0)
         loadAvailability()
       }
@@ -323,7 +426,18 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
   const renderRoomStep = (room: RoomDraft, index: number) => {
     const selectedType = availability.find(type => type.roomTypeId === room.roomTypeId)
-    const rates = room.roomTypeId ? ratesByType[Number(room.roomTypeId)] ?? [] : []
+    const rates = ratesForRoom(room)
+    const selectedRate = rates.find(rate => rate.id === room.rateId)
+    const selectedFree = selectedType?.freeRooms.find(free => free.id === room.roomId)
+
+    const priceSource = priceSourceLabel({
+      price: room.pricePerNight,
+      rate: selectedRate,
+      roomNumber: selectedFree?.number,
+      roomPrice: selectedFree?.effectivePrice,
+      typeName: selectedType?.roomTypeName,
+      typePrice: selectedType?.basePrice
+    })
 
     return (
       <div key={room.key} className='flex flex-col gap-4'>
@@ -338,19 +452,23 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
         </div>
         {index === 0 ? (
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-            <TextField
-              type='date'
+            <DateField
+              fullWidth
               label='Check-in (ingreso)'
               value={room.checkInDate}
-              onChange={e => updateRoom(room.key, { checkInDate: e.target.value, checkOutDate: addDays(e.target.value, 1) })}
-              slotProps={{ inputLabel: { shrink: true } }}
+              onChange={value =>
+                updateRoom(room.key, {
+                  checkInDate: value,
+                  checkOutDate: value ? addDays(value, 1) : room.checkOutDate
+                })
+              }
             />
-            <TextField
-              type='date'
+            <DateField
+              fullWidth
               label='Check-out (salida)'
               value={room.checkOutDate}
-              onChange={e => updateRoom(room.key, { checkOutDate: e.target.value })}
-              slotProps={{ inputLabel: { shrink: true } }}
+              minDate={room.checkInDate ? addDays(room.checkInDate, 1) : undefined}
+              onChange={value => updateRoom(room.key, { checkOutDate: value })}
             />
             <TextField
               label='Adultos'
@@ -367,19 +485,18 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
           </div>
         ) : (
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-            <TextField
-              type='date'
+            <DateField
+              fullWidth
               label='Check-in (ingreso)'
               value={room.checkInDate}
-              onChange={e => updateRoom(room.key, { checkInDate: e.target.value })}
-              slotProps={{ inputLabel: { shrink: true } }}
+              onChange={value => updateRoom(room.key, { checkInDate: value })}
             />
-            <TextField
-              type='date'
+            <DateField
+              fullWidth
               label='Check-out (salida)'
               value={room.checkOutDate}
-              onChange={e => updateRoom(room.key, { checkOutDate: e.target.value })}
-              slotProps={{ inputLabel: { shrink: true } }}
+              minDate={room.checkInDate ? addDays(room.checkInDate, 1) : undefined}
+              onChange={value => updateRoom(room.key, { checkOutDate: value })}
             />
           </div>
         )}
@@ -406,7 +523,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                       <Typography fontWeight={600}>{type.roomTypeName}</Typography>
                       <Typography variant='body2'>{formatRoomPrice(type.basePrice)} / noche</Typography>
                       <Typography variant='caption' color='text.secondary'>
-                        {type.availableCount} disponibles · {type.maxAdults} adultos + {type.maxChildren} niños
+                        {type.availableCount} disponibles · {capacityLabel(type)}
                       </Typography>
                     </CardContent>
                   </CardActionArea>
@@ -441,30 +558,44 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                 ))}
               </Select>
             </FormControl>
-            <FormControl fullWidth>
-              <InputLabel id={`rate-${room.key}`}>Tarifa</InputLabel>
-              <Select
-                labelId={`rate-${room.key}`}
-                label='Tarifa'
-                value={room.rateId}
-                onChange={e => {
-                  const next = Number(e.target.value)
+            {rates.length > 0 ? (
+              <FormControl fullWidth>
+                <InputLabel id={`rate-${room.key}`} shrink>
+                  Tarifa
+                </InputLabel>
+                <Select
+                  labelId={`rate-${room.key}`}
+                  displayEmpty
+                  input={<OutlinedInput notched label='Tarifa' />}
+                  value={selectedRate ? room.rateId : ''}
+                  onChange={e => {
+                    const value = e.target.value as number | ''
 
-                  handleSelectRate(room, Number.isFinite(next) ? next : '')
-                }}
-              >
-                <MenuItem value=''>Sin tarifa</MenuItem>
-                {rates.map(rate => (
-                  <MenuItem key={rate.id} value={rate.id}>
-                    {rate.name} · {formatRoomPrice(rate.price)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                    handleSelectRate(room, value === '' ? '' : Number(value))
+                  }}
+                >
+                  <MenuItem value=''>Precio de la habitación</MenuItem>
+                  {rates.map(rate => (
+                    <MenuItem key={rate.id} value={rate.id}>
+                      {rate.name} · {formatRoomPrice(rate.price)}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {selectedRate && rateEndsDuringStay(selectedRate, room.checkOutDate) ? (
+                  <FormHelperText sx={{ color: 'warning.main' }}>
+                    «{selectedRate.name}» vale hasta el {formatRateDate(selectedRate.validTo)}. La estadía sigue
+                    después, pero todas las noches se cobran a {formatRoomPrice(selectedRate.price)}. Si no corresponde,
+                    cambie el precio por noche.
+                  </FormHelperText>
+                ) : null}
+              </FormControl>
+            ) : null}
             <TextField
               label='Precio por noche'
               value={room.pricePerNight}
-              onChange={e => updateRoom(room.key, { pricePerNight: e.target.value })}
+              onChange={e => updateRoom(room.key, { pricePerNight: e.target.value, rateNotice: '' })}
+              helperText={room.rateNotice || priceSource}
+              slotProps={{ formHelperText: { sx: room.rateNotice ? { color: 'warning.main' } : undefined } }}
             />
             <Typography variant='body2'>
               {nightsBetween(room.checkInDate, room.checkOutDate)} noches · Subtotal{' '}
@@ -478,13 +609,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
   return (
     <>
-      <Dialog
-        open={open}
-        onClose={() => !saving && onClose()}
-        fullWidth
-        maxWidth='md'
-        fullScreen={isMobile}
-      >
+      <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='md' fullScreen={isMobile}>
         <DialogTitle>Nueva reserva</DialogTitle>
         <DialogContent className='flex flex-col gap-5 pt-4'>
           <Stepper activeStep={step} alternativeLabel={!isMobile} orientation={isMobile ? 'horizontal' : 'horizontal'}>
@@ -508,7 +633,12 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
               {rooms.map(renderRoomStep)}
               <Button
                 variant='outlined'
-                onClick={() => setRooms(current => [...current, emptyRoom(today, { checkInDate: primary.checkInDate, checkOutDate: primary.checkOutDate })])}
+                onClick={() =>
+                  setRooms(current => [
+                    ...current,
+                    emptyRoom(today, { checkInDate: primary.checkInDate, checkOutDate: primary.checkOutDate })
+                  ])
+                }
               >
                 + Agregar otra habitación
               </Button>
@@ -517,18 +647,9 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
           {step === 1 ? (
             <div className='flex flex-col gap-4'>
-              <GuestPicker
-                propertyId={propertyId}
-                minChars={2}
-                limit={10}
-                label='Huésped'
-                onSelect={setGuest}
-              />
+              <GuestPicker propertyId={propertyId} minChars={2} limit={10} label='Huésped' onSelect={setGuest} />
               {guest ? (
-                <Chip
-                  label={`${guest.person.firstName} ${guest.person.lastName}`}
-                  onDelete={() => setGuest(null)}
-                />
+                <Chip label={`${guest.person.firstName} ${guest.person.lastName}`} onDelete={() => setGuest(null)} />
               ) : (
                 <Button onClick={() => setCreateGuestOpen(true)}>+ Nuevo huésped</Button>
               )}
@@ -559,7 +680,11 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                 </Select>
               </FormControl>
               {EXTERNAL_CODE_SOURCES.includes(source) ? (
-                <TextField label='Código externo' value={externalCode} onChange={e => setExternalCode(e.target.value)} />
+                <TextField
+                  label='Código externo'
+                  value={externalCode}
+                  onChange={e => setExternalCode(e.target.value)}
+                />
               ) : null}
               <FormControlLabel
                 control={<Switch checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />}

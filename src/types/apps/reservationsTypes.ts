@@ -424,7 +424,3 @@ export function matchesSearch(booking: PlanningBooking, search: string) {
 
   return needle.split(/\s+/).every(part => haystack.includes(part))
 }
-
-export function isRateValidOn(validFrom: string | null, validTo: string | null, checkInDate: string) {
-  return (validFrom ?? '0000') <= checkInDate && checkInDate <= (validTo ?? '9999')
-}

@@ -32,6 +32,7 @@ import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup
 import { useExistingRecord } from '@/hooks/useExistingRecord'
 import { DocumentLookupAdornment, DocumentLookupHelper } from '@/components/document-lookup/DocumentLookupHelper'
 import ExistingRecordAlert from '@/components/document-lookup/ExistingRecordAlert'
+import DateField, { todayIso } from '@/components/date-picker/DateField'
 
 type FormValues = {
   firstName: string
@@ -497,12 +498,16 @@ const GuestForm = ({ uuid }: Props) => {
                       name='birthDate'
                       control={control}
                       render={({ field }) => (
-                        <TextField
-                          {...field}
+                        <DateField
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
                           fullWidth
-                          type='date'
+                          clearable
+                          yearDropdown
+                          maxDate={todayIso()}
                           label='Fecha de nacimiento'
-                          slotProps={{ inputLabel: { shrink: true } }}
                           disabled={isView || isSubmitting}
                         />
                       )}

@@ -33,6 +33,7 @@ import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
 import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup'
 import { DocumentLookupAdornment, DocumentLookupHelper } from '@/components/document-lookup/DocumentLookupHelper'
+import DateField, { todayIso } from '@/components/date-picker/DateField'
 
 type FormValues = {
   firstName: string
@@ -98,6 +99,7 @@ const EmployeeForm = ({ uuid }: Props) => {
   const documentType = watch('documentType')
   const documentNumber = watch('documentNumber')
   const roleIds = watch('roleIds')
+  const hireDate = watch('hireDate')
   const isDni = documentType === 'DNI'
 
   const dniLookup = useDocumentLookup('DNI', data => {
@@ -454,12 +456,16 @@ const EmployeeForm = ({ uuid }: Props) => {
                       name='birthDate'
                       control={control}
                       render={({ field }) => (
-                        <TextField
-                          {...field}
+                        <DateField
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
                           fullWidth
-                          type='date'
+                          clearable
+                          yearDropdown
+                          maxDate={todayIso()}
                           label='Fecha de nacimiento'
-                          slotProps={{ inputLabel: { shrink: true } }}
                           disabled={isView || isSubmitting}
                         />
                       )}
@@ -494,12 +500,15 @@ const EmployeeForm = ({ uuid }: Props) => {
                 name='hireDate'
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
+                  <DateField
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
                     fullWidth
-                    type='date'
+                    clearable
+                    yearDropdown
                     label='Fecha de ingreso'
-                    slotProps={{ inputLabel: { shrink: true } }}
                     disabled={isView || isSubmitting}
                   />
                 )}
@@ -508,12 +517,16 @@ const EmployeeForm = ({ uuid }: Props) => {
                 name='terminationDate'
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
+                  <DateField
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
                     fullWidth
-                    type='date'
+                    clearable
+                    yearDropdown
+                    minDate={hireDate || undefined}
                     label='Fecha de salida'
-                    slotProps={{ inputLabel: { shrink: true } }}
                     disabled={isView || isSubmitting}
                   />
                 )}

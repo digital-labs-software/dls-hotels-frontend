@@ -25,6 +25,7 @@ import { BOOKING_STATUS_LABELS, SOURCE_LABELS, formatPlanningDate } from '@/type
 import type { Reservation } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
+import DateField from '@/components/date-picker/DateField'
 
 type Props = {
   propertyId: number
@@ -94,25 +95,24 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
             ))}
           </Select>
         </FormControl>
-        <TextField
-          type='date'
+        <DateField
           label='Desde'
           value={from}
-          onChange={e => {
+          clearable
+          onChange={value => {
             setPage(1)
-            setFrom(e.target.value)
+            setFrom(value)
           }}
-          slotProps={{ inputLabel: { shrink: true } }}
         />
-        <TextField
-          type='date'
+        <DateField
           label='Hasta'
           value={to}
-          onChange={e => {
+          clearable
+          minDate={from || undefined}
+          onChange={value => {
             setPage(1)
-            setTo(e.target.value)
+            setTo(value)
           }}
-          slotProps={{ inputLabel: { shrink: true } }}
         />
         <TextField
           label='Buscar'

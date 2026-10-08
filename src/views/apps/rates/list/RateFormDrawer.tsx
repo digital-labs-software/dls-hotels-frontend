@@ -25,6 +25,7 @@ import type { RoomType } from '@/types/apps/roomTypeTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { createRate, getRatesApiErrorMessage, updateRate } from '@/libs/ratesApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
+import DateField from '@/components/date-picker/DateField'
 
 export type RateDrawerMode = 'create' | 'edit' | 'view'
 
@@ -262,13 +263,15 @@ const RateFormDrawer = (props: Props) => {
             name='validFrom'
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
+              <DateField
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
                 fullWidth
-                type='date'
+                clearable
                 label='Vigente desde'
                 disabled={isView || isSubmitting}
-                slotProps={{ inputLabel: { shrink: true } }}
               />
             )}
           />
@@ -286,14 +289,18 @@ const RateFormDrawer = (props: Props) => {
               }
             }}
             render={({ field }) => (
-              <TextField
-                {...field}
+              <DateField
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
                 fullWidth
-                type='date'
+                clearable
                 label='Vigente hasta'
+                minDate={validFrom || undefined}
                 disabled={isView || isSubmitting}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...(errors.validTo && { error: true, helperText: errors.validTo.message })}
+                error={Boolean(errors.validTo)}
+                helperText={errors.validTo?.message}
               />
             )}
           />
@@ -332,14 +339,14 @@ const RateFormDrawer = (props: Props) => {
           ) : null}
 
           <div className='flex items-center gap-4'>
+            <Button variant='outlined' color='secondary' type='button' onClick={handleReset} disabled={isSubmitting}>
+              {isView ? 'Cerrar' : 'Descartar'}
+            </Button>
             {!isView ? (
               <Button variant='contained' type='submit' disabled={isSubmitting || !propertyId}>
                 {isSubmitting ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
               </Button>
             ) : null}
-            <Button variant='outlined' color='secondary' type='button' onClick={handleReset} disabled={isSubmitting}>
-              {isView ? 'Cerrar' : 'Descartar'}
-            </Button>
           </div>
         </form>
       </div>

@@ -13,7 +13,6 @@ import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TablePagination from '@mui/material/TablePagination'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
 import { useSession } from 'next-auth/react'
@@ -25,6 +24,7 @@ import type { PageMeta } from '@/types/apps/pagination'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import tableStyles from '@core/styles/table.module.css'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
+import DateField from '@/components/date-picker/DateField'
 import CashMovementDialog from './CashMovementDialog'
 import PaymentDetailDialog from './PaymentDetailDialog'
 
@@ -167,25 +167,24 @@ const PaymentsCashTable = () => {
 
         <Card>
           <CardContent className='flex flex-wrap items-end gap-4'>
-            <TextField
-              type='date'
+            <DateField
               label='Desde'
               value={from}
-              onChange={e => {
+              clearable
+              onChange={value => {
                 setPage(0)
-                setFrom(e.target.value)
+                setFrom(value)
               }}
-              slotProps={{ inputLabel: { shrink: true } }}
             />
-            <TextField
-              type='date'
+            <DateField
               label='Hasta'
               value={to}
-              onChange={e => {
+              clearable
+              minDate={from || undefined}
+              onChange={value => {
                 setPage(0)
-                setTo(e.target.value)
+                setTo(value)
               }}
-              slotProps={{ inputLabel: { shrink: true } }}
             />
             <FormControl size='small' className='min-is-[180px]'>
               <InputLabel>Método</InputLabel>

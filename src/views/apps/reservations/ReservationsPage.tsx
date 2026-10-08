@@ -30,6 +30,7 @@ import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
 import CustomTabList from '@core/components/mui/TabList'
+import DateField from '@/components/date-picker/DateField'
 import type { Floor } from '@/types/apps/floorTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
 import type {
@@ -228,13 +229,7 @@ const ReservationsPage = () => {
                     >
                       Mañana
                     </Button>
-                    <TextField
-                      type='date'
-                      size='small'
-                      value={mobileDay}
-                      onChange={e => setMobileDay(e.target.value)}
-                      slotProps={{ inputLabel: { shrink: true } }}
-                    />
+                    <DateField size='small' value={mobileDay} onChange={setMobileDay} />
                     <IconButton onClick={() => setMobileDay(addDays(mobileDay || today, -1))}>
                       <i className='ri-arrow-left-s-line' />
                     </IconButton>
@@ -279,13 +274,7 @@ const ReservationsPage = () => {
                   <IconButton disabled={!planning} onClick={() => setFrom(planning?.previousFrom)}>
                     <i className='ri-arrow-left-s-line' />
                   </IconButton>
-                  <TextField
-                    type='date'
-                    size='small'
-                    value={from || planning?.from || ''}
-                    onChange={e => setFrom(e.target.value || undefined)}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                  />
+                  <DateField size='small' value={from || planning?.from || ''} onChange={value => setFrom(value || undefined)} />
                   <IconButton disabled={!planning} onClick={() => setFrom(planning?.nextFrom)}>
                     <i className='ri-arrow-right-s-line' />
                   </IconButton>

@@ -1,7 +1,7 @@
 import { getSession } from 'next-auth/react'
 
 import type { ApiError } from '@/types/apps/clientsTypes'
-import type { CreateFloorDto, Floor, UpdateFloorDto } from '@/types/apps/floorTypes'
+import type { CreateFloorDto, Floor, FloorSequenceResult, UpdateFloorDto } from '@/types/apps/floorTypes'
 import type { ListQuery, PageMeta, Paginated } from '@/types/apps/pagination'
 
 const getApiBase = () => {
@@ -124,21 +124,27 @@ export async function createFloor(propertyId: number, body: CreateFloorDto, toke
       `/properties/${propertyId}/floors`,
       {
         method: 'POST',
-        body: JSON.stringify({
-          name: body.name.trim(),
-          displayOrder: Number(body.displayOrder)
-        })
+        body: JSON.stringify({ name: body.name.trim() })
       },
       token
     )
   )
 }
 
+export async function createFloorSequence(propertyId: number, count: number, token?: string) {
+  const result = await request<FloorSequenceResult>(
+    `/properties/${propertyId}/floors/sequence`,
+    { method: 'POST', body: JSON.stringify({ count: Number(count) }) },
+    token
+  )
+
+  return { created: result.created.map(normalizeFloor), skipped: result.skipped ?? [] }
+}
+
 export async function updateFloor(propertyId: number, uuid: string, body: UpdateFloorDto, token?: string) {
   const payload: UpdateFloorDto = {}
 
   if (body.name !== undefined) payload.name = body.name.trim()
-  if (body.displayOrder !== undefined) payload.displayOrder = Number(body.displayOrder)
 
   return normalizeFloor(
     await request<Floor>(
@@ -147,6 +153,17 @@ export async function updateFloor(propertyId: number, uuid: string, body: Update
       token
     )
   )
+}
+
+/** Guarda el orden de la lista: `uuids` son todos los pisos, el primero queda en la posición 1. */
+export async function reorderFloors(propertyId: number, uuids: string[], token?: string) {
+  const floors = await request<Floor[]>(
+    `/properties/${propertyId}/floors/order`,
+    { method: 'PUT', body: JSON.stringify({ uuids }) },
+    token
+  )
+
+  return floors.map(normalizeFloor)
 }
 
 export async function deleteFloor(propertyId: number, uuid: string, token?: string) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
@@ -14,19 +14,30 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { toast } from 'react-toastify'
 
 import type { RoomType } from '@/types/apps/roomTypeTypes'
+import {
+  ROOM_TYPE_CODE_PATTERN,
+  capacitySummary,
+  defaultGuestLimits,
+  formatPeople,
+  hasGuestLimits,
+  roomCapacity,
+  suggestRoomTypeCode,
+  toRoomTypeCode
+} from '@/types/apps/roomTypeTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { createRoomType, getRoomTypesApiErrorMessage, updateRoomType } from '@/libs/roomTypesApi'
+import { sameCatalogName, toCatalogName } from '@/utils/string'
 
 export type RoomTypeDrawerMode = 'create' | 'edit' | 'view'
 
 type FormValues = {
   name: string
+  code: string
   description: string
   basePrice: string
+  maxOccupancy: number
   maxAdults: number
   maxChildren: number
-  maxOccupancy: string
-  displayOrder: number
 }
 
 type Props = {
@@ -34,6 +45,7 @@ type Props = {
   mode: RoomTypeDrawerMode
   propertyId: number
   roomType?: RoomType | null
+  roomTypes: RoomType[]
   onClose: () => void
   onSuccess: (roomType: RoomType) => void
 }
@@ -46,26 +58,25 @@ const titles: Record<RoomTypeDrawerMode, string> = {
 
 const emptyValues: FormValues = {
   name: '',
+  code: '',
   description: '',
   basePrice: '',
-  maxAdults: 2,
-  maxChildren: 0,
-  maxOccupancy: '',
-  displayOrder: 1
+  maxOccupancy: 2,
+  ...defaultGuestLimits(2)
 }
 
 const toFormValues = (roomType: RoomType): FormValues => ({
   name: roomType.name,
+  code: roomType.code,
   description: roomType.description ?? '',
   basePrice: String(roomType.basePrice ?? ''),
+  maxOccupancy: roomCapacity(roomType),
   maxAdults: roomType.maxAdults,
-  maxChildren: roomType.maxChildren,
-  maxOccupancy: roomType.maxOccupancy == null ? '' : String(roomType.maxOccupancy),
-  displayOrder: roomType.displayOrder
+  maxChildren: roomType.maxChildren
 })
 
 const RoomTypeFormDrawer = (props: Props) => {
-  const { open, mode, propertyId, roomType, onClose, onSuccess } = props
+  const { open, mode, propertyId, roomType, roomTypes, onClose, onSuccess } = props
   const isView = mode === 'view'
   const isEdit = mode === 'edit'
 
@@ -73,26 +84,59 @@ const RoomTypeFormDrawer = (props: Props) => {
     control,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting }
+    getValues,
+    setValue,
+    trigger,
+    formState: { errors, isSubmitting, isSubmitted }
   } = useForm<FormValues>({
     defaultValues: emptyValues
   })
 
-  const maxAdults = useWatch({ control, name: 'maxAdults' })
-  const maxChildren = useWatch({ control, name: 'maxChildren' })
+  const [showLimits, setShowLimits] = useState(false)
+  const [codeEdited, setCodeEdited] = useState(false)
+  const otherTypes = roomTypes.filter(item => !isEdit || item.uuid !== roomType?.uuid)
+  const [capacity, maxAdults, maxChildren] = useWatch({ control, name: ['maxOccupancy', 'maxAdults', 'maxChildren'] })
 
   useEffect(() => {
     if (!open) {
       return
     }
 
-    reset((isEdit || isView) && roomType ? toFormValues(roomType) : emptyValues)
+    const values = (isEdit || isView) && roomType ? toFormValues(roomType) : emptyValues
+
+    setShowLimits(hasGuestLimits(values))
+    setCodeEdited(Boolean(values.code))
+    reset(values)
   }, [open, mode, roomType, isEdit, isView, reset])
+
+  const applyDefaultLimits = (people: number) => {
+    const limits = defaultGuestLimits(people)
+
+    setValue('maxAdults', limits.maxAdults, { shouldValidate: true, shouldDirty: true })
+    setValue('maxChildren', limits.maxChildren, { shouldValidate: true, shouldDirty: true })
+  }
+
+  const handleToggleLimits = () => {
+    if (showLimits) {
+      applyDefaultLimits(Number(getValues('maxOccupancy')) || 1)
+    }
+
+    setShowLimits(!showLimits)
+  }
 
   const handleReset = () => {
     onClose()
+    setShowLimits(false)
     reset(emptyValues)
   }
+
+  const people = Number(capacity)
+  const limitsOk = !errors.maxOccupancy && !errors.maxAdults && !errors.maxChildren
+
+  const summary =
+    limitsOk && Number.isInteger(people) && people >= 1
+      ? capacitySummary({ maxOccupancy: people, maxAdults, maxChildren })
+      : ''
 
   const onSubmit = async (data: FormValues) => {
     if (isView) {
@@ -101,13 +145,13 @@ const RoomTypeFormDrawer = (props: Props) => {
 
     try {
       const payload = {
-        name: data.name.trim(),
+        name: toCatalogName(data.name),
+        code: data.code,
         description: data.description.trim() ? data.description.trim() : null,
         basePrice: Number(data.basePrice),
         maxAdults: Number(data.maxAdults),
         maxChildren: Number(data.maxChildren),
-        maxOccupancy: data.maxOccupancy === '' ? null : Number(data.maxOccupancy),
-        displayOrder: Number(data.displayOrder)
+        maxOccupancy: Number(data.maxOccupancy)
       }
 
       const saved =
@@ -145,8 +189,19 @@ const RoomTypeFormDrawer = (props: Props) => {
             name='name'
             control={control}
             rules={{
-              required: 'El nombre es obligatorio.',
-              maxLength: { value: 100, message: 'Máximo 100 caracteres.' }
+              validate: value => {
+                if (!value.trim()) {
+                  return 'El nombre es obligatorio.'
+                }
+
+                if (toCatalogName(value).length > 100) {
+                  return 'Máximo 100 caracteres.'
+                }
+
+                const duplicate = otherTypes.find(item => sameCatalogName(item.name, value))
+
+                return !duplicate || `Ya existe el tipo "${duplicate.name}".`
+              }
             }}
             render={({ field }) => (
               <TextField
@@ -155,7 +210,61 @@ const RoomTypeFormDrawer = (props: Props) => {
                 label='Nombre'
                 placeholder='Matrimonial'
                 disabled={isView || isSubmitting}
-                {...(errors.name && { error: true, helperText: errors.name.message })}
+                onChange={e => {
+                  field.onChange(e.target.value)
+
+                  if (!codeEdited) {
+                    setValue('code', suggestRoomTypeCode(e.target.value), { shouldValidate: isSubmitted })
+                  }
+                }}
+                onBlur={() => {
+                  field.onChange(toCatalogName(field.value))
+                  field.onBlur()
+                }}
+                error={Boolean(errors.name)}
+                helperText={
+                  errors.name?.message || 'La categoría. Por ejemplo: Matrimonial, Doble o Triple.'
+                }
+              />
+            )}
+          />
+
+          <Controller
+            name='code'
+            control={control}
+            rules={{
+              validate: value => {
+                if (!value) {
+                  return true
+                }
+
+                if (!ROOM_TYPE_CODE_PATTERN.test(value)) {
+                  return 'De 2 a 6 letras o números.'
+                }
+
+                const duplicate = otherTypes.find(item => item.code === value)
+
+                return !duplicate || `Ya la usa el tipo "${duplicate.name}".`
+              }
+            }}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                fullWidth
+                label='Abreviatura (opcional)'
+                placeholder='MAT'
+                disabled={isView || isSubmitting}
+                slotProps={{ htmlInput: { maxLength: 6, autoCapitalize: 'characters' } }}
+                onChange={e => {
+                  const code = toRoomTypeCode(e.target.value)
+
+                  setCodeEdited(code !== '')
+                  field.onChange(code)
+                }}
+                error={Boolean(errors.code)}
+                helperText={
+                  errors.code?.message || 'Se llena sola. Puede cambiarla si quiere, por ejemplo MAT, DBL o TPL.'
+                }
               />
             )}
           />
@@ -202,96 +311,12 @@ const RoomTypeFormDrawer = (props: Props) => {
           />
 
           <Controller
-            name='maxAdults'
-            control={control}
-            rules={{
-              required: 'La cantidad de adultos es obligatoria.',
-              min: { value: 1, message: 'Mínimo 1 adulto.' },
-              max: { value: 50, message: 'Máximo 50 adultos.' },
-              validate: value => Number.isInteger(Number(value)) || 'Debe ser un número entero.'
-            }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                fullWidth
-                type='number'
-                label='Máximo de adultos'
-                disabled={isView || isSubmitting}
-                slotProps={{ htmlInput: { min: 1, max: 50, step: 1 } }}
-                onChange={e => field.onChange(Number(e.target.value))}
-                {...(errors.maxAdults && { error: true, helperText: errors.maxAdults.message })}
-              />
-            )}
-          />
-
-          <Controller
-            name='maxChildren'
-            control={control}
-            rules={{
-              min: { value: 0, message: 'Mínimo 0.' },
-              max: { value: 50, message: 'Máximo 50 niños.' },
-              validate: value => Number.isInteger(Number(value)) || 'Debe ser un número entero.'
-            }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                fullWidth
-                type='number'
-                label='Máximo de niños'
-                disabled={isView || isSubmitting}
-                slotProps={{ htmlInput: { min: 0, max: 50, step: 1 } }}
-                onChange={e => field.onChange(Number(e.target.value))}
-                {...(errors.maxChildren && { error: true, helperText: errors.maxChildren.message })}
-              />
-            )}
-          />
-
-          <Controller
             name='maxOccupancy'
             control={control}
             rules={{
-              validate: value => {
-                if (value === '') {
-                  return true
-                }
-
-                const occupancy = Number(value)
-                const adults = Number(maxAdults)
-                const children = Number(maxChildren || 0)
-
-                if (!Number.isInteger(occupancy)) {
-                  return 'Debe ser un número entero.'
-                }
-
-                if (occupancy < adults) {
-                  return 'Debe ser al menos la cantidad de adultos.'
-                }
-
-                if (occupancy > adults + children) {
-                  return 'No puede superar adultos + niños.'
-                }
-
-                return true
-              }
-            }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                fullWidth
-                label='Ocupación máxima combinada'
-                placeholder='Vacío = sin tope combinado'
-                disabled={isView || isSubmitting}
-                {...(errors.maxOccupancy && { error: true, helperText: errors.maxOccupancy.message })}
-              />
-            )}
-          />
-
-          <Controller
-            name='displayOrder'
-            control={control}
-            rules={{
-              required: 'El orden es obligatorio.',
-              min: { value: 1, message: 'El orden mínimo es 1.' },
+              required: 'Indica cuántas personas duermen aquí.',
+              min: { value: 1, message: 'Mínimo 1 persona.' },
+              max: { value: 50, message: 'Máximo 50 personas.' },
               validate: value => Number.isInteger(Number(value)) || 'Debe ser un número entero.'
             }}
             render={({ field }) => (
@@ -299,20 +324,154 @@ const RoomTypeFormDrawer = (props: Props) => {
                 {...field}
                 fullWidth
                 type='number'
-                label='Orden de visualización'
-                placeholder='1'
+                label='Personas en la habitación'
                 disabled={isView || isSubmitting}
-                slotProps={{ htmlInput: { min: 1, step: 1 } }}
-                onChange={e => field.onChange(Number(e.target.value))}
-                {...(errors.displayOrder && { error: true, helperText: errors.displayOrder.message })}
+                slotProps={{ htmlInput: { min: 1, max: 50, step: 1 } }}
+                onChange={e => {
+                  const value = Number(e.target.value)
+
+                  field.onChange(value)
+
+                  if (showLimits) {
+                    trigger(['maxAdults', 'maxChildren'])
+                  } else {
+                    applyDefaultLimits(value)
+                  }
+                }}
+                error={Boolean(errors.maxOccupancy)}
+                helperText={
+                  errors.maxOccupancy?.message || 'Cuántas personas duermen aquí. Por ejemplo: Doble 2, Triple 3.'
+                }
               />
             )}
           />
+
+          {summary ? (
+            <div className='flex items-start gap-2'>
+              <i className='ri-group-line text-xl text-textSecondary' />
+              <Typography variant='body2' color='text.primary'>
+                {summary}
+              </Typography>
+            </div>
+          ) : null}
+
+          {!isView ? (
+            <Button
+              variant='text'
+              size='small'
+              className='self-start'
+              onClick={handleToggleLimits}
+              disabled={isSubmitting}
+              startIcon={<i className={showLimits ? 'ri-close-line' : 'ri-equalizer-line'} />}
+            >
+              {showLimits ? 'Quitar límite de adultos y niños' : 'Limitar adultos o niños (opcional)'}
+            </Button>
+          ) : null}
+
+          {showLimits ? (
+            <div className='flex flex-col gap-4'>
+              <Typography variant='body2' color='text.secondary'>
+                Solo si quiere una regla especial. Las personas de arriba siguen siendo el tope.
+              </Typography>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <Controller
+                  name='maxAdults'
+                  control={control}
+                  rules={{
+                    validate: value => {
+                      if (!showLimits) {
+                        return true
+                      }
+
+                      const adults = Number(value)
+                      const total = Number(getValues('maxOccupancy'))
+
+                      if (!Number.isInteger(adults) || adults < 1) {
+                        return 'Mínimo 1 adulto.'
+                      }
+
+                      return adults <= total || `No puede pasar de ${formatPeople(total)}.`
+                    }
+                  }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      type='number'
+                      label='De ellas, adultos'
+                      disabled={isView || isSubmitting}
+                      slotProps={{ htmlInput: { min: 1, max: 50, step: 1 } }}
+                      onChange={e => {
+                        field.onChange(Number(e.target.value))
+                        trigger(['maxAdults', 'maxChildren'])
+                      }}
+                      {...(errors.maxAdults && { error: true, helperText: errors.maxAdults.message })}
+                    />
+                  )}
+                />
+                <Controller
+                  name='maxChildren'
+                  control={control}
+                  rules={{
+                    validate: value => {
+                      if (!showLimits) {
+                        return true
+                      }
+
+                      const children = Number(value || 0)
+                      const adults = Number(getValues('maxAdults'))
+                      const total = Number(getValues('maxOccupancy'))
+
+                      if (!Number.isInteger(children) || children < 0) {
+                        return 'Debe ser 0 o más.'
+                      }
+
+                      if (children > total - 1) {
+                        return total <= 1
+                          ? 'Con 1 persona no entran niños: siempre va un adulto.'
+                          : `Hasta ${total - 1} niños: siempre va un adulto.`
+                      }
+
+                      if (adults + children < total) {
+                        return `Así solo entran ${formatPeople(adults + children)}. Suba adultos o niños.`
+                      }
+
+                      return true
+                    }
+                  }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      type='number'
+                      label='De ellas, niños'
+                      disabled={isView || isSubmitting}
+                      slotProps={{ htmlInput: { min: 0, max: 50, step: 1 } }}
+                      onChange={e => {
+                        field.onChange(Number(e.target.value))
+                        trigger(['maxAdults', 'maxChildren'])
+                      }}
+                      {...(errors.maxChildren && { error: true, helperText: errors.maxChildren.message })}
+                    />
+                  )}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {mode === 'create' ? (
+            <Typography variant='body2' color='text.secondary'>
+              El tipo nuevo queda al final de la lista. Para cambiar el orden, arrástrelo en la lista.
+            </Typography>
+          ) : null}
 
           {isView && roomType ? (
             <div className='flex flex-col gap-2'>
               <Typography variant='body2' color='text.secondary'>
                 Precio base: {formatRoomPrice(roomType.basePrice)}
+              </Typography>
+              <Typography variant='body2' color='text.secondary'>
+                Posición en la lista: {roomType.displayOrder}
               </Typography>
               <Typography variant='body2' color='text.secondary'>
                 UUID: {roomType.uuid}
@@ -326,14 +485,14 @@ const RoomTypeFormDrawer = (props: Props) => {
           ) : null}
 
           <div className='flex items-center gap-4'>
+            <Button variant='outlined' color='secondary' type='button' onClick={handleReset} disabled={isSubmitting}>
+              {isView ? 'Cerrar' : 'Descartar'}
+            </Button>
             {!isView ? (
               <Button variant='contained' type='submit' disabled={isSubmitting || !propertyId}>
                 {isSubmitting ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
               </Button>
             ) : null}
-            <Button variant='outlined' color='secondary' type='button' onClick={handleReset} disabled={isSubmitting}>
-              {isView ? 'Cerrar' : 'Descartar'}
-            </Button>
           </div>
         </form>
       </div>

@@ -233,7 +233,7 @@ const RoomListTable = () => {
         cell: ({ row }) => <Typography>{row.original.roomTypeName || `#${row.original.roomTypeId}`}</Typography>
       }),
       columnHelper.accessor('floorName', {
-        header: 'Nivel',
+        header: 'Piso',
         cell: ({ row }) => <Typography>{row.original.floorName || `#${row.original.floorId}`}</Typography>
       }),
       columnHelper.accessor('effectivePrice', {

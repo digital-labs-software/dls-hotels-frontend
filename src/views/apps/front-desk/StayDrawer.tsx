@@ -24,6 +24,7 @@ import GuestPicker from './GuestPicker'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
+import DateField from '@/components/date-picker/DateField'
 import type { Locale } from '@configs/i18n'
 
 type Props = {
@@ -236,13 +237,7 @@ const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheck
               <GuestPicker key={line?.guests.length ?? 0} propertyId={propertyId} label='Agregar acompañante' onSelect={handleAddGuest} />
               <Divider />
               <Typography className='font-medium'>Ajustar estadía</Typography>
-              <TextField
-                type='date'
-                label='Check-out (salida)'
-                value={checkOutDate}
-                onChange={e => setCheckOutDate(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
-              />
+              <DateField label='Check-out (salida)' value={checkOutDate} onChange={setCheckOutDate} fullWidth />
               <div className='flex gap-3'>
                 <TextField label='Adultos' value={adults} onChange={e => setAdults(e.target.value)} />
                 <TextField label='Niños' value={children} onChange={e => setChildren(e.target.value)} />
