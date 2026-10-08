@@ -25,7 +25,7 @@ import { toast } from 'react-toastify'
 
 import type { Locale } from '@configs/i18n'
 import type { DocumentType } from '@/types/apps/clientsTypes'
-import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPES } from '@/types/apps/clientsTypes'
+import { DOCUMENT_TYPE_LABELS, guestDocumentOptions } from '@/types/apps/clientsTypes'
 import { getClientsApiErrorMessage, guestsApi } from '@/libs/clientsApi'
 import { getLocalizedUrl } from '@/utils/i18n'
 import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup'
@@ -287,7 +287,10 @@ const GuestForm = ({ uuid }: Props) => {
         <Grid size={{ xs: 12, md: 8 }}>
           <div className='flex flex-col gap-6'>
             <Card>
-              <CardHeader title='Documento de identidad' />
+              <CardHeader
+                title='Documento de identidad'
+                subheader='El RUC de una empresa o de una persona natural se registra en Empresas.'
+              />
               <CardContent>
                 <Grid container spacing={5}>
                   <Grid size={{ xs: 12, sm: 4 }}>
@@ -316,7 +319,7 @@ const GuestForm = ({ uuid }: Props) => {
                             }}
                           >
                             <MenuItem value=''>Sin documento</MenuItem>
-                            {DOCUMENT_TYPES.map(item => (
+                            {guestDocumentOptions(field.value).map(item => (
                               <MenuItem key={item} value={item}>
                                 {DOCUMENT_TYPE_LABELS[item]}
                               </MenuItem>

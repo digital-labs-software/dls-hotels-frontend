@@ -17,7 +17,7 @@ import TextField from '@mui/material/TextField'
 import { toast } from 'react-toastify'
 
 import type { DocumentType, Guest } from '@/types/apps/clientsTypes'
-import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPES } from '@/types/apps/clientsTypes'
+import { DOCUMENT_TYPE_LABELS, guestDocumentOptions } from '@/types/apps/clientsTypes'
 import { guestsApi } from '@/libs/clientsApi'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
 import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup'
@@ -177,7 +177,7 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated }: Props) => {
               }}
             >
               <MenuItem value=''>Sin documento</MenuItem>
-              {DOCUMENT_TYPES.map(type => (
+              {guestDocumentOptions(documentType).map(type => (
                 <MenuItem key={type} value={type}>
                   {DOCUMENT_TYPE_LABELS[type]}
                 </MenuItem>

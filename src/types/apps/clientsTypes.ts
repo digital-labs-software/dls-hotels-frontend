@@ -1,10 +1,17 @@
 export type DocumentType = 'DNI' | 'RUC' | 'PASSPORT' | 'FOREIGNER_CARD' | 'OTHER'
 
-export type CompanyType = 'CORPORATE' | 'INSTITUTION' | 'AGENCY' | 'OTHER'
+export type CompanyType = 'CORPORATE' | 'NATURAL_PERSON' | 'INSTITUTION' | 'AGENCY' | 'OTHER'
 
 export const DOCUMENT_TYPES = ['DNI', 'RUC', 'PASSPORT', 'FOREIGNER_CARD', 'OTHER'] as const
 
-export const COMPANY_TYPES = ['CORPORATE', 'INSTITUTION', 'AGENCY', 'OTHER'] as const
+/** Identidad de quien se hospeda. El RUC se registra en Empresas. */
+export const GUEST_DOCUMENT_TYPES = ['DNI', 'PASSPORT', 'FOREIGNER_CARD', 'OTHER'] as const
+
+/** Si un huésped antiguo tiene RUC, se muestra para poder cambiarlo. Un alta nueva no lo ofrece. */
+export const guestDocumentOptions = (current?: string | null) =>
+  current === 'RUC' ? (['RUC', ...GUEST_DOCUMENT_TYPES] as const) : GUEST_DOCUMENT_TYPES
+
+export const COMPANY_TYPES = ['AGENCY', 'INSTITUTION', 'CORPORATE', 'NATURAL_PERSON', 'OTHER'] as const
 
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   DNI: 'DNI',
@@ -16,6 +23,7 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
 
 export const COMPANY_TYPE_LABELS: Record<CompanyType, string> = {
   CORPORATE: 'Empresa',
+  NATURAL_PERSON: 'Persona natural con RUC',
   INSTITUTION: 'Institución',
   AGENCY: 'Agencia',
   OTHER: 'Otro'

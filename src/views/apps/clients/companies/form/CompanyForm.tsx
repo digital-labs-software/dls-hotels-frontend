@@ -10,6 +10,7 @@ import CardContent from '@mui/material/CardContent'
 import CardHeader from '@mui/material/CardHeader'
 import CircularProgress from '@mui/material/CircularProgress'
 import FormControl from '@mui/material/FormControl'
+import FormHelperText from '@mui/material/FormHelperText'
 import Grid from '@mui/material/Grid'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -34,7 +35,7 @@ import ExistingRecordAlert from '@/components/document-lookup/ExistingRecordAler
 type FormValues = {
   businessName: string
   tradeName: string
-  companyType: CompanyType
+  companyType: CompanyType | ''
   taxNumber: string
   phone: string
   email: string
@@ -66,7 +67,7 @@ const CompanyForm = ({ uuid }: Props) => {
     defaultValues: {
       businessName: '',
       tradeName: '',
-      companyType: 'CORPORATE',
+      companyType: '',
       taxNumber: '',
       phone: '',
       email: '',
@@ -157,6 +158,10 @@ const CompanyForm = ({ uuid }: Props) => {
       return
     }
 
+    if (!data.companyType) {
+      return
+    }
+
     try {
       const payload = {
         businessName: data.businessName.trim(),
@@ -220,7 +225,7 @@ const CompanyForm = ({ uuid }: Props) => {
                   ? 'Consulta los datos de la empresa'
                   : isEdit
                     ? 'Actualiza la razón social, el tipo o los datos de contacto.'
-                    : 'Registra una empresa, institución o agencia'}
+                    : 'Registra una empresa, una persona natural con RUC, una institución o una agencia.'}
               </Typography>
             </div>
             <div className='flex flex-wrap max-sm:flex-col gap-4'>
@@ -398,14 +403,17 @@ const CompanyForm = ({ uuid }: Props) => {
           <Card>
             <CardHeader title='Clasificación' />
             <CardContent className='flex flex-col gap-5'>
-              <FormControl fullWidth>
+              <FormControl fullWidth error={Boolean(errors.companyType)}>
                 <InputLabel id='company-type'>Tipo</InputLabel>
                 <Controller
                   name='companyType'
                   control={control}
-                  rules={{ required: true }}
+                  rules={{ required: 'Selecciona el tipo.' }}
                   render={({ field }) => (
                     <Select {...field} label='Tipo' labelId='company-type' disabled={isView || isSubmitting}>
+                      <MenuItem value='' disabled>
+                        Selecciona el tipo
+                      </MenuItem>
                       {COMPANY_TYPES.map(item => (
                         <MenuItem key={item} value={item}>
                           {COMPANY_TYPE_LABELS[item]}
@@ -414,6 +422,7 @@ const CompanyForm = ({ uuid }: Props) => {
                     </Select>
                   )}
                 />
+                {errors.companyType ? <FormHelperText>{errors.companyType.message}</FormHelperText> : null}
               </FormControl>
             </CardContent>
           </Card>

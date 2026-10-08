@@ -9,6 +9,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
+import FormHelperText from '@mui/material/FormHelperText'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
@@ -36,7 +37,8 @@ type Props = {
 
 const CreateCompanyDialog = ({ open, propertyId, onClose, onCreated }: Props) => {
   const [businessName, setBusinessName] = useState('')
-  const [companyType, setCompanyType] = useState<CompanyType>('CORPORATE')
+  const [companyType, setCompanyType] = useState<CompanyType | ''>('')
+  const [typeError, setTypeError] = useState(false)
   const [taxNumber, setTaxNumber] = useState('')
   const [tradeName, setTradeName] = useState('')
   const [address, setAddress] = useState('')
@@ -61,7 +63,8 @@ const CreateCompanyDialog = ({ open, propertyId, onClose, onCreated }: Props) =>
     }
 
     setBusinessName('')
-    setCompanyType('CORPORATE')
+    setCompanyType('')
+    setTypeError(false)
     setTaxNumber('')
     setTradeName('')
     setAddress('')
@@ -100,6 +103,13 @@ const CreateCompanyDialog = ({ open, propertyId, onClose, onCreated }: Props) =>
 
     if (!businessName.trim()) {
       toast.error('La razón social es obligatoria.')
+
+      return
+    }
+
+    if (!companyType) {
+      setTypeError(true)
+      toast.error('Selecciona el tipo.')
 
       return
     }
@@ -196,20 +206,27 @@ const CreateCompanyDialog = ({ open, propertyId, onClose, onCreated }: Props) =>
                 value={tradeName}
                 onChange={e => setTradeName(e.target.value)}
               />
-              <FormControl sx={{ width: { xs: '100%', sm: '40%' }, flexShrink: 0 }}>
+              <FormControl sx={{ width: { xs: '100%', sm: '40%' }, flexShrink: 0 }} error={typeError}>
                 <InputLabel id='company-type'>Tipo</InputLabel>
                 <Select
                   labelId='company-type'
                   label='Tipo'
                   value={companyType}
-                  onChange={e => setCompanyType(e.target.value as CompanyType)}
+                  onChange={e => {
+                    setCompanyType(e.target.value as CompanyType)
+                    setTypeError(false)
+                  }}
                 >
+                  <MenuItem value='' disabled>
+                    Selecciona el tipo
+                  </MenuItem>
                   {COMPANY_TYPES.map(type => (
                     <MenuItem key={type} value={type}>
                       {COMPANY_TYPE_LABELS[type]}
                     </MenuItem>
                   ))}
                 </Select>
+                {typeError ? <FormHelperText>Selecciona el tipo.</FormHelperText> : null}
               </FormControl>
             </div>
             <TextField label='Dirección fiscal' value={address} onChange={e => setAddress(e.target.value)} />

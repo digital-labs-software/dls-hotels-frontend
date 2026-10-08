@@ -20,7 +20,7 @@ import Typography from '@mui/material/Typography'
 import { toast } from 'react-toastify'
 
 import type { Guest } from '@/types/apps/clientsTypes'
-import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPES } from '@/types/apps/clientsTypes'
+import { DOCUMENT_TYPE_LABELS, guestDocumentOptions } from '@/types/apps/clientsTypes'
 import type { PaymentMethod, RackRoom, WalkInGuest } from '@/types/apps/frontDeskTypes'
 import { addDays, nightsBetween, PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@/types/apps/frontDeskTypes'
 import type { Rate } from '@/types/apps/rateTypes'
@@ -177,7 +177,7 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
             disabled={person.locked || saving}
             onChange={e => onChange({ ...person, documentType: e.target.value })}
           >
-            {DOCUMENT_TYPES.map(type => (
+            {guestDocumentOptions(person.documentType).map(type => (
               <MenuItem key={type} value={type}>
                 {DOCUMENT_TYPE_LABELS[type]}
               </MenuItem>

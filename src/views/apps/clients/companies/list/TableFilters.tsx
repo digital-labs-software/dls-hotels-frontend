@@ -12,6 +12,7 @@ import { COMPANY_TYPE_LABELS, COMPANY_TYPES } from '@/types/apps/clientsTypes'
 
 const typeColor: Record<CompanyType, ThemeColor> = {
   CORPORATE: 'primary',
+  NATURAL_PERSON: 'secondary',
   INSTITUTION: 'info',
   AGENCY: 'warning',
   OTHER: 'success'
