@@ -1,7 +1,20 @@
 import { getSession } from 'next-auth/react'
 
 import type { ApiError } from '@/types/apps/clientsTypes'
-import type { GuestSheet, GuestSheetFloor, GuestSheetStay } from '@/types/apps/reportTypes'
+import type {
+  BalancesReport,
+  CancellationsReport,
+  CashClosingReport,
+  GuestSheet,
+  GuestSheetFloor,
+  GuestSheetStay,
+  HousekeepingReport,
+  MonthlyStatsReport,
+  MovementReport,
+  OccupancyReport,
+  SalesBySourceReport,
+  SalesRegisterReport
+} from '@/types/apps/reportTypes'
 
 const getApiBase = () => {
   if (typeof window === 'undefined') {
@@ -93,7 +106,41 @@ const normalizeFloor = (floor: GuestSheetFloor): GuestSheetFloor => ({
     : []
 })
 
+const buildQuery = (params: Record<string, string | number | undefined | null>) => {
+  const query = new URLSearchParams()
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, String(value))
+    }
+  })
+
+  const text = query.toString()
+
+  return text ? `?${text}` : ''
+}
+
+const report = <T>(propertyId: number, name: string, params: Record<string, string | number | undefined | null> = {}) =>
+  request<T>(`/properties/${propertyId}/reports/${name}${buildQuery(params)}`)
+
 export const reportsApi = {
+  arrivals: (propertyId: number, date?: string) => report<MovementReport>(propertyId, 'arrivals', { date }),
+  departures: (propertyId: number, date?: string) => report<MovementReport>(propertyId, 'departures', { date }),
+  housekeeping: (propertyId: number, date?: string) =>
+    report<HousekeepingReport>(propertyId, 'housekeeping', { date }),
+  cashClosing: (propertyId: number, date?: string, employeeId?: number | null) =>
+    report<CashClosingReport>(propertyId, 'cash-closing', { date, employeeId }),
+  salesRegister: (propertyId: number, from?: string, to?: string) =>
+    report<SalesRegisterReport>(propertyId, 'sales-register', { from, to }),
+  balances: (propertyId: number) => report<BalancesReport>(propertyId, 'balances'),
+  occupancy: (propertyId: number, from?: string, to?: string) =>
+    report<OccupancyReport>(propertyId, 'occupancy', { from, to }),
+  monthlyStats: (propertyId: number, month?: string) =>
+    report<MonthlyStatsReport>(propertyId, 'monthly-stats', { month }),
+  salesBySource: (propertyId: number, from?: string, to?: string) =>
+    report<SalesBySourceReport>(propertyId, 'sales-by-source', { from, to }),
+  cancellations: (propertyId: number, from?: string, to?: string) =>
+    report<CancellationsReport>(propertyId, 'cancellations', { from, to }),
   guestSheet: async (propertyId: number, date?: string, token?: string) => {
     const query = date ? `?date=${encodeURIComponent(date)}` : ''
     const payload = await request<GuestSheet>(`/properties/${propertyId}/reports/guest-sheet${query}`, token)

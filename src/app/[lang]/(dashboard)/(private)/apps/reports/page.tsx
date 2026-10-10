@@ -1,14 +1,20 @@
 import type { Metadata } from 'next'
 
-import GuestSheetClient from '@views/apps/reports/GuestSheetClient'
+import ReportsCatalog from '@views/apps/reports/ReportsCatalog'
 
 export const metadata: Metadata = {
   title: 'Reportes',
-  description: 'Parte de huéspedes del día'
+  description: 'Llegadas, salidas, huéspedes alojados, limpieza, caja, comprobantes, saldos, ocupación y ventas'
 }
 
-const ReportsPage = () => {
-  return <GuestSheetClient />
+type Props = {
+  searchParams: Promise<{ tab?: string }>
+}
+
+const ReportsPage = async ({ searchParams }: Props) => {
+  const { tab } = await searchParams
+
+  return <ReportsCatalog defaultTab={tab} />
 }
 
 export default ReportsPage
