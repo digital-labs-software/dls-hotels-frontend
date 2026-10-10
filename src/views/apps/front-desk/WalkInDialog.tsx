@@ -384,8 +384,8 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
         <div className='flex gap-3'>
           <TextField fullWidth label='Monto' value={amount} onChange={e => setAmount(e.target.value)} />
           <FormControl fullWidth>
-            <InputLabel>Método</InputLabel>
-            <Select label='Método' value={method} onChange={e => setMethod(e.target.value as PaymentMethod)}>
+            <InputLabel>Método de pago</InputLabel>
+            <Select label='Método de pago' value={method} onChange={e => setMethod(e.target.value as PaymentMethod)}>
               {PAYMENT_METHODS.map(item => (
                 <MenuItem key={item} value={item}>
                   {PAYMENT_METHOD_LABELS[item]}

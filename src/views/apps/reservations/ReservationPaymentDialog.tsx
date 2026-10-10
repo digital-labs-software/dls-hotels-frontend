@@ -32,7 +32,7 @@ type Props = {
 
 const ReservationPaymentDialog = ({ open, propertyId, reservationUuid, balance = 0, onClose, onSuccess }: Props) => {
   const [amount, setAmount] = useState('')
-  const [method, setMethod] = useState<PaymentMethod>('CASH')
+  const [method, setMethod] = useState<PaymentMethod>('YAPE')
   const [reference, setReference] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
@@ -43,7 +43,7 @@ const ReservationPaymentDialog = ({ open, propertyId, reservationUuid, balance =
     }
 
     setAmount(balance > 0 ? String(balance) : '')
-    setMethod('CASH')
+    setMethod('YAPE')
     setReference('')
     setNotes('')
   }, [balance, open])
@@ -91,10 +91,10 @@ const ReservationPaymentDialog = ({ open, propertyId, reservationUuid, balance =
           helperText={`Saldo actual: ${formatRoomPrice(balance)}. Un monto negativo es una devolución.`}
         />
         <FormControl fullWidth>
-          <InputLabel id='res-payment-method'>Método</InputLabel>
+          <InputLabel id='res-payment-method'>Método de pago</InputLabel>
           <Select
             labelId='res-payment-method'
-            label='Método'
+            label='Método de pago'
             value={method}
             onChange={e => setMethod(e.target.value as PaymentMethod)}
           >

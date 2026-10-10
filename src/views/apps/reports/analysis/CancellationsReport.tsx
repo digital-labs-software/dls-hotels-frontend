@@ -12,20 +12,20 @@ import type { DateRange } from '../document/ReportFilters'
 import { RangeFilter, thisMonthRange } from '../document/ReportFilters'
 import { useReport } from '../document/useReport'
 
-const STATUS_LABEL = { CANCELLED: 'Cancelada', NO_SHOW: 'No llegó' } as const
+const STATUS_LABEL = { CANCELLED: 'Cancelada', NO_SHOW: 'No se presentó' } as const
 
 export const buildCancellationsDocument = (report: CancellationsData): ReportDocument => {
   const { summary } = report
 
   return {
     fileName: `cancelaciones-${report.from}-al-${report.to}`,
-    title: 'Cancelaciones y no-shows',
+    title: 'Cancelaciones y no presentados',
     hotelName: report.hotelName,
     period: `Llegadas ${formatRange(report.from, report.to).toLowerCase()}`,
     orientation: 'landscape',
     summary: [
       { label: 'Canceladas', value: String(summary.cancelled) },
-      { label: 'No llegaron', value: String(summary.noShow) },
+      { label: 'No se presentaron', value: String(summary.noShow) },
       { label: 'De cada 100 reservas se perdieron', value: formatPercent(summary.lostPct) },
       { label: 'Ingreso perdido', value: formatMoney(summary.lostRevenue) },
       { label: 'Adelantos retenidos', value: formatMoney(summary.retained) }
@@ -86,14 +86,14 @@ export const buildCancellationsDocument = (report: CancellationsData): ReportDoc
               ])
             ]
           : [],
-        emptyText: 'No hubo cancelaciones ni no-shows en estas fechas.'
+        emptyText: 'No hubo cancelaciones ni reservas de quienes no se presentaron en estas fechas.'
       },
       {
         title: 'Por origen',
         columns: [
           { header: 'Origen', width: 22 },
           { header: 'Canceladas', kind: 'number', width: 11 },
-          { header: 'No llegaron', kind: 'number', width: 11 },
+          { header: 'No se presentaron', kind: 'number', width: 14 },
           { header: 'Ingreso perdido', kind: 'money', width: 14 }
         ],
         rows: report.bySource.map(item =>
@@ -117,7 +117,7 @@ const CancellationsReport = () => {
 
   return (
     <ReportLayout
-      title='Cancelaciones y no-shows'
+      title='Cancelaciones y no presentados'
       description='Reservas que se cancelaron o no llegaron, cuánto se dejó de ganar y por qué. Úsalo para ajustar adelantos y políticas.'
       filters={<RangeFilter value={range} onChange={setRange} />}
       loading={loading}
@@ -127,7 +127,7 @@ const CancellationsReport = () => {
         data
           ? [
               { title: 'Canceladas', stats: String(data.summary.cancelled), icon: 'ri-close-circle-line', color: 'error' },
-              { title: 'No llegaron', stats: String(data.summary.noShow), icon: 'ri-user-unfollow-line', color: 'warning' },
+              { title: 'No se presentaron', stats: String(data.summary.noShow), icon: 'ri-user-unfollow-line', color: 'warning' },
               {
                 title: `Perdidas de ${data.summary.expectedReservations} reservas`,
                 stats: formatPercent(data.summary.lostPct),

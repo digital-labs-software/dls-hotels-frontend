@@ -1,14 +1,16 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import type { MouseEvent } from 'react'
 
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 
-import type { Planning, PlanningBooking, PlanningRoom } from '@/types/apps/reservationsTypes'
+import type { Planning, PlanningBooking, PlanningRoom, ReservationNote } from '@/types/apps/reservationsTypes'
 import {
   applyFilters,
   BAR_COLORS,
@@ -35,7 +37,28 @@ type Props = {
   highlightedUuid?: string | null
   onEmptyCell: (room: PlanningRoom, day: string) => void
   onBookingClick: (booking: PlanningBooking) => void
+  notes?: ReservationNote[]
+  onAnnotateDay?: (day: string) => void
+  onOpenNotes?: () => void
 }
+
+/** Alto de la fila de fechas: el encabezado de cada tipo se fija justo debajo. */
+const HEADER_HEIGHT = 48
+
+const HOVER_BG = 'rgba(21, 101, 192, 0.08)'
+
+/** Variables del tema: se ven bien en modo claro y oscuro (las etiquetas fijas necesitan fondo opaco). */
+const LABEL_HOVER_BG = 'rgb(var(--mui-palette-info-mainChannel) / 0.24)'
+const LABEL_HOVER_BG_DARK = 'rgb(var(--mui-palette-info-mainChannel) / 0.32)'
+const TODAY_BG = 'var(--mui-palette-info-lightOpacity)'
+
+const longDay = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+const shortWeekday = new Intl.DateTimeFormat('es-PE', { weekday: 'short', timeZone: 'UTC' })
+const shortMonth = new Intl.DateTimeFormat('es-PE', { month: 'short', timeZone: 'UTC' })
+
+const toUtcDate = (day: string) => new Date(`${day}T00:00:00Z`)
+
+const cellHint = (roomNumber: string, day: string) => `Hab. ${roomNumber} · ${longDay.format(toUtcDate(day))} · Clic para reservar`
 
 const legend = [
   { label: 'Ocupado', color: '#EF5350' },
@@ -160,7 +183,8 @@ const RoomRow = ({
       }}
     >
       <Box
-        className='flex items-center gap-1 px-2'
+        className='cal-label cal-number flex items-center gap-1 px-2'
+        data-row={room?.number}
         sx={{ gridRow: 1, position: 'sticky', left: 0, zIndex: 3, bgcolor: 'background.paper', borderRight: '1px solid', borderColor: 'divider' }}
       >
         <Typography variant='body2' fontWeight={600}>
@@ -170,7 +194,8 @@ const RoomRow = ({
         {physical === 'MAINTENANCE' ? <Chip size='small' label='🔧' sx={{ bgcolor: '#9E9E9E', color: '#fff', height: 20 }} /> : null}
       </Box>
       <Box
-        className='flex items-center px-2'
+        className='cal-label flex items-center px-2'
+        data-row={room?.number}
         sx={{ gridRow: 1, position: 'sticky', left: 72, zIndex: 3, bgcolor: 'background.paper', borderRight: '1px solid', borderColor: 'divider' }}
       >
         <Typography variant='caption' color='text.secondary'>
@@ -184,6 +209,9 @@ const RoomRow = ({
         return (
           <Box
             key={`${label}-${day}`}
+            data-day={day}
+            data-row={room?.number}
+            title={room ? cellHint(room.number, day) : undefined}
             onClick={() => room && onEmptyCell(room, day)}
             sx={{
               gridRow: 1,
@@ -219,80 +247,257 @@ const PlanningCalendar = ({
   search,
   highlightedUuid,
   onEmptyCell,
-  onBookingClick
+  onBookingClick,
+  notes = [],
+  onAnnotateDay,
+  onOpenNotes
 }: Props) => {
   const [collapsed, setCollapsed] = useState<number[]>([])
   const filtered = useMemo(() => applyFilters(planning, roomTypeId, floorId), [floorId, planning, roomTypeId])
   const groups = useMemo(() => groupByType(filtered.rooms), [filtered.rooms])
   const colWidth = columnWidth(planning.view)
+  const totalWidth = 200 + planning.days.length * colWidth
+  const allCollapsed = groups.length > 0 && groups.every(group => collapsed.includes(group.roomTypeId))
+
+  // El resaltado de día y habitación se escribe en una hoja de estilo propia para no volver a pintar las celdas.
+  const hoverStyleRef = useRef<HTMLStyleElement>(null)
+  const hoverKeyRef = useRef('')
+
+  const setHover = (day?: string, row?: string) => {
+    const key = `${day ?? ''}|${row ?? ''}`
+
+    if (key === hoverKeyRef.current || !hoverStyleRef.current) return
+    hoverKeyRef.current = key
+
+    const rules: string[] = []
+
+    if (day) rules.push(`[data-cal] [data-day="${day}"] { background-color: ${HOVER_BG} !important; }`)
+
+    if (row) {
+      rules.push(
+        `[data-cal] .cal-label[data-row="${row}"] { background-color: var(--mui-palette-background-paper) !important; background-image: linear-gradient(${LABEL_HOVER_BG}, ${LABEL_HOVER_BG}); }`,
+        `html[data-dark] [data-cal] .cal-label[data-row="${row}"] { background-image: linear-gradient(${LABEL_HOVER_BG_DARK}, ${LABEL_HOVER_BG_DARK}); }`,
+        `[data-cal] .cal-number[data-row="${row}"] { box-shadow: inset 3px 0 0 var(--mui-palette-info-main); }`
+      )
+    }
+
+    if (day && row) {
+      rules.push(
+        `[data-cal] [data-day="${day}"][data-row="${row}"] { background-color: rgba(21, 101, 192, 0.18) !important; outline: 2px solid #1565C0; outline-offset: -2px; }`,
+        `[data-cal] .cal-head[data-day="${day}"] { background-color: #1565C0 !important; }`,
+        `[data-cal] .cal-head[data-day="${day}"] * { color: #fff !important; }`
+      )
+    }
+
+    hoverStyleRef.current.textContent = rules.join('\n')
+  }
+
+  const handleMouseOver = (event: MouseEvent<HTMLDivElement>) => {
+    const cell = (event.target as HTMLElement).closest<HTMLElement>('[data-day]')
+
+    setHover(cell?.dataset.day, cell?.dataset.row)
+  }
+
+  const toggleGroup = (roomTypeId: number) =>
+    setCollapsed(current =>
+      current.includes(roomTypeId) ? current.filter(id => id !== roomTypeId) : [...current, roomTypeId]
+    )
 
   return (
     <div>
-      <Box sx={{ overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+      <style ref={hoverStyleRef} />
+      {groups.length > 1 ? (
+        <div className='flex justify-end mb-2'>
+          <Button
+            size='small'
+            variant='text'
+            startIcon={<i className={allCollapsed ? 'ri-expand-up-down-line' : 'ri-contract-up-down-line'} />}
+            onClick={() => setCollapsed(allCollapsed ? [] : groups.map(group => group.roomTypeId))}
+          >
+            {allCollapsed ? 'Mostrar todos los tipos' : 'Ocultar todos los tipos'}
+          </Button>
+        </div>
+      ) : null}
+      <Box
+        data-cal
+        onMouseOver={handleMouseOver}
+        onMouseLeave={() => setHover()}
+        sx={{
+          overflow: 'auto',
+          maxHeight: 'max(420px, calc(100vh - 300px))',
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 1
+        }}
+      >
         <Box
           sx={{
             display: 'grid',
             gridTemplateColumns: `72px 128px repeat(${planning.days.length}, ${colWidth}px)`,
+            height: HEADER_HEIGHT,
             position: 'sticky',
             top: 0,
-            zIndex: 4,
+            zIndex: 6,
             bgcolor: 'background.paper',
             borderBottom: '1px solid',
             borderColor: 'divider',
-            minWidth: 200 + planning.days.length * colWidth
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.06)',
+            minWidth: totalWidth
           }}
         >
-          <Box className='px-2 py-2' sx={{ position: 'sticky', left: 0, zIndex: 5, bgcolor: 'background.paper' }}>
+          <Box
+            className='flex items-center px-2'
+            sx={{ position: 'sticky', left: 0, zIndex: 7, bgcolor: 'background.paper', borderRight: '1px solid', borderColor: 'divider' }}
+          >
             <Typography variant='caption' fontWeight={700}>
               N.º
             </Typography>
           </Box>
-          <Box className='px-2 py-2' sx={{ position: 'sticky', left: 72, zIndex: 5, bgcolor: 'background.paper' }}>
+          <Box
+            className='flex items-center px-2'
+            sx={{ position: 'sticky', left: 72, zIndex: 7, bgcolor: 'background.paper', borderRight: '1px solid', borderColor: 'divider' }}
+          >
             <Typography variant='caption' fontWeight={700}>
               Tipo
             </Typography>
           </Box>
-          {planning.days.map(day => (
+          {planning.days.map((day, index) => {
+            const today = day === planning.today
+            const date = toUtcDate(day)
+            const showMonth = index === 0 || dayNumber(day) === '1'
+
+            return (
+              <Box
+                key={day}
+                className='cal-head flex flex-col items-center justify-center'
+                data-day={day}
+                title={`${longDay.format(date)}. Clic para anotar este día`}
+                onClick={() => onAnnotateDay?.(day)}
+                sx={{
+                  cursor: onAnnotateDay ? 'pointer' : undefined,
+                  bgcolor: today ? TODAY_BG : isWeekend(day) ? 'action.hover' : 'background.paper',
+                  boxShadow: today ? 'inset 2px 0 0 #1565C0' : undefined,
+                  lineHeight: 1.1
+                }}
+              >
+                <Typography variant='caption' sx={{ fontSize: 10, lineHeight: 1.2, color: 'inherit', opacity: 0.8 }}>
+                  {showMonth ? shortMonth.format(date) : planning.view === 'MONTH' ? weekdayLetter(day) : shortWeekday.format(date)}
+                </Typography>
+                <Typography
+                  variant='body2'
+                  sx={{ fontWeight: today ? 800 : 600, lineHeight: 1.2, color: today ? 'info.main' : 'inherit' }}
+                >
+                  {dayNumber(day)}
+                </Typography>
+              </Box>
+            )
+          })}
+        </Box>
+
+        {notes.some(note => planning.days.includes(note.stayDate)) ? (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: `72px 128px repeat(${planning.days.length}, ${colWidth}px)`,
+              minWidth: totalWidth,
+              alignItems: 'center',
+              borderBottom: '1px solid',
+              borderColor: 'divider'
+            }}
+          >
             <Box
-              key={day}
-              className='px-1 py-2 text-center'
+              className='flex items-center px-2'
               sx={{
-                bgcolor: isWeekend(day) ? 'action.hover' : 'background.paper',
-                boxShadow: day === planning.today ? 'inset 2px 0 0 #1565C0' : undefined
+                gridColumn: '1 / 3',
+                height: 22,
+                position: 'sticky',
+                left: 0,
+                zIndex: 3,
+                bgcolor: 'background.paper',
+                borderRight: '1px solid',
+                borderColor: 'divider'
               }}
             >
-              <Typography variant='caption' fontWeight={day === planning.today ? 700 : 500}>
-                {weekdayLetter(day)} {dayNumber(day)}
+              <Typography variant='caption' fontWeight={700} color='warning.main'>
+                Por completar
               </Typography>
             </Box>
-          ))}
-        </Box>
+            {planning.days.map(day => {
+              const dayNotes = notes.filter(note => note.stayDate === day)
+
+              return (
+                <Tooltip
+                  key={day}
+                  placement='top'
+                  disableHoverListener={dayNotes.length === 0}
+                  title={
+                    <div>
+                      {dayNotes.map(note => (
+                        <div key={note.uuid}>{note.text}</div>
+                      ))}
+                    </div>
+                  }
+                >
+                  <Box
+                    onClick={() => dayNotes.length > 0 && onOpenNotes?.()}
+                    sx={{
+                      height: 22,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 0.5,
+                      cursor: dayNotes.length > 0 ? 'pointer' : 'default',
+                      bgcolor: dayNotes.length > 0 ? 'var(--mui-palette-warning-lightOpacity)' : undefined,
+                      borderRight: '1px solid',
+                      borderColor: 'divider'
+                    }}
+                  >
+                    {dayNotes.length > 0 ? (
+                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'warning.main', flexShrink: 0 }} />
+                    ) : null}
+                    {dayNotes.length > 1 ? (
+                      <Typography variant='caption' fontWeight={700} lineHeight={1}>
+                        {dayNotes.length}
+                      </Typography>
+                    ) : null}
+                  </Box>
+                </Tooltip>
+              )
+            })}
+          </Box>
+        ) : null}
 
         {groups.map(group => {
           const unassigned = packLanes(
             filtered.bookings.filter(booking => booking.roomId === null && booking.roomTypeId === group.roomTypeId)
           )
+
           const hidden = collapsed.includes(group.roomTypeId)
 
           return (
             <div key={group.roomTypeId}>
               <Box
-                className='flex items-center gap-2 px-3 py-2 cursor-pointer'
-                sx={{ bgcolor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider' }}
-                onClick={() =>
-                  setCollapsed(current =>
-                    current.includes(group.roomTypeId)
-                      ? current.filter(id => id !== group.roomTypeId)
-                      : [...current, group.roomTypeId]
-                  )
-                }
+                className='cursor-pointer'
+                onClick={() => toggleGroup(group.roomTypeId)}
+                sx={{
+                  position: 'sticky',
+                  top: HEADER_HEIGHT,
+                  zIndex: 5,
+                  minWidth: totalWidth,
+                  bgcolor: 'customColors.tableHeaderBg',
+                  backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.04))',
+                  borderBottom: '1px solid',
+                  borderColor: 'divider'
+                }}
               >
-                <IconButton size='small'>
-                  <i className={hidden ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line'} />
-                </IconButton>
-                <Typography fontWeight={600}>
-                  {group.name} · {group.rooms.length} hab.
-                </Typography>
+                <Box className='inline-flex items-center gap-2 px-3 py-1.5' sx={{ position: 'sticky', left: 0 }}>
+                  <IconButton size='small' aria-label={hidden ? `Mostrar ${group.name}` : `Ocultar ${group.name}`}>
+                    <i className={hidden ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line'} />
+                  </IconButton>
+                  <Typography fontWeight={600}>
+                    {group.name} · {group.rooms.length} hab.
+                  </Typography>
+                </Box>
               </Box>
               {hidden ? null : (
                 <>

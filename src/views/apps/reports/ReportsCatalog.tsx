@@ -80,7 +80,7 @@ const GROUPS: ReportGroup[] = [
           import('./analysis/SalesBySourceReport').then(module => ({ default: module.CompanyProductionReport }))
         )
       },
-      { value: 'cancellations', label: 'Cancelaciones y no-shows', icon: 'ri-close-circle-line', component: lazy(() => import('./analysis/CancellationsReport')) }
+      { value: 'cancellations', label: 'Cancelaciones y no presentados', icon: 'ri-close-circle-line', component: lazy(() => import('./analysis/CancellationsReport')) }
     ]
   }
 ]

@@ -353,7 +353,7 @@ const FrontDeskPage = () => {
                       toast.success('Marcado como no se presentó.')
                       fetchOverview()
                     } catch (error) {
-                      toast.error(getFrontDeskApiErrorMessage(error, 'No se pudo marcar el no-show.'))
+                      toast.error(getFrontDeskApiErrorMessage(error, 'No se pudo marcar que no se presentó.'))
                     }
                   }}
                   onPay={stay => {

@@ -13,6 +13,7 @@ import type {
   ListReservationsQuery,
   Planning,
   PlanningView,
+  ReservationNote,
   UpdateReservationBody,
   UpdateReservationRoomBody
 } from '@/types/apps/reservationsTypes'
@@ -43,6 +44,24 @@ export const getReservationsApiErrorMessage = (error: unknown, fallback = 'Ocurr
   }
 
   return fallback
+}
+
+const RESERVATION_NOTES_CHANGED = 'dls-reservation-notes-changed'
+
+const notifyReservationNotesChanged = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(RESERVATION_NOTES_CHANGED))
+  }
+}
+
+export const subscribeReservationNotes = (listener: () => void) => {
+  if (typeof window === 'undefined') {
+    return () => undefined
+  }
+
+  window.addEventListener(RESERVATION_NOTES_CHANGED, listener)
+
+  return () => window.removeEventListener(RESERVATION_NOTES_CHANGED, listener)
 }
 
 const toNumber = (value: unknown, fallback = 0) => {
@@ -412,6 +431,7 @@ export const reservationsApi = {
       {},
       token
     )
+
     const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
 
     return rows.map(normalizePayment)
@@ -432,5 +452,39 @@ export const reservationsApi = {
         token
       )
     )
+  },
+  notes: async (propertyId: number, token?: string) => {
+    const payload = await request<ReservationNote[]>(`/properties/${propertyId}/reservation-notes`, {}, token)
+
+    return Array.isArray(payload) ? payload : []
+  },
+  createNote: async (propertyId: number, body: { stayDate: string; text: string }, token?: string) => {
+    const note = await request<ReservationNote>(
+      `/properties/${propertyId}/reservation-notes`,
+      { method: 'POST', body: JSON.stringify(body) },
+      token
+    )
+
+    notifyReservationNotesChanged()
+
+    return note
+  },
+  completeNote: async (propertyId: number, uuid: string, reservationUuid: string, token?: string) => {
+    const note = await request<ReservationNote>(
+      `/properties/${propertyId}/reservation-notes/${uuid}/complete`,
+      { method: 'POST', body: JSON.stringify({ reservationUuid }) },
+      token
+    )
+
+    notifyReservationNotesChanged()
+
+    return note
+  },
+  discardNote: async (propertyId: number, uuid: string, token?: string) => {
+    const result = await request<null>(`/properties/${propertyId}/reservation-notes/${uuid}`, { method: 'DELETE' }, token)
+
+    notifyReservationNotesChanged()
+
+    return result
   }
 }

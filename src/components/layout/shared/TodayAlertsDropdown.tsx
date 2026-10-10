@@ -28,7 +28,10 @@ import CustomAvatar from '@core/components/mui/Avatar'
 import themeConfig from '@configs/themeConfig'
 import { useSettings } from '@core/hooks/useSettings'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
+import { reservationsApi, subscribeReservationNotes } from '@/libs/reservationsApi'
 import type { Stay } from '@/types/apps/frontDeskTypes'
+import type { ReservationNote } from '@/types/apps/reservationsTypes'
+import { formatPlanningDate } from '@/types/apps/reservationsTypes'
 import { STAY_STATUS_LABELS } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import type { Locale } from '@configs/i18n'
@@ -64,6 +67,7 @@ const TodayAlertsDropdown = () => {
   const [error, setError] = useState<string | null>(null)
   const [arrivals, setArrivals] = useState<Stay[]>([])
   const [departures, setDepartures] = useState<Stay[]>([])
+  const [pendingNotes, setPendingNotes] = useState<ReservationNote[]>([])
   const [dismissed, setDismissed] = useState<string[]>([])
 
   const anchorRef = useRef<HTMLButtonElement>(null)
@@ -77,12 +81,15 @@ const TodayAlertsDropdown = () => {
   const { lang: locale } = useParams()
   const propertyId = session?.user?.propertyId
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!propertyId) {
       return
     }
 
-    setLoading(true)
+    if (!silent) {
+      setLoading(true)
+    }
+
     setError(null)
 
     try {
@@ -94,6 +101,12 @@ const TodayAlertsDropdown = () => {
       setError(getFrontDeskApiErrorMessage(loadError, 'No se pudo cargar el movimiento de hoy.'))
       setArrivals([])
       setDepartures([])
+    }
+
+    try {
+      setPendingNotes(await reservationsApi.notes(propertyId))
+    } catch {
+      setPendingNotes([])
     } finally {
       setLoading(false)
     }
@@ -107,17 +120,33 @@ const TodayAlertsDropdown = () => {
     void load()
   }, [load, propertyId, status])
 
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    void load(true)
+  }, [load, open])
+
+  useEffect(() => subscribeReservationNotes(() => void load(true)), [load])
+
   const visibleArrivals = useMemo(
     () => arrivals.filter(stay => !dismissed.includes(stay.reservationRoomUuid)),
     [arrivals, dismissed]
   )
+
   const visibleDepartures = useMemo(
     () => departures.filter(stay => !dismissed.includes(stay.reservationRoomUuid)),
     [departures, dismissed]
   )
 
   const pendingArrivals = visibleArrivals.filter(stay => stay.status !== 'CHECKED_IN').length
-  const badgeCount = pendingArrivals || visibleDepartures.length
+  const badgeCount = (pendingArrivals || visibleDepartures.length) + pendingNotes.length
+
+  const goToNotes = () => {
+    setOpen(false)
+    router.push(getLocalizedUrl('/apps/reservations?por-completar=1', locale as Locale))
+  }
 
   const goToFrontDesk = () => {
     setOpen(false)
@@ -206,11 +235,14 @@ const TodayAlertsDropdown = () => {
                     <Typography variant='h5' className='flex-auto'>
                       Hoy en recepción
                     </Typography>
-                    {pendingArrivals > 0 ? (
+                    {pendingNotes.length > 0 ? (
+                      <Chip size='small' variant='tonal' color='warning' label={`${pendingNotes.length} por completar`} />
+                    ) : pendingArrivals > 0 ? (
                       <Chip size='small' variant='tonal' color='primary' label={`${pendingArrivals} llegadas`} />
                     ) : null}
                   </div>
                   <Divider />
+                  <div className='flex-1 min-bs-0 overflow-hidden'>
                   <ScrollWrapper hidden={hidden}>
                     {loading ? (
                       <div className='flex justify-center items-center p-10'>
@@ -253,6 +285,39 @@ const TodayAlertsDropdown = () => {
                       </>
                     )}
                   </ScrollWrapper>
+                  </div>
+                  {pendingNotes.length > 0 ? (
+                    <>
+                      <Divider />
+                      <div className='pli-4 plb-3 flex flex-col gap-2'>
+                        <Typography variant='caption' className='uppercase' color='text.disabled'>
+                          Por completar ({pendingNotes.length})
+                        </Typography>
+                        {pendingNotes.slice(0, 2).map(note => (
+                          <div
+                            key={note.uuid}
+                            className='flex gap-3 cursor-pointer'
+                            onClick={goToNotes}
+                          >
+                            <CustomAvatar color='warning' skin='light-static' size={34}>
+                              <i className='ri-sticky-note-line' />
+                            </CustomAvatar>
+                            <div className='flex flex-col flex-auto min-is-0'>
+                              <Typography className='font-medium' color='text.primary'>
+                                {formatPlanningDate(note.stayDate)}
+                              </Typography>
+                              <Typography variant='caption' color='text.secondary' className='truncate'>
+                                {note.text}
+                              </Typography>
+                            </div>
+                          </div>
+                        ))}
+                        <Button fullWidth variant='contained' color='warning' size='small' onClick={goToNotes}>
+                          Completar como reserva
+                        </Button>
+                      </div>
+                    </>
+                  ) : null}
                   <Divider />
                   <div className='p-4'>
                     <Button fullWidth variant='contained' size='small' onClick={goToFrontDesk}>

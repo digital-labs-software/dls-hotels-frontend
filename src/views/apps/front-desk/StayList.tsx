@@ -73,7 +73,7 @@ const StayList = ({ kind, stays, onOpenStay, onCheckIn, onCheckOut, onAssign, on
             ) : null}
             {kind === 'arrivals' ? (
               <Button size='small' color='secondary' onClick={() => onNoShow(stay)}>
-                No llegó
+                No se presentó
               </Button>
             ) : null}
             {kind === 'departures' || kind === 'inHouse' ? (

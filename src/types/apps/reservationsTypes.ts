@@ -143,6 +143,16 @@ export interface ListReservationsQuery {
   search?: string
 }
 
+/** «Jorge Pérez» → nombres y apellido. Con una sola palabra, el apellido queda pendiente. */
+export const splitGuestName = (value: string) => {
+  const parts = value.trim().split(/\s+/).filter(Boolean)
+
+  if (parts.length === 0) return { firstName: '', lastName: '' }
+  if (parts.length === 1) return { firstName: parts[0], lastName: '—' }
+
+  return { firstName: parts.slice(0, -1).join(' '), lastName: parts[parts.length - 1] }
+}
+
 export type NewReservationPrefill = {
   roomId?: number | null
   roomTypeId?: number
@@ -150,6 +160,17 @@ export type NewReservationPrefill = {
   roomTypeName?: string
   checkInDate: string
   checkOutDate: string
+  notes?: string
+}
+
+export type ReservationNote = {
+  uuid: string
+  stayDate: string
+  text: string
+  status: 'OPEN' | 'DONE'
+  createdByName: string
+  createdAt: string
+  reservationUuid: string | null
 }
 
 export const PLANNING_VIEWS: { value: PlanningView; label: string }[] = [
@@ -173,7 +194,7 @@ export const BOOKING_STATUS_LABELS: Record<StayStatus, string> = {
   CHECKED_IN: 'Ocupado',
   CHECKED_OUT: 'Finalizada',
   CANCELLED: 'Cancelada',
-  NO_SHOW: 'No llegó'
+  NO_SHOW: 'No se presentó'
 }
 
 export const SOURCE_LABELS: Record<ReservationSource, string> = {
@@ -201,7 +222,7 @@ export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   OTHER: 'Otro'
 }
 
-export const PAYMENT_METHODS = ['CASH', 'CARD', 'YAPE', 'PLIN', 'TRANSFER', 'OTHER'] as const
+export const PAYMENT_METHODS = ['YAPE', 'PLIN', 'CASH', 'TRANSFER', 'CARD', 'OTHER'] as const
 
 const DAY = 86_400_000
 
@@ -264,7 +285,9 @@ export function applyFilters(p: Planning, roomTypeId?: number, floorId?: number)
   const rooms = p.rooms.filter(
     r => (!roomTypeId || r.roomTypeId === roomTypeId) && (!floorId || r.floorId === floorId)
   )
+
   const roomIds = new Set(rooms.map(r => r.id))
+
   const bookings = p.bookings.filter(b =>
     b.roomId === null ? (!roomTypeId || b.roomTypeId === roomTypeId) && !floorId : roomIds.has(b.roomId)
   )

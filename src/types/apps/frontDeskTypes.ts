@@ -17,7 +17,7 @@ export type ReservationSource =
 
 export type PaymentMethod = 'CASH' | 'CARD' | 'YAPE' | 'PLIN' | 'TRANSFER' | 'OTHER'
 
-export const PAYMENT_METHODS = ['CASH', 'CARD', 'YAPE', 'PLIN', 'TRANSFER', 'OTHER'] as const
+export const PAYMENT_METHODS = ['YAPE', 'PLIN', 'CASH', 'TRANSFER', 'CARD', 'OTHER'] as const
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   CASH: 'Efectivo',

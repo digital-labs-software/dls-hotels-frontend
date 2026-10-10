@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import type { ReactNode } from 'react'
+
+import Autocomplete from '@mui/material/Autocomplete'
+import Box from '@mui/material/Box'
+import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import CardActionArea from '@mui/material/CardActionArea'
-import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
@@ -19,6 +21,7 @@ import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
+import Link from '@mui/material/Link'
 import OutlinedInput from '@mui/material/OutlinedInput'
 import Select from '@mui/material/Select'
 import Step from '@mui/material/Step'
@@ -54,11 +57,10 @@ import {
   nightsBetween,
   PAYMENT_LABELS,
   PAYMENT_METHODS,
-  SOURCE_LABELS,
   SOURCE_OPTIONS
 } from '@/types/apps/reservationsTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
-import { capacityLabel } from '@/types/apps/roomTypeTypes'
+import { formatPeople, roomCapacity } from '@/types/apps/roomTypeTypes'
 import DateField from '@/components/date-picker/DateField'
 import GuestPicker from '@views/apps/front-desk/GuestPicker'
 import CompanyPicker from './CompanyPicker'
@@ -77,6 +79,9 @@ type RoomDraft = {
   checkOutDate: string
   adults: string
   children: string
+
+  /** false: usa las fechas de la estadía; true: el recepcionista le puso fechas propias. */
+  customDates: boolean
 }
 
 type Props = {
@@ -88,6 +93,10 @@ type Props = {
   onCreated: (reservationUuid: string, code: string) => void
 }
 
+const stayDay = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+
+const formatStayDay = (day: string) => (day ? stayDay.format(new Date(`${day}T00:00:00Z`)) : '—')
+
 const emptyRoom = (today: string, prefill?: NewReservationPrefill | null): RoomDraft => ({
   key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   roomTypeId: prefill?.roomTypeId ?? '',
@@ -98,8 +107,33 @@ const emptyRoom = (today: string, prefill?: NewReservationPrefill | null): RoomD
   checkInDate: prefill?.checkInDate || today,
   checkOutDate: prefill?.checkOutDate || addDays(prefill?.checkInDate || today, 1),
   adults: '2',
-  children: '0'
+  children: '0',
+  customDates: false
 })
+
+const fitsGuests = (type: AvailabilityRoomType, adults: number, children: number) =>
+  adults + children <= roomCapacity(type) &&
+  adults <= Number(type.maxAdults) &&
+  children <= Number(type.maxChildren || 0)
+
+/** Recuadro con título: separa la estadía de las habitaciones a simple vista (también en modo oscuro). */
+const Section = ({ title, action, footer, children }: { title: string; action?: ReactNode; footer?: ReactNode; children: ReactNode }) => (
+  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
+    <Box
+      className='flex items-center justify-between gap-2 px-4 py-2'
+      sx={{ bgcolor: 'customColors.tableHeaderBg', borderBottom: '1px solid', borderColor: 'divider' }}
+    >
+      <Typography fontWeight={600}>{title}</Typography>
+      {action}
+    </Box>
+    <Box className='flex flex-col gap-4 p-4'>{children}</Box>
+    {footer ? (
+      <Box className='px-4 py-3' sx={{ bgcolor: 'customColors.tableHeaderBg', borderTop: '1px solid', borderColor: 'divider' }}>
+        {footer}
+      </Box>
+    ) : null}
+  </Box>
+)
 
 const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreated }: Props) => {
   const theme = useTheme()
@@ -120,13 +154,19 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   const [discountAmount, setDiscountAmount] = useState('0')
   const [notes, setNotes] = useState('')
   const [payAmount, setPayAmount] = useState('')
-  const [payMethod, setPayMethod] = useState<PaymentMethod>('CASH')
+  const [payMethod, setPayMethod] = useState<PaymentMethod>('YAPE')
   const [payReference, setPayReference] = useState('')
   const [saving, setSaving] = useState(false)
   const [roomWarning, setRoomWarning] = useState('')
 
   const primary = rooms[0]
-  const nights = primary ? nightsBetween(primary.checkInDate, primary.checkOutDate) : 1
+  const stayNights = primary ? nightsBetween(primary.checkInDate, primary.checkOutDate) : 1
+
+  /** Abierta desde una celda del calendario: la habitación ya viene elegida (reserva rápida). */
+  const quickBooking = Boolean(prefill?.roomId)
+
+  /** Abierta desde una nota por completar: el texto ya es la nota de la reserva. */
+  const fromNote = Boolean(prefill?.notes) && !quickBooking
 
   useEffect(() => {
     if (!open) {
@@ -144,9 +184,9 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     setExternalCode('')
     setConfirmed(true)
     setDiscountAmount('0')
-    setNotes('')
+    setNotes(prefill?.notes ?? '')
     setPayAmount('')
-    setPayMethod('CASH')
+    setPayMethod('YAPE')
     setPayReference('')
     setRoomWarning('')
   }, [open, prefill, today])
@@ -165,18 +205,38 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     try {
       const result = await reservationsApi.availability(propertyId, {
         checkInDate: first.checkInDate,
-        checkOutDate: first.checkOutDate,
-        adults: Number(first.adults) || 1,
-        children: Number(first.children) || 0
+        checkOutDate: first.checkOutDate
       })
 
       setAvailability(result.roomTypes)
+
+      if (prefill?.roomTypeId) {
+        const type = result.roomTypes.find(item => item.roomTypeId === prefill.roomTypeId)
+
+        const people = type
+          ? Math.max(1, Math.min(roomCapacity(type), Number(type.maxAdults) || roomCapacity(type)))
+          : 0
+
+        if (people > 0) {
+          setRooms(current =>
+            current.map((item, index) =>
+              index === 0 && item.adults === '2' && item.children === '0' ? { ...item, adults: String(people) } : item
+            )
+          )
+        }
+      }
 
       if (prefill?.roomId) {
         const type = result.roomTypes.find(item => item.roomTypeId === prefill.roomTypeId)
         const stillFree = type?.freeRooms.some(room => room.id === prefill.roomId)
 
-        setRoomWarning(stillFree ? '' : 'La habitación elegida ya no está libre en esas fechas.')
+        setRoomWarning(stillFree ? '' : 'La habitación elegida ya no está libre en esas fechas. Elige otra.')
+
+        if (!stillFree) {
+          setRooms(current =>
+            current.map((item, index) => (index === 0 && item.roomId === prefill.roomId ? { ...item, roomId: 'later' } : item))
+          )
+        }
       }
     } catch (error) {
       toast.error(getReservationsApiErrorMessage(error, 'No se pudo consultar la disponibilidad.'))
@@ -190,7 +250,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
       loadAvailability()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, primary?.checkInDate, primary?.checkOutDate, primary?.adults, primary?.children])
+  }, [open, primary?.checkInDate, primary?.checkOutDate])
 
   const loadRates = async (roomTypeId: number) => {
     if (requestedRateTypes.current.has(roomTypeId)) {
@@ -298,20 +358,49 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     }, 0)
   }, [rooms])
 
-  const handleSelectType = (room: RoomDraft, type: AvailabilityRoomType) => {
-    const prefilled =
-      prefill?.roomId && prefill.roomTypeId === type.roomTypeId
-        ? type.freeRooms.find(free => free.id === prefill.roomId)
-        : undefined
+  /** Habitaciones ya elegidas en las otras líneas de esta reserva. */
+  const takenRoomIds = (exceptKey: string) =>
+    new Set(
+      rooms
+        .filter(item => item.key !== exceptKey && typeof item.roomId === 'number')
+        .map(item => item.roomId as number)
+    )
 
-    const chosen = prefilled ?? type.freeRooms[0]
+  const freeRoomsFor = (room: RoomDraft, type: AvailabilityRoomType) => {
+    const taken = takenRoomIds(room.key)
+
+    return type.freeRooms.filter(free => !taken.has(free.id))
+  }
+
+  /** Cambia las fechas de la estadía en todas las habitaciones que no tienen fechas propias. */
+  const setStayDates = (checkInDate: string, checkOutDate: string) =>
+    setRooms(current =>
+      current.map((item, index) => (index === 0 || !item.customDates ? { ...item, checkInDate, checkOutDate } : item))
+    )
+
+  const roomGuests = (room: RoomDraft) => ({
+    adults: Number(room.adults) || 0,
+    children: Number(room.children) || 0
+  })
+
+  const handleSelectType = (room: RoomDraft, type: AvailabilityRoomType) => {
+    const free = freeRoomsFor(room, type)
+    const isPrefilledLine = room.key === rooms[0]?.key && prefill?.roomTypeId === type.roomTypeId
+
+    const prefilled = isPrefilledLine && prefill?.roomId ? free.find(item => item.id === prefill.roomId) : undefined
+
+    const chosen = prefilled ?? free[0]
+
+    const people = Math.max(1, Math.min(roomCapacity(type), Number(type.maxAdults) || roomCapacity(type)))
 
     updateRoom(room.key, {
       roomTypeId: type.roomTypeId,
-      roomId: prefill?.roomId && prefill.roomTypeId === type.roomTypeId ? prefill.roomId : (chosen?.id ?? 'later'),
+      roomId: chosen?.id ?? 'later',
       pricePerNight: String(chosen?.effectivePrice ?? type.basePrice),
       rateId: '',
-      rateNotice: ''
+      rateNotice: '',
+      adults: String(people),
+      children: '0'
     })
     loadRates(type.roomTypeId)
   }
@@ -352,6 +441,25 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
       return false
     }
 
+    if (rooms.some(room => roomGuests(room).adults < 1)) {
+      toast.error('Cada habitación necesita al menos un adulto.')
+
+      return false
+    }
+
+    const crowded = rooms.find(room => {
+      const type = availability.find(item => item.roomTypeId === room.roomTypeId)
+      const { adults, children } = roomGuests(room)
+
+      return type ? !fitsGuests(type, adults, children) : false
+    })
+
+    if (crowded) {
+      toast.error('En una de las habitaciones no caben las personas indicadas. Cambia el tipo o agrega otra habitación.')
+
+      return false
+    }
+
     return true
   }
 
@@ -381,8 +489,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
         checkOutDate: room.checkOutDate,
         adults: Number(room.adults) || 1,
         children: Number(room.children) || 0,
-        pricePerNight: room.pricePerNight ? Number(room.pricePerNight) : null,
-        guests: guest ? [{ guestId: guest.id, isPrimary: true }] : undefined
+        pricePerNight: room.pricePerNight ? Number(room.pricePerNight) : null
       }))
 
       const reservation = await reservationsApi.create(propertyId, {
@@ -424,11 +531,17 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     }
   }
 
-  const renderRoomStep = (room: RoomDraft, index: number) => {
+  const renderRoomRow = (room: RoomDraft, index: number) => {
     const selectedType = availability.find(type => type.roomTypeId === room.roomTypeId)
     const rates = ratesForRoom(room)
     const selectedRate = rates.find(rate => rate.id === room.rateId)
     const selectedFree = selectedType?.freeRooms.find(free => free.id === room.roomId)
+    const roomNights = nightsBetween(room.checkInDate, room.checkOutDate)
+    const { adults, children } = roomGuests(room)
+    const freeRooms = selectedType ? freeRoomsFor(room, selectedType) : []
+    const roomValue = typeof room.roomId === 'number' && freeRooms.some(free => free.id === room.roomId) ? room.roomId : 'later'
+    const crowded = selectedType ? !fitsGuests(selectedType, adults, children) : false
+    const subtotal = (Number(room.pricePerNight) || 0) * roomNights
 
     const priceSource = priceSourceLabel({
       price: room.pricePerNight,
@@ -440,168 +553,220 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     })
 
     return (
-      <div key={room.key} className='flex flex-col gap-4'>
-        {index > 0 ? <Divider /> : null}
-        <div className='flex items-center justify-between'>
-          <Typography fontWeight={600}>Habitación {index + 1}</Typography>
-          {rooms.length > 1 ? (
-            <IconButton size='small' onClick={() => setRooms(current => current.filter(item => item.key !== room.key))}>
-              <i className='ri-delete-bin-line' />
-            </IconButton>
+      <div key={room.key} className='flex flex-col gap-2'>
+        {index > 0 ? <Divider className='mbe-2' /> : null}
+        <div className='grid grid-cols-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_72px_72px_minmax(108px,140px)_36px] gap-3 items-end'>
+          <Autocomplete
+            className='col-span-2 md:col-span-1'
+            size='small'
+            options={availability}
+            loading={loadingAvailability}
+            value={selectedType ?? null}
+            onChange={(_, type) => type && handleSelectType(room, type)}
+            disableClearable={Boolean(selectedType)}
+            getOptionLabel={type => type.roomTypeName}
+            isOptionEqualToValue={(option, value) => option.roomTypeId === value.roomTypeId}
+            getOptionDisabled={type => freeRoomsFor(room, type).length === 0 || !fitsGuests(type, adults, children)}
+            noOptionsText='No hay tipos con ese nombre'
+            loadingText='Consultando disponibilidad…'
+            sx={{ '& input': { textOverflow: 'ellipsis' } }}
+            slotProps={{
+              popper: { placement: 'bottom-start', style: { width: 'auto' } },
+              paper: { sx: { minWidth: 420 } }
+            }}
+            renderOption={(props, type) => {
+              const { key, ...optionProps } = props as typeof props & { key: string }
+              const remaining = freeRoomsFor(room, type).length
+              const fits = fitsGuests(type, adults, children)
+
+              const detail =
+                remaining === 0
+                  ? 'Sin disponibilidad'
+                  : !fits
+                    ? `No caben (hasta ${formatPeople(roomCapacity(type))})`
+                    : `${formatRoomPrice(type.basePrice)} · ${remaining} libres`
+
+              return (
+                <li key={key} {...optionProps}>
+                  <div className='flex justify-between items-center gap-6 is-full'>
+                    <Typography variant='body2' fontWeight={600} noWrap>
+                      {type.roomTypeName}
+                    </Typography>
+                    <Typography variant='caption' color='text.secondary' className='whitespace-nowrap'>
+                      {detail}
+                    </Typography>
+                  </div>
+                </li>
+              )
+            }}
+            renderInput={params => <TextField {...params} label='Tipo de habitación' placeholder='Elige el tipo' />}
+          />
+          <FormControl size='small' fullWidth className='col-span-2 md:col-span-1' disabled={!selectedType}>
+            <InputLabel id={`room-${room.key}`}>Habitación</InputLabel>
+            <Select
+              labelId={`room-${room.key}`}
+              label='Habitación'
+              value={selectedType ? roomValue : 'later'}
+              onChange={e => handleSelectRoom(room, e.target.value as number | 'later', selectedType)}
+            >
+              <MenuItem value='later'>Asignar después</MenuItem>
+              {freeRooms.map(free => (
+                <MenuItem key={free.id} value={free.id}>
+                  {free.number} · {free.floorName}
+                  {free.effectivePrice !== selectedType?.basePrice ? ` · ${formatRoomPrice(free.effectivePrice)}` : ''}
+                  {free.status === 'CLEANING' || free.status === 'MAINTENANCE'
+                    ? ` · ${free.status === 'CLEANING' ? 'Limpieza' : 'Mantenimiento'}`
+                    : ''}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            size='small'
+            label='Adultos'
+            type='number'
+            value={room.adults}
+            error={crowded || adults < 1}
+            slotProps={{ htmlInput: { min: 1 } }}
+            onChange={e => updateRoom(room.key, { adults: e.target.value })}
+          />
+          <TextField
+            size='small'
+            label='Niños'
+            type='number'
+            value={room.children}
+            error={crowded}
+            slotProps={{ htmlInput: { min: 0 } }}
+            onChange={e => updateRoom(room.key, { children: e.target.value })}
+          />
+          <TextField
+            size='small'
+            label='Precio/noche'
+            value={room.pricePerNight}
+            disabled={!selectedType}
+            onChange={e => updateRoom(room.key, { pricePerNight: e.target.value, rateNotice: '' })}
+            slotProps={{ input: { startAdornment: <Typography variant='body2' className='mie-1'>S/</Typography> } }}
+          />
+          <div className='flex items-center justify-end min-bs-[40px]'>
+            {rooms.length > 1 ? (
+              <IconButton
+                size='small'
+                aria-label='Quitar esta habitación'
+                onClick={() => setRooms(current => current.filter(item => item.key !== room.key))}
+              >
+                <i className='ri-delete-bin-line' />
+              </IconButton>
+            ) : null}
+          </div>
+        </div>
+        <div className='flex justify-end items-baseline gap-4'>
+          <Typography variant='body2' color='text.secondary'>
+            {roomNights} noche{roomNights === 1 ? '' : 's'} × {formatRoomPrice(Number(room.pricePerNight) || 0)}
+          </Typography>
+          <Typography variant='body2' color='text.secondary'>
+            Subtotal
+          </Typography>
+          <Typography fontWeight={700} sx={{ minWidth: 88, textAlign: 'right' }}>
+            {formatRoomPrice(subtotal)}
+          </Typography>
+        </div>
+
+        {crowded && selectedType ? (
+          <Typography variant='caption' color='error.main'>
+            En {selectedType.roomTypeName} entran hasta {formatPeople(roomCapacity(selectedType))}. Cambia el tipo o agrega
+            otra habitación.
+          </Typography>
+        ) : null}
+        {roomWarning && index === 0 ? (
+          <Typography variant='caption' color='warning.main'>
+            {roomWarning}
+          </Typography>
+        ) : null}
+        {room.rateNotice ? (
+          <Typography variant='caption' color='warning.main'>
+            {room.rateNotice}
+          </Typography>
+        ) : null}
+
+        <div className='flex flex-wrap items-center gap-x-4 gap-y-2'>
+          {selectedType ? (
+            <Typography variant='caption' color='text.secondary'>
+              {priceSource}
+            </Typography>
+          ) : null}
+          {index > 0 ? (
+            <Link
+              component='button'
+              type='button'
+              variant='caption'
+              onClick={() =>
+                updateRoom(
+                  room.key,
+                  room.customDates
+                    ? { customDates: false, checkInDate: primary.checkInDate, checkOutDate: primary.checkOutDate }
+                    : { customDates: true }
+                )
+              }
+            >
+              {room.customDates ? 'Usar las fechas de la estadía' : 'Fechas distintas'}
+            </Link>
           ) : null}
         </div>
-        {index === 0 ? (
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+
+        {rates.length > 0 ? (
+          <FormControl size='small' fullWidth className='md:max-is-[420px]'>
+            <InputLabel id={`rate-${room.key}`} shrink>
+              Tarifa
+            </InputLabel>
+            <Select
+              labelId={`rate-${room.key}`}
+              displayEmpty
+              input={<OutlinedInput notched label='Tarifa' />}
+              value={selectedRate ? room.rateId : ''}
+              onChange={e => {
+                const value = e.target.value as number | ''
+
+                handleSelectRate(room, value === '' ? '' : Number(value))
+              }}
+            >
+              <MenuItem value=''>Precio normal</MenuItem>
+              {rates.map(rate => (
+                <MenuItem key={rate.id} value={rate.id}>
+                  {rate.name} · {formatRoomPrice(rate.price)}
+                </MenuItem>
+              ))}
+            </Select>
+            {selectedRate && rateEndsDuringStay(selectedRate, room.checkOutDate) ? (
+              <FormHelperText sx={{ color: 'warning.main' }}>
+                «{selectedRate.name}» vale hasta el {formatRateDate(selectedRate.validTo)}. La estadía sigue después, pero
+                todas las noches se cobran a {formatRoomPrice(selectedRate.price)}. Si no corresponde, cambie el precio por
+                noche.
+              </FormHelperText>
+            ) : null}
+          </FormControl>
+        ) : null}
+
+        {index > 0 && room.customDates ? (
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 md:max-is-[520px]'>
             <DateField
               fullWidth
-              label='Check-in (ingreso)'
-              value={room.checkInDate}
-              onChange={value =>
-                updateRoom(room.key, {
-                  checkInDate: value,
-                  checkOutDate: value ? addDays(value, 1) : room.checkOutDate
-                })
-              }
-            />
-            <DateField
-              fullWidth
-              label='Check-out (salida)'
-              value={room.checkOutDate}
-              minDate={room.checkInDate ? addDays(room.checkInDate, 1) : undefined}
-              onChange={value => updateRoom(room.key, { checkOutDate: value })}
-            />
-            <TextField
-              label='Adultos'
-              type='number'
-              value={room.adults}
-              onChange={e => updateRoom(room.key, { adults: e.target.value })}
-            />
-            <TextField
-              label='Niños'
-              type='number'
-              value={room.children}
-              onChange={e => updateRoom(room.key, { children: e.target.value })}
-            />
-          </div>
-        ) : (
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-            <DateField
-              fullWidth
-              label='Check-in (ingreso)'
+              size='small'
+              label='Ingreso de esta habitación'
               value={room.checkInDate}
               onChange={value => updateRoom(room.key, { checkInDate: value })}
             />
             <DateField
               fullWidth
-              label='Check-out (salida)'
+              size='small'
+              label='Salida de esta habitación'
               value={room.checkOutDate}
               minDate={room.checkInDate ? addDays(room.checkInDate, 1) : undefined}
               onChange={value => updateRoom(room.key, { checkOutDate: value })}
             />
-          </div>
-        )}
-        {index === 0 && loadingAvailability ? (
-          <div className='flex justify-center p-4'>
-            <CircularProgress size={24} />
-          </div>
-        ) : (
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-            {availability.map(type => {
-              const disabled = type.availableCount === 0 || type.fitsRequestedGuests === false
-
-              return (
-                <Card
-                  key={`${room.key}-${type.roomTypeId}`}
-                  variant='outlined'
-                  sx={{
-                    borderColor: room.roomTypeId === type.roomTypeId ? 'primary.main' : 'divider',
-                    opacity: disabled ? 0.5 : 1
-                  }}
-                >
-                  <CardActionArea disabled={disabled} onClick={() => handleSelectType(room, type)}>
-                    <CardContent>
-                      <Typography fontWeight={600}>{type.roomTypeName}</Typography>
-                      <Typography variant='body2'>{formatRoomPrice(type.basePrice)} / noche</Typography>
-                      <Typography variant='caption' color='text.secondary'>
-                        {type.availableCount} disponibles · {capacityLabel(type)}
-                      </Typography>
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-              )
-            })}
-          </div>
-        )}
-        {roomWarning && index === 0 ? (
-          <Typography color='warning.main' variant='body2'>
-            {roomWarning}
-          </Typography>
-        ) : null}
-        {selectedType ? (
-          <>
-            <FormControl fullWidth>
-              <InputLabel id={`room-${room.key}`}>Habitación</InputLabel>
-              <Select
-                labelId={`room-${room.key}`}
-                label='Habitación'
-                value={room.roomId}
-                onChange={e => handleSelectRoom(room, e.target.value as number | 'later', selectedType)}
-              >
-                <MenuItem value='later'>Asignar después</MenuItem>
-                {selectedType.freeRooms.map(free => (
-                  <MenuItem key={free.id} value={free.id}>
-                    {free.number} · {free.floorName} · {formatRoomPrice(free.effectivePrice)}
-                    {free.status === 'CLEANING' || free.status === 'MAINTENANCE'
-                      ? ` · ${free.status === 'CLEANING' ? 'Limpieza' : 'Mantenimiento'}`
-                      : ''}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            {rates.length > 0 ? (
-              <FormControl fullWidth>
-                <InputLabel id={`rate-${room.key}`} shrink>
-                  Tarifa
-                </InputLabel>
-                <Select
-                  labelId={`rate-${room.key}`}
-                  displayEmpty
-                  input={<OutlinedInput notched label='Tarifa' />}
-                  value={selectedRate ? room.rateId : ''}
-                  onChange={e => {
-                    const value = e.target.value as number | ''
-
-                    handleSelectRate(room, value === '' ? '' : Number(value))
-                  }}
-                >
-                  <MenuItem value=''>Precio de la habitación</MenuItem>
-                  {rates.map(rate => (
-                    <MenuItem key={rate.id} value={rate.id}>
-                      {rate.name} · {formatRoomPrice(rate.price)}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {selectedRate && rateEndsDuringStay(selectedRate, room.checkOutDate) ? (
-                  <FormHelperText sx={{ color: 'warning.main' }}>
-                    «{selectedRate.name}» vale hasta el {formatRateDate(selectedRate.validTo)}. La estadía sigue
-                    después, pero todas las noches se cobran a {formatRoomPrice(selectedRate.price)}. Si no corresponde,
-                    cambie el precio por noche.
-                  </FormHelperText>
-                ) : null}
-              </FormControl>
-            ) : null}
-            <TextField
-              label='Precio por noche'
-              value={room.pricePerNight}
-              onChange={e => updateRoom(room.key, { pricePerNight: e.target.value, rateNotice: '' })}
-              helperText={room.rateNotice || priceSource}
-              slotProps={{ formHelperText: { sx: room.rateNotice ? { color: 'warning.main' } : undefined } }}
-            />
-            <Typography variant='body2'>
-              {nightsBetween(room.checkInDate, room.checkOutDate)} noches · Subtotal{' '}
-              {formatRoomPrice((Number(room.pricePerNight) || 0) * nightsBetween(room.checkInDate, room.checkOutDate))}
+            <Typography variant='caption' color='text.secondary' className='sm:col-span-2'>
+              La disponibilidad de estas fechas se confirma al guardar.
             </Typography>
-          </>
+          </div>
         ) : null}
       </div>
     )
@@ -610,50 +775,113 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   return (
     <>
       <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='md' fullScreen={isMobile}>
-        <DialogTitle>Nueva reserva</DialogTitle>
+        <DialogTitle>{fromNote ? 'Completar reserva' : quickBooking ? 'Reserva rápida' : 'Nueva reserva'}</DialogTitle>
         <DialogContent className='flex flex-col gap-5 pt-4'>
           <Stepper activeStep={step} alternativeLabel={!isMobile} orientation={isMobile ? 'horizontal' : 'horizontal'}>
             <Step>
               <StepLabel>Habitación</StepLabel>
             </Step>
             <Step>
-              <StepLabel>Titular</StepLabel>
+              <StepLabel>Quién reserva</StepLabel>
             </Step>
             <Step>
               <StepLabel>Confirmación</StepLabel>
             </Step>
           </Stepper>
 
+          {fromNote && step < 2 ? (
+            <Alert severity='info' icon={<i className='ri-sticky-note-line' />}>
+              Nota anotada: {prefill?.notes}. Se guarda con la reserva. Puedes corregirla al final, en Notas de la reserva.
+            </Alert>
+          ) : null}
+
           {step === 0 ? (
             <div className='flex flex-col gap-4'>
               <Typography variant='body2' color='text.secondary'>
-                {nights} noche{nights === 1 ? '' : 's'}
-                {prefill?.roomNumber ? ` · ${prefill.roomNumber} ${prefill.roomTypeName ?? ''}` : ''}
+                {quickBooking
+                  ? 'La habitación ya viene elegida desde el calendario. Revisa las personas y pulsa Siguiente.'
+                  : 'Pon las fechas, elige el tipo de habitación y cuántas personas van.'}
               </Typography>
-              {rooms.map(renderRoomStep)}
-              <Button
-                variant='outlined'
-                onClick={() =>
-                  setRooms(current => [
-                    ...current,
-                    emptyRoom(today, { checkInDate: primary.checkInDate, checkOutDate: primary.checkOutDate })
-                  ])
+
+              <Section
+                title='1. Estadía'
+                action={
+                  <Chip
+                    size='small'
+                    label={`${formatStayDay(primary.checkInDate)} → ${formatStayDay(primary.checkOutDate)} · ${stayNights} noche${stayNights === 1 ? '' : 's'}`}
+                  />
                 }
               >
-                + Agregar otra habitación
-              </Button>
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                  <DateField
+                    fullWidth
+                    label='Ingreso (check-in)'
+                    value={primary.checkInDate}
+                    onChange={value =>
+                      value &&
+                      setStayDates(
+                        value,
+                        primary.checkOutDate > value ? primary.checkOutDate : addDays(value, Math.max(stayNights, 1))
+                      )
+                    }
+                  />
+                  <DateField
+                    fullWidth
+                    label='Salida (check-out)'
+                    value={primary.checkOutDate}
+                    minDate={primary.checkInDate ? addDays(primary.checkInDate, 1) : undefined}
+                    onChange={value => value && setStayDates(primary.checkInDate, value)}
+                  />
+                </div>
+              </Section>
+
+              <Section
+                title={`2. Habitaciones (${rooms.length})`}
+                footer={
+                  <div className='flex items-center justify-end gap-4'>
+                    <Typography variant='body2' color='text.secondary' className='mie-auto'>
+                      {rooms.length} habitación{rooms.length === 1 ? '' : 'es'} ·{' '}
+                      {formatPeople(rooms.reduce((sum, room) => sum + roomGuests(room).adults + roomGuests(room).children, 0))}
+                    </Typography>
+                    <Typography fontWeight={700}>Total</Typography>
+                    <Typography fontWeight={700} sx={{ minWidth: 88, textAlign: 'right' }}>
+                      {formatRoomPrice(selectedSubtotal)}
+                    </Typography>
+                  </div>
+                }
+              >
+                {rooms.map(renderRoomRow)}
+                <div>
+                  <Button
+                    size='small'
+                    variant='text'
+                    startIcon={<i className='ri-add-line' />}
+                    onClick={() =>
+                      setRooms(current => [
+                        ...current,
+                        emptyRoom(today, { checkInDate: primary.checkInDate, checkOutDate: primary.checkOutDate })
+                      ])
+                    }
+                  >
+                    Agregar otra habitación
+                  </Button>
+                </div>
+              </Section>
             </div>
           ) : null}
 
           {step === 1 ? (
             <div className='flex flex-col gap-4'>
-              <GuestPicker propertyId={propertyId} minChars={2} limit={10} label='Huésped' onSelect={setGuest} />
+              <Typography variant='body2' color='text.secondary'>
+                Quién hace la reserva: una persona o una agencia. Quienes duermen en cada habitación se asignan después, al abrir la reserva.
+              </Typography>
+              <GuestPicker propertyId={propertyId} minChars={2} limit={10} label='Persona' onSelect={setGuest} />
               {guest ? (
                 <Chip label={`${guest.person.firstName} ${guest.person.lastName}`} onDelete={() => setGuest(null)} />
               ) : (
                 <Button onClick={() => setCreateGuestOpen(true)}>+ Nuevo huésped</Button>
               )}
-              <CompanyPicker propertyId={propertyId} onSelect={setCompany} />
+              <CompanyPicker propertyId={propertyId} label='Agencia o empresa' onSelect={setCompany} />
               {company ? (
                 <Chip label={company.businessName} onDelete={() => setCompany(null)} />
               ) : (
@@ -664,56 +892,91 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
           {step === 2 ? (
             <div className='flex flex-col gap-4'>
-              <FormControl fullWidth>
-                <InputLabel id='reservation-source'>Canal</InputLabel>
-                <Select
-                  labelId='reservation-source'
-                  label='Canal'
-                  value={source}
-                  onChange={e => setSource(e.target.value as ReservationSource)}
-                >
-                  {SOURCE_OPTIONS.map(([value, label]) => (
-                    <MenuItem key={value} value={value}>
-                      {label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              {EXTERNAL_CODE_SOURCES.includes(source) ? (
-                <TextField
-                  label='Código externo'
-                  value={externalCode}
-                  onChange={e => setExternalCode(e.target.value)}
+              <div className='flex flex-col'>
+                <FormControlLabel
+                  control={<Switch checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />}
+                  label={confirmed ? 'Confirmada' : 'Pendiente'}
                 />
-              ) : null}
-              <FormControlLabel
-                control={<Switch checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />}
-                label={confirmed ? 'Confirmada' : 'Pendiente'}
+                <Typography variant='caption' color='text.secondary'>
+                  Confirmada: van a llegar. Pendiente: todavía no está seguro.
+                </Typography>
+              </div>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <FormControl fullWidth>
+                  <InputLabel id='reservation-source'>Canal</InputLabel>
+                  <Select
+                    labelId='reservation-source'
+                    label='Canal'
+                    value={source}
+                    onChange={e => setSource(e.target.value as ReservationSource)}
+                  >
+                    {SOURCE_OPTIONS.map(([value, label]) => (
+                      <MenuItem key={value} value={value}>
+                        {label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                {EXTERNAL_CODE_SOURCES.includes(source) ? (
+                  <TextField
+                    label='Código externo'
+                    value={externalCode}
+                    onChange={e => setExternalCode(e.target.value)}
+                  />
+                ) : null}
+              </div>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 items-center'>
+                <TextField
+                  label='Descuento'
+                  value={discountAmount}
+                  onChange={e => setDiscountAmount(e.target.value)}
+                  slotProps={{ input: { startAdornment: <Typography variant='body2' className='mie-1'>S/</Typography> } }}
+                />
+                <div className='flex items-center justify-end gap-3'>
+                  <Typography color='text.secondary'>Total</Typography>
+                  <Typography fontWeight={700}>
+                    {formatRoomPrice(Math.max(selectedSubtotal - (Number(discountAmount) || 0), 0))}
+                  </Typography>
+                </div>
+              </div>
+              <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
+                <TextField
+                  label='Adelanto'
+                  value={payAmount}
+                  onChange={e => setPayAmount(e.target.value)}
+                  helperText='Opcional'
+                  slotProps={{ input: { startAdornment: <Typography variant='body2' className='mie-1'>S/</Typography> } }}
+                />
+                <FormControl fullWidth>
+                  <InputLabel id='advance-method'>Método de pago</InputLabel>
+                  <Select
+                    labelId='advance-method'
+                    label='Método de pago'
+                    value={payMethod}
+                    onChange={e => setPayMethod(e.target.value as PaymentMethod)}
+                  >
+                    {PAYMENT_METHODS.map(item => (
+                      <MenuItem key={item} value={item}>
+                        {PAYMENT_LABELS[item]}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <TextField
+                  label='N.º operación'
+                  value={payReference}
+                  onChange={e => setPayReference(e.target.value)}
+                />
+              </div>
+              <TextField
+                label='Notas de la reserva'
+                multiline
+                minRows={2}
+                fullWidth
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                helperText='Opcional. Nota para recepción.'
               />
-              <TextField label='Descuento' value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} />
-              <TextField label='Notas' multiline minRows={2} value={notes} onChange={e => setNotes(e.target.value)} />
-              <Divider />
-              <Typography fontWeight={600}>Adelanto (opcional)</Typography>
-              <TextField label='Monto' value={payAmount} onChange={e => setPayAmount(e.target.value)} />
-              <FormControl fullWidth>
-                <InputLabel id='advance-method'>Método</InputLabel>
-                <Select
-                  labelId='advance-method'
-                  label='Método'
-                  value={payMethod}
-                  onChange={e => setPayMethod(e.target.value as PaymentMethod)}
-                >
-                  {PAYMENT_METHODS.map(item => (
-                    <MenuItem key={item} value={item}>
-                      {PAYMENT_LABELS[item]}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField label='N.º operación' value={payReference} onChange={e => setPayReference(e.target.value)} />
-              <Typography>
-                Subtotal {formatRoomPrice(selectedSubtotal)} · Canal {SOURCE_LABELS[source]}
-              </Typography>
             </div>
           ) : null}
         </DialogContent>

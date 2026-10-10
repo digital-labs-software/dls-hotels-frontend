@@ -52,7 +52,7 @@ const PaymentDialog = ({
   const currentBalance = stay?.reservationBalance ?? balance ?? 0
   const [kind, setKind] = useState<Kind>('charge')
   const [amount, setAmount] = useState('')
-  const [method, setMethod] = useState<PaymentMethod>('CASH')
+  const [method, setMethod] = useState<PaymentMethod>('YAPE')
   const [reference, setReference] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
@@ -64,7 +64,7 @@ const PaymentDialog = ({
 
     setKind(currentBalance >= 0 ? 'charge' : 'refund')
     setAmount(currentBalance !== 0 ? String(Math.abs(currentBalance)) : '')
-    setMethod('CASH')
+    setMethod('YAPE')
     setReference('')
     setNotes('')
   }, [currentBalance, open])
@@ -133,10 +133,10 @@ const PaymentDialog = ({
           helperText='Los pagos no se editan ni se borran. Para corregir, registra una devolución.'
         />
         <FormControl fullWidth>
-          <InputLabel id='payment-method'>Método</InputLabel>
+          <InputLabel id='payment-method'>Método de pago</InputLabel>
           <Select
             labelId='payment-method'
-            label='Método'
+            label='Método de pago'
             value={method}
             onChange={e => setMethod(e.target.value as PaymentMethod)}
           >

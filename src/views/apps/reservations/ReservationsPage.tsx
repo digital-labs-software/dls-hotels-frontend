@@ -1,7 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { useSearchParams } from 'next/navigation'
+
+import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -10,7 +13,6 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import Fab from '@mui/material/Fab'
 import FormControl from '@mui/material/FormControl'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
@@ -36,6 +38,7 @@ import type { RoomType } from '@/types/apps/roomTypeTypes'
 import type {
   NewReservationPrefill,
   Planning,
+  ReservationNote,
   PlanningBooking,
   PlanningRoom,
   PlanningView
@@ -51,19 +54,22 @@ import {
 import { listFloors } from '@/libs/floorsApi'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
+import PendingNotesPanel from './PendingNotesPanel'
 import PlanningCalendar from './PlanningCalendar'
+import QuickNoteDialog from './QuickNoteDialog'
 import PlanningDayList from './PlanningDayList'
 import ReservationDrawer from './ReservationDrawer'
 import ReservationListTable from './ReservationListTable'
 import ReservationPaymentDialog from './ReservationPaymentDialog'
 import ReservationWizard from './ReservationWizard'
 
-type MainTab = 'calendar' | 'list'
+type MainTab = 'calendar' | 'list' | 'notes'
 
 const ReservationsPage = () => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { data: session, status } = useSession()
+  const searchParams = useSearchParams()
   const propertyId = session?.user?.propertyId ?? 1
 
   const [tab, setTab] = useState<MainTab>('calendar')
@@ -88,6 +94,18 @@ const ReservationsPage = () => {
   const [unassignedOpen, setUnassignedOpen] = useState(false)
   const [unassigned, setUnassigned] = useState<PlanningBooking[]>([])
   const [listKey, setListKey] = useState(0)
+  const [notes, setNotes] = useState<ReservationNote[]>([])
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [noteDate, setNoteDate] = useState('')
+  const pendingNoteUuid = useRef<string | null>(null)
+
+  const loadNotes = useCallback(async () => {
+    try {
+      setNotes(await reservationsApi.notes(propertyId))
+    } catch {
+      setNotes([])
+    }
+  }, [propertyId])
 
   const fetchPlanning = useCallback(async () => {
     setLoading(true)
@@ -95,6 +113,7 @@ const ReservationsPage = () => {
     try {
       if (isMobile) {
         const day = mobileDay || undefined
+
         const result = day
           ? await reservationsApi.planningDay(propertyId, day)
           : await reservationsApi.planning(propertyId, 'WEEK')
@@ -117,7 +136,15 @@ const ReservationsPage = () => {
     }
 
     fetchPlanning()
-  }, [fetchPlanning, status])
+    loadNotes()
+  }, [fetchPlanning, loadNotes, status])
+
+  useEffect(() => {
+    if (searchParams.get('por-completar') === '1') {
+      setDetailUuid(null)
+      setTab('notes')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (status === 'loading') {
@@ -183,12 +210,51 @@ const ReservationsPage = () => {
     })
   }
 
-  const handleCreated = (uuid: string, code: string) => {
+  const openNote = (day?: string) => {
+    setNoteDate(day || planning?.today || mobileDay || todayISO())
+    setNoteOpen(true)
+  }
+
+  const completeNote = (note: ReservationNote) => {
+    pendingNoteUuid.current = note.uuid
+    openWizard({
+      checkInDate: note.stayDate,
+      checkOutDate: addDays(note.stayDate, 1),
+      notes: note.text
+    })
+  }
+
+  const discardNote = async (note: ReservationNote) => {
+    try {
+      await reservationsApi.discardNote(propertyId, note.uuid)
+      toast.success('Nota descartada.')
+      loadNotes()
+    } catch (error) {
+      toast.error(getReservationsApiErrorMessage(error, 'No se pudo descartar la nota.'))
+    }
+  }
+
+  const handleCreated = async (uuid: string, code: string) => {
+    const noteUuid = pendingNoteUuid.current
+
+    pendingNoteUuid.current = null
     toast.success(`Reserva ${code} creada`)
     setWizardOpen(false)
     setHighlightedUuid(uuid)
+    setHighlightAssign(false)
+    setDetailUuid(uuid)
     setListKey(current => current + 1)
+
+    if (noteUuid) {
+      try {
+        await reservationsApi.completeNote(propertyId, noteUuid, uuid)
+      } catch (error) {
+        toast.error(getReservationsApiErrorMessage(error, 'La reserva se creó, pero la nota sigue por completar.'))
+      }
+    }
+
     fetchPlanning()
+    loadNotes()
   }
 
   const today = planning?.today || mobileDay || todayISO()
@@ -197,19 +263,47 @@ const ReservationsPage = () => {
     <div className='flex flex-col gap-5'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <Typography variant='h4'>Reservas</Typography>
-        {!isMobile ? (
+        <div className='flex w-full flex-wrap gap-2 sm:w-auto'>
+          <Button
+            variant='contained'
+            color='warning'
+            startIcon={<i className='ri-mic-line' />}
+            onClick={() => openNote()}
+          >
+            Anotar
+          </Button>
           <Button variant='contained' startIcon={<i className='ri-add-line' />} onClick={() => openWizard()}>
             Nueva reserva
           </Button>
-        ) : null}
+        </div>
       </div>
 
+      {detailUuid ? (
+        <ReservationDrawer
+          open
+          propertyId={propertyId}
+          reservationUuid={detailUuid}
+          today={today}
+          highlightAssign={highlightAssign}
+          onClose={() => setDetailUuid(null)}
+          onChanged={() => {
+            setListKey(current => current + 1)
+            fetchPlanning()
+          }}
+          onPay={(uuid, balance) => {
+            setPayUuid(uuid)
+            setPayBalance(balance)
+            setPayOpen(true)
+          }}
+        />
+      ) : (
       <Card>
         <CardContent className='flex flex-col gap-4'>
           <TabContext value={tab}>
             <CustomTabList onChange={(_, value) => setTab(value as MainTab)} variant='scrollable' pill='true'>
               <Tab value='calendar' label='Calendario' />
               <Tab value='list' label='Lista' />
+              <Tab value='notes' label={`Por completar${notes.length ? ` (${notes.length})` : ''}`} />
             </CustomTabList>
 
             <TabPanel value='calendar' className='p-0'>
@@ -345,20 +439,29 @@ const ReservationsPage = () => {
                     No se pudo cargar el calendario. Pulsa Hoy o vuelve a iniciar sesión.
                   </Typography>
                 ) : isMobile ? (
-                  <PlanningDayList
-                    planning={planning}
-                    day={planning.from}
-                    roomTypeId={roomTypeId || undefined}
-                    onBookingClick={booking => {
-                      setHighlightAssign(booking.roomId === null)
-                      setDetailUuid(booking.reservationUuid)
-                    }}
-                    onAvailableRoom={handleAvailableRoom}
-                    onUnassigned={items => {
-                      setUnassigned(items)
-                      setUnassignedOpen(true)
-                    }}
-                  />
+                  <div className='flex flex-col gap-3'>
+                    {notes
+                      .filter(note => note.stayDate === (mobileDay || planning.from))
+                      .map(note => (
+                        <Alert key={note.uuid} severity='warning' sx={{ cursor: 'pointer' }} onClick={() => setTab('notes')}>
+                          Por completar: {note.text}
+                        </Alert>
+                      ))}
+                    <PlanningDayList
+                      planning={planning}
+                      day={planning.from}
+                      roomTypeId={roomTypeId || undefined}
+                      onBookingClick={booking => {
+                        setHighlightAssign(booking.roomId === null)
+                        setDetailUuid(booking.reservationUuid)
+                      }}
+                      onAvailableRoom={handleAvailableRoom}
+                      onUnassigned={items => {
+                        setUnassigned(items)
+                        setUnassignedOpen(true)
+                      }}
+                    />
+                  </div>
                 ) : applyFilters(planning, roomTypeId || undefined, floorId || undefined).rooms.length === 0 ? (
                   <Typography color='text.secondary'>No hay habitaciones con estos filtros.</Typography>
                 ) : (
@@ -373,6 +476,9 @@ const ReservationsPage = () => {
                       setHighlightAssign(booking.roomId === null)
                       setDetailUuid(booking.reservationUuid)
                     }}
+                    notes={notes}
+                    onAnnotateDay={openNote}
+                    onOpenNotes={() => setTab('notes')}
                   />
                 )}
               </div>
@@ -388,41 +494,33 @@ const ReservationsPage = () => {
                 }}
               />
             </TabPanel>
+
+            <TabPanel value='notes' className='p-0 pt-4'>
+              <PendingNotesPanel notes={notes} onComplete={completeNote} onDiscard={discardNote} />
+            </TabPanel>
           </TabContext>
         </CardContent>
       </Card>
+      )}
 
-      {isMobile ? (
-        <Fab color='primary' sx={{ position: 'fixed', right: 96, bottom: 24 }} onClick={() => openWizard()}>
-          <i className='ri-add-line' />
-        </Fab>
-      ) : null}
+      <QuickNoteDialog
+        open={noteOpen}
+        propertyId={propertyId}
+        initialDate={noteDate || today || todayISO()}
+        onClose={() => setNoteOpen(false)}
+        onSaved={loadNotes}
+      />
 
       <ReservationWizard
         open={wizardOpen}
         propertyId={propertyId}
         today={today || new Date().toISOString().slice(0, 10)}
         prefill={prefill}
-        onClose={() => setWizardOpen(false)}
+        onClose={() => {
+          pendingNoteUuid.current = null
+          setWizardOpen(false)
+        }}
         onCreated={handleCreated}
-      />
-
-      <ReservationDrawer
-        open={Boolean(detailUuid)}
-        propertyId={propertyId}
-        reservationUuid={detailUuid}
-        today={today}
-        highlightAssign={highlightAssign}
-        onClose={() => setDetailUuid(null)}
-        onChanged={() => {
-          setListKey(current => current + 1)
-          fetchPlanning()
-        }}
-        onPay={(uuid, balance) => {
-          setPayUuid(uuid)
-          setPayBalance(balance)
-          setPayOpen(true)
-        }}
       />
 
       <ReservationPaymentDialog

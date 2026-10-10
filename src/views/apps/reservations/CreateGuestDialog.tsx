@@ -20,6 +20,7 @@ import type { DocumentType, Guest } from '@/types/apps/clientsTypes'
 import { DOCUMENT_TYPE_LABELS, guestDocumentOptions } from '@/types/apps/clientsTypes'
 import { guestsApi } from '@/libs/clientsApi'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
+import { splitGuestName } from '@/types/apps/reservationsTypes'
 import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup'
 import { useExistingRecord } from '@/hooks/useExistingRecord'
 import { DocumentLookupAdornment, DocumentLookupHelper } from '@/components/document-lookup/DocumentLookupHelper'
@@ -30,11 +31,14 @@ type Props = {
   propertyId: number
   onClose: () => void
 
+  /** Nombre o DNI que ya se escribió en el buscador, para no tipearlos otra vez. */
+  initialQuery?: string
+
   /** Recibe el huésped creado o, si el documento ya existía, el huésped existente. */
   onCreated: (guest: Guest) => void
 }
 
-const CreateGuestDialog = ({ open, propertyId, onClose, onCreated }: Props) => {
+const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery = '' }: Props) => {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [documentType, setDocumentType] = useState<DocumentType | ''>('DNI')
@@ -60,15 +64,33 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated }: Props) => {
       return
     }
 
-    setFirstName('')
-    setLastName('')
-    setDocumentType('DNI')
-    setDocumentNumber('')
+    const query = initialQuery.trim()
+    const digits = query.replace(/\D/g, '')
+
+    if (digits.length === 8 && digits === query) {
+      setDocumentType('DNI')
+      setDocumentNumber(digits)
+      setFirstName('')
+      setLastName('')
+    } else if (query) {
+      const name = splitGuestName(query)
+
+      setDocumentType('')
+      setDocumentNumber('')
+      setFirstName(name.firstName)
+      setLastName(name.lastName === '—' ? '' : name.lastName)
+    } else {
+      setDocumentType('DNI')
+      setDocumentNumber('')
+      setFirstName('')
+      setLastName('')
+    }
+
     setPhone('')
     setEmail('')
     resetLookup()
     clearExisting()
-  }, [open, resetLookup, clearExisting])
+  }, [initialQuery, open, resetLookup, clearExisting])
 
   const isDni = documentType === 'DNI'
   const existing = existingGuest.record
