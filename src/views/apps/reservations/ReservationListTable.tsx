@@ -20,9 +20,8 @@ import Typography from '@mui/material/Typography'
 
 import { toast } from 'react-toastify'
 
-import type { StayStatus } from '@/types/apps/frontDeskTypes'
-import { BOOKING_STATUS_LABELS, SOURCE_LABELS, formatPlanningDate } from '@/types/apps/reservationsTypes'
-import type { Reservation } from '@/types/apps/frontDeskTypes'
+import type { Reservation, StayStatus } from '@/types/apps/frontDeskTypes'
+import { BOOKING_STATUS_LABELS, SOURCE_LABELS, formatPlanningDate, stayStatusChipSx } from '@/types/apps/reservationsTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
 import DateField from '@/components/date-picker/DateField'
@@ -173,7 +172,7 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
                     <TableCell>{formatRoomPrice(row.totalAmount)}</TableCell>
                     <TableCell>{formatRoomPrice(row.balance)}</TableCell>
                     <TableCell>
-                      <Chip size='small' label={BOOKING_STATUS_LABELS[row.status]} />
+                      <Chip size='small' label={BOOKING_STATUS_LABELS[row.status]} sx={stayStatusChipSx(row.status)} />
                     </TableCell>
                     <TableCell>{SOURCE_LABELS[row.source]}</TableCell>
                   </TableRow>

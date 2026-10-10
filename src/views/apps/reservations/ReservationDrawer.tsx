@@ -30,7 +30,7 @@ import type { Company, Guest } from '@/types/apps/clientsTypes'
 import type { FrontDeskPayment, Reservation, ReservationRoom } from '@/types/apps/frontDeskTypes'
 import { STAY_STATUS_LABELS, guestFullName } from '@/types/apps/frontDeskTypes'
 import type { ReservationSource } from '@/types/apps/reservationsTypes'
-import { addDays, EXTERNAL_CODE_SOURCES, formatPlanningDate, PAYMENT_LABELS, SOURCE_LABELS, SOURCE_OPTIONS } from '@/types/apps/reservationsTypes'
+import { addDays, EXTERNAL_CODE_SOURCES, formatPlanningDate, PAYMENT_LABELS, SOURCE_LABELS, SOURCE_OPTIONS, stayStatusChipSx } from '@/types/apps/reservationsTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import GuestPicker from '@views/apps/front-desk/GuestPicker'
 import AssignReservationRoomDialog from './AssignReservationRoomDialog'
@@ -449,7 +449,7 @@ const ReservationDrawer = ({
             </div>
             {reservation ? (
               <div className='flex flex-wrap gap-2'>
-                <Chip size='small' label={STAY_STATUS_LABELS[reservation.status]} />
+                <Chip size='small' label={STAY_STATUS_LABELS[reservation.status]} sx={stayStatusChipSx(reservation.status)} />
                 <Chip size='small' variant='outlined' label={SOURCE_LABELS[reservation.source]} />
                 {reservation.externalCode ? <Chip size='small' label={reservation.externalCode} /> : null}
               </div>
@@ -928,7 +928,7 @@ const RoomRow = ({
           <Typography fontWeight={600}>
             {line.roomNumber || 'Sin número'} · {line.roomTypeName}
           </Typography>
-          <Chip size='small' label={STAY_STATUS_LABELS[line.status]} />
+          <Chip size='small' label={STAY_STATUS_LABELS[line.status]} sx={stayStatusChipSx(line.status)} />
         </div>
         {highlightAssign ? <Alert severity='warning'>Esta habitación no tiene número.</Alert> : null}
         <Typography variant='body2'>

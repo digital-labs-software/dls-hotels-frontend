@@ -179,13 +179,30 @@ export const PLANNING_VIEWS: { value: PlanningView; label: string }[] = [
   { value: 'MONTH', label: '1 mes' }
 ]
 
+/** Mismos tonos que recepción: ocupado rojo, reservado celeste, pendiente warning, finalizada plomo. */
 export const BAR_COLORS: Record<StayStatus, { bg: string; text: string; dashed?: boolean }> = {
-  CHECKED_IN: { bg: '#EF5350', text: '#fff' },
-  CONFIRMED: { bg: '#FFB300', text: '#3E2723' },
-  PENDING: { bg: '#FFE082', text: '#3E2723', dashed: true },
-  CHECKED_OUT: { bg: '#B0BEC5', text: '#37474F' },
-  NO_SHOW: { bg: '#BDBDBD', text: '#424242' },
-  CANCELLED: { bg: 'transparent', text: '#9E9E9E' }
+  CHECKED_IN: { bg: '#E53935', text: '#fff' },
+  CONFIRMED: { bg: '#039BE5', text: '#fff' },
+  PENDING: { bg: '#FFF8E1', text: '#E65100', dashed: true },
+  CHECKED_OUT: { bg: '#78909C', text: '#fff' },
+  NO_SHOW: { bg: '#6A1B9A', text: '#fff' },
+  CANCELLED: { bg: '#ECEFF1', text: '#546E7A', dashed: true }
+}
+
+export const ROOM_STATE_COLORS = {
+  AVAILABLE: { bg: '#43A047', text: '#fff' },
+  CLEANING: { bg: '#F9A825', text: '#3E2723' },
+  MAINTENANCE: { bg: '#616161', text: '#fff' }
+}
+
+export const stayStatusChipSx = (status: StayStatus) => {
+  const colors = BAR_COLORS[status]
+
+  return {
+    bgcolor: colors.bg,
+    color: colors.text,
+    border: colors.dashed ? `1px dashed ${colors.text}` : undefined
+  }
 }
 
 export const BOOKING_STATUS_LABELS: Record<StayStatus, string> = {
@@ -312,14 +329,21 @@ export function groupByType(rooms: PlanningRoom[]) {
 export function dayStatus(room: PlanningRoom, bookings: PlanningBooking[], day: string, today: string) {
   const b = bookings.find(x => x.roomId === room.id && x.checkInDate <= day && day < x.checkOutDate)
 
-  if (b?.status === 'CHECKED_IN') return { label: 'Ocupado', color: '#EF5350', booking: b }
-  if (b?.status === 'CONFIRMED') return { label: 'Reservado', color: '#FFB300', booking: b }
-  if (b?.status === 'PENDING') return { label: 'Pendiente', color: '#FFE082', booking: b }
-  if (b?.status === 'CHECKED_OUT') return { label: 'Finalizada', color: '#B0BEC5', booking: b }
-  if (day === today && room.status === 'CLEANING') return { label: 'Limpieza', color: '#9E9E9E' }
-  if (day === today && room.status === 'MAINTENANCE') return { label: 'Mantenimiento', color: '#9E9E9E' }
+  if (b?.status && BAR_COLORS[b.status]) {
+    const colors = BAR_COLORS[b.status]
 
-  return { label: 'Disponible', color: '#43A047' }
+    return { label: BOOKING_STATUS_LABELS[b.status], color: colors.bg, text: colors.text, booking: b }
+  }
+
+  if (day === today && room.status === 'CLEANING') {
+    return { label: 'Limpieza', color: ROOM_STATE_COLORS.CLEANING.bg, text: ROOM_STATE_COLORS.CLEANING.text }
+  }
+
+  if (day === today && room.status === 'MAINTENANCE') {
+    return { label: 'Mantenimiento', color: ROOM_STATE_COLORS.MAINTENANCE.bg, text: ROOM_STATE_COLORS.MAINTENANCE.text }
+  }
+
+  return { label: 'Disponible', color: ROOM_STATE_COLORS.AVAILABLE.bg, text: ROOM_STATE_COLORS.AVAILABLE.text }
 }
 
 export const arrivesToday = (b: PlanningBooking, day: string) => b.checkInDate === day

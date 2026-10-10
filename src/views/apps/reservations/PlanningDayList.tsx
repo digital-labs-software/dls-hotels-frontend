@@ -62,7 +62,7 @@ const PlanningDayList = ({ planning, day, roomTypeId, onBookingClick, onAvailabl
                   <Typography fontWeight={700}>
                     {room.number} · {room.roomTypeName}
                   </Typography>
-                  <Chip size='small' label={status.label} sx={{ bgcolor: status.color, color: status.label === 'Pendiente' ? '#3E2723' : '#fff' }} />
+                  <Chip size='small' label={status.label} sx={{ bgcolor: status.color, color: status.text }} />
                 </div>
                 {booking ? (
                   <>

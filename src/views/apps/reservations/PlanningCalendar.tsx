@@ -14,6 +14,7 @@ import type { Planning, PlanningBooking, PlanningRoom, ReservationNote } from '@
 import {
   applyFilters,
   BAR_COLORS,
+  ROOM_STATE_COLORS,
   barLayout,
   bookingInitials,
   bookingShortTitle,
@@ -61,13 +62,14 @@ const toUtcDate = (day: string) => new Date(`${day}T00:00:00Z`)
 const cellHint = (roomNumber: string, day: string) => `Hab. ${roomNumber} · ${longDay.format(toUtcDate(day))} · Clic para reservar`
 
 const legend = [
-  { label: 'Ocupado', color: '#EF5350' },
-  { label: 'Reservado', color: '#FFB300' },
-  { label: 'Pendiente', color: '#FFE082', dashed: true },
-  { label: 'Finalizada', color: '#B0BEC5' },
-  { label: 'Disponible', color: '#43A047' },
-  { label: 'Limpieza', color: '#9E9E9E' },
-  { label: 'Mant.', color: '#9E9E9E' }
+  { label: 'Ocupado', color: BAR_COLORS.CHECKED_IN.bg, text: BAR_COLORS.CHECKED_IN.text },
+  { label: 'Reservado', color: BAR_COLORS.CONFIRMED.bg, text: BAR_COLORS.CONFIRMED.text },
+  { label: 'Pendiente', color: BAR_COLORS.PENDING.bg, text: BAR_COLORS.PENDING.text, dashed: true },
+  { label: 'Finalizada', color: BAR_COLORS.CHECKED_OUT.bg, text: BAR_COLORS.CHECKED_OUT.text },
+  { label: 'No se presentó', color: BAR_COLORS.NO_SHOW.bg, text: BAR_COLORS.NO_SHOW.text },
+  { label: 'Disponible', color: ROOM_STATE_COLORS.AVAILABLE.bg },
+  { label: 'Limpieza', color: ROOM_STATE_COLORS.CLEANING.bg },
+  { label: 'Mant.', color: ROOM_STATE_COLORS.MAINTENANCE.bg }
 ]
 
 const BookingBar = ({
@@ -190,8 +192,12 @@ const RoomRow = ({
         <Typography variant='body2' fontWeight={600}>
           {label}
         </Typography>
-        {physical === 'CLEANING' ? <Chip size='small' label='🧹' sx={{ bgcolor: '#9E9E9E', color: '#fff', height: 20 }} /> : null}
-        {physical === 'MAINTENANCE' ? <Chip size='small' label='🔧' sx={{ bgcolor: '#9E9E9E', color: '#fff', height: 20 }} /> : null}
+        {physical === 'CLEANING' ? (
+          <Chip size='small' label='🧹' sx={{ bgcolor: ROOM_STATE_COLORS.CLEANING.bg, color: ROOM_STATE_COLORS.CLEANING.text, height: 20 }} />
+        ) : null}
+        {physical === 'MAINTENANCE' ? (
+          <Chip size='small' label='🔧' sx={{ bgcolor: ROOM_STATE_COLORS.MAINTENANCE.bg, color: ROOM_STATE_COLORS.MAINTENANCE.text, height: 20 }} />
+        ) : null}
       </Box>
       <Box
         className='cal-label flex items-center px-2'
@@ -218,7 +224,13 @@ const RoomRow = ({
               borderRight: '1px solid',
               borderColor: 'divider',
               cursor: room ? 'pointer' : 'default',
-              bgcolor: blockedToday ? '#EEEEEE' : isWeekend(day) ? 'action.hover' : 'transparent',
+              bgcolor: blockedToday
+                ? room?.status === 'CLEANING'
+                  ? ROOM_STATE_COLORS.CLEANING.bg
+                  : ROOM_STATE_COLORS.MAINTENANCE.bg
+                : isWeekend(day)
+                  ? 'action.hover'
+                  : 'transparent',
               boxShadow: today ? 'inset 2px 0 0 #1565C0' : undefined
             }}
           />
@@ -544,7 +556,7 @@ const PlanningCalendar = ({
                 height: 14,
                 borderRadius: 0.5,
                 bgcolor: item.color,
-                border: item.dashed ? '1px dashed #3E2723' : 'none'
+                border: item.dashed ? `1px dashed ${item.text ?? '#E65100'}` : 'none'
               }}
             />
             <Typography variant='caption'>{item.label}</Typography>
