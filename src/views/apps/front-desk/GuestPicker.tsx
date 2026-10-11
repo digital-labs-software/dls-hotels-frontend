@@ -17,6 +17,7 @@ type Props = {
   label?: string
   placeholder?: string
   disabled?: boolean
+  error?: boolean
   minChars?: number
   limit?: number
   onSelect: (guest: Guest | null) => void
@@ -24,6 +25,7 @@ type Props = {
 
 const guestLabel = (guest: Guest) => {
   const name = guestFullName(guest.person.firstName, guest.person.lastName)
+
   const document = guest.person.documentNumber
     ? `${DOCUMENT_TYPE_LABELS[guest.person.documentType ?? 'OTHER'] ?? ''} ${guest.person.documentNumber}`.trim()
     : ''
@@ -36,6 +38,7 @@ const GuestPicker = ({
   label = 'Buscar huésped',
   placeholder = 'DNI o nombre',
   disabled,
+  error,
   minChars = 3,
   limit = 5,
   onSelect
@@ -113,6 +116,7 @@ const GuestPicker = ({
           {...params}
           label={label}
           placeholder={placeholder}
+          error={error}
           slotProps={{
             input: {
               ...params.InputProps,

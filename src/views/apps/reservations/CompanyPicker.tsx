@@ -17,6 +17,7 @@ type Props = {
   label?: string
   placeholder?: string
   disabled?: boolean
+  error?: boolean
   onSelect: (company: Company | null) => void
 }
 
@@ -32,6 +33,7 @@ const CompanyPicker = ({
   label = 'Buscar empresa',
   placeholder = 'Razón social o RUC',
   disabled,
+  error,
   onSelect
 }: Props) => {
   const [inputValue, setInputValue] = useState('')
@@ -99,6 +101,7 @@ const CompanyPicker = ({
           {...params}
           label={label}
           placeholder={placeholder}
+          error={error}
           slotProps={{
             input: {
               ...params.InputProps,

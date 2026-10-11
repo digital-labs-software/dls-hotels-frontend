@@ -158,6 +158,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   const [payReference, setPayReference] = useState('')
   const [saving, setSaving] = useState(false)
   const [roomWarning, setRoomWarning] = useState('')
+  const [roomAttempted, setRoomAttempted] = useState(false)
+  const [bookerAttempted, setBookerAttempted] = useState(false)
 
   const primary = rooms[0]
   const stayNights = primary ? nightsBetween(primary.checkInDate, primary.checkOutDate) : 1
@@ -189,14 +191,14 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     setPayMethod('YAPE')
     setPayReference('')
     setRoomWarning('')
+    setRoomAttempted(false)
+    setBookerAttempted(false)
   }, [open, prefill, today])
 
   const loadAvailability = async (drafts = rooms) => {
     const first = drafts[0]
 
     if (!first || first.checkOutDate <= first.checkInDate) {
-      toast.error('La salida debe ser posterior al ingreso.')
-
       return
     }
 
@@ -429,33 +431,19 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   }
 
   const validateStep1 = () => {
-    if (rooms.some(room => !room.roomTypeId)) {
-      toast.error('Elige un tipo de habitación.')
+    const missingType = rooms.some(room => !room.roomTypeId)
+    const badDates = rooms.some(room => room.checkOutDate <= room.checkInDate) || stayNights < 1
+    const missingAdult = rooms.some(room => roomGuests(room).adults < 1)
 
-      return false
-    }
-
-    if (rooms.some(room => room.checkOutDate <= room.checkInDate)) {
-      toast.error('La salida debe ser posterior al ingreso.')
-
-      return false
-    }
-
-    if (rooms.some(room => roomGuests(room).adults < 1)) {
-      toast.error('Cada habitación necesita al menos un adulto.')
-
-      return false
-    }
-
-    const crowded = rooms.find(room => {
+    const crowded = rooms.some(room => {
       const type = availability.find(item => item.roomTypeId === room.roomTypeId)
       const { adults, children } = roomGuests(room)
 
       return type ? !fitsGuests(type, adults, children) : false
     })
 
-    if (crowded) {
-      toast.error('En una de las habitaciones no caben las personas indicadas. Cambia el tipo o agrega otra habitación.')
+    if (missingType || badDates || missingAdult || crowded) {
+      setRoomAttempted(true)
 
       return false
     }
@@ -465,7 +453,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
   const validateStep2 = () => {
     if (!guest && !company) {
-      toast.error('Selecciona un huésped, una empresa o ambos.')
+      setBookerAttempted(true)
 
       return false
     }
@@ -475,6 +463,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
   const handleCreate = async () => {
     if (!validateStep2()) {
+      setStep(1)
+
       return
     }
 
@@ -541,6 +531,9 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     const freeRooms = selectedType ? freeRoomsFor(room, selectedType) : []
     const roomValue = typeof room.roomId === 'number' && freeRooms.some(free => free.id === room.roomId) ? room.roomId : 'later'
     const crowded = selectedType ? !fitsGuests(selectedType, adults, children) : false
+    const missingType = roomAttempted && !room.roomTypeId
+    const missingAdult = adults < 1
+    const roomDatesInvalid = room.checkOutDate <= room.checkInDate
     const subtotal = (Number(room.pricePerNight) || 0) * roomNights
 
     const priceSource = priceSourceLabel({
@@ -555,7 +548,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     return (
       <div key={room.key} className='flex flex-col gap-2'>
         {index > 0 ? <Divider className='mbe-2' /> : null}
-        <div className='grid grid-cols-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_72px_72px_minmax(108px,140px)_36px] gap-3 items-end'>
+        <div className='grid grid-cols-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_72px_72px_minmax(108px,140px)_36px] gap-3 items-start'>
           <Autocomplete
             className='col-span-2 md:col-span-1'
             size='small'
@@ -599,7 +592,15 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                 </li>
               )
             }}
-            renderInput={params => <TextField {...params} label='Tipo de habitación' placeholder='Elige el tipo' />}
+            renderInput={params => (
+              <TextField
+                {...params}
+                label='Tipo de habitación'
+                placeholder='Elige el tipo'
+                error={missingType}
+                helperText={missingType ? 'Elige un tipo de habitación.' : undefined}
+              />
+            )}
           />
           <FormControl size='small' fullWidth className='col-span-2 md:col-span-1' disabled={!selectedType}>
             <InputLabel id={`room-${room.key}`}>Habitación</InputLabel>
@@ -626,7 +627,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
             label='Adultos'
             type='number'
             value={room.adults}
-            error={crowded || adults < 1}
+            error={crowded || missingAdult}
+            helperText={missingAdult ? 'Al menos un adulto.' : undefined}
             slotProps={{ htmlInput: { min: 1 } }}
             onChange={e => updateRoom(room.key, { adults: e.target.value })}
           />
@@ -761,6 +763,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
               label='Salida de esta habitación'
               value={room.checkOutDate}
               minDate={room.checkInDate ? addDays(room.checkInDate, 1) : undefined}
+              error={roomAttempted && roomDatesInvalid}
+              helperText={roomAttempted && roomDatesInvalid ? 'La salida tiene que ser después del ingreso.' : undefined}
               onChange={value => updateRoom(room.key, { checkOutDate: value })}
             />
             <Typography variant='caption' color='text.secondary' className='sm:col-span-2'>
@@ -830,6 +834,12 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                     label='Salida (check-out)'
                     value={primary.checkOutDate}
                     minDate={primary.checkInDate ? addDays(primary.checkInDate, 1) : undefined}
+                    error={roomAttempted && primary.checkOutDate <= primary.checkInDate}
+                    helperText={
+                      roomAttempted && primary.checkOutDate <= primary.checkInDate
+                        ? 'La salida tiene que ser después del ingreso.'
+                        : undefined
+                    }
                     onChange={value => value && setStayDates(primary.checkInDate, value)}
                   />
                 </div>
@@ -875,13 +885,30 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
               <Typography variant='body2' color='text.secondary'>
                 Quién hace la reserva: una persona o una agencia. Quienes duermen en cada habitación se asignan después, al abrir la reserva.
               </Typography>
-              <GuestPicker propertyId={propertyId} minChars={2} limit={10} label='Persona' onSelect={setGuest} />
+              <GuestPicker
+                propertyId={propertyId}
+                minChars={2}
+                limit={10}
+                label='Persona'
+                error={bookerAttempted && !guest && !company}
+                onSelect={setGuest}
+              />
               {guest ? (
                 <Chip label={`${guest.person.firstName} ${guest.person.lastName}`} onDelete={() => setGuest(null)} />
               ) : (
                 <Button onClick={() => setCreateGuestOpen(true)}>+ Nuevo huésped</Button>
               )}
-              <CompanyPicker propertyId={propertyId} label='Agencia o empresa' onSelect={setCompany} />
+              <CompanyPicker
+                propertyId={propertyId}
+                label='Agencia o empresa'
+                error={bookerAttempted && !guest && !company}
+                onSelect={setCompany}
+              />
+              {bookerAttempted && !guest && !company ? (
+                <Typography variant='caption' color='error.main'>
+                  Elige una persona, una agencia, o las dos.
+                </Typography>
+              ) : null}
               {company ? (
                 <Chip label={company.businessName} onDelete={() => setCompany(null)} />
               ) : (
