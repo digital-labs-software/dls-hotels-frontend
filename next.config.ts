@@ -1,6 +1,7 @@
 import path from 'path'
 
 import type { NextConfig } from 'next'
+import { withSentryConfig } from '@sentry/nextjs/config'
 
 if (process.env.NODE_ENV !== 'production') {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
@@ -41,7 +42,7 @@ const nextConfig: NextConfig = {
         locale: false
       },
       {
-        source: '/:path((?!en|fr|ar|front-pages|images|api|docs|favicon.ico).*)*',
+        source: '/:path((?!en|fr|ar|front-pages|images|api|docs|favicon.ico|sentry-tunnel).*)*',
         destination: '/en/:path*',
         permanent: true,
         locale: false
@@ -50,4 +51,14 @@ const nextConfig: NextConfig = {
   }
 }
 
-export default nextConfig
+export default withSentryConfig(nextConfig, {
+  ...(process.env.SENTRY_ORG ? { org: process.env.SENTRY_ORG } : {}),
+  ...(process.env.SENTRY_PROJECT ? { project: process.env.SENTRY_PROJECT } : {}),
+  ...(process.env.SENTRY_AUTH_TOKEN ? { authToken: process.env.SENTRY_AUTH_TOKEN } : {}),
+  tunnelRoute: '/sentry-tunnel',
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN
+  }
+})
