@@ -247,6 +247,9 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
                     fullWidth
                     type='email'
                     label='Correo'
+                    slotProps={{
+                      htmlInput: { autoComplete: 'username', suppressHydrationWarning: true }
+                    }}
                     onChange={e => {
                       field.onChange(e.target.value)
                     }}
@@ -272,6 +275,7 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
                       field.onChange(e.target.value)
                     }}
                     slotProps={{
+                      htmlInput: { autoComplete: 'current-password', suppressHydrationWarning: true },
                       input: {
                         endAdornment: (
                           <InputAdornment position='end'>
