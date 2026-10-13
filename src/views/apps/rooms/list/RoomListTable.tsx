@@ -37,6 +37,9 @@ import {
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 import { useSession } from 'next-auth/react'
+
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { ROOMS_CREATE, ROOMS_DELETE, ROOMS_EDIT } from '@/types/apps/hotelPermissions'
 import { toast } from 'react-toastify'
 
 import type { ThemeColor } from '@core/types'
@@ -116,6 +119,10 @@ const RoomListTable = () => {
   const { data: session, status: sessionStatus } = useSession()
   const propertyId = session?.user?.propertyId ?? 1
   const { lang: locale } = useParams()
+  const { can } = useSubscriptionAccess()
+  const canCreateRoom = can(ROOMS_CREATE)
+  const canEditRoom = can(ROOMS_EDIT)
+  const canDeleteRoom = can(ROOMS_DELETE)
 
   const [rooms, setRooms] = useState<Room[]>([])
   const [floors, setFloors] = useState<Floor[]>([])
@@ -263,6 +270,7 @@ const RoomListTable = () => {
             >
               <i className='ri-eye-line text-textSecondary' />
             </IconButton>
+            {canEditRoom ? (
             <IconButton
               size='small'
               component={Link}
@@ -271,15 +279,18 @@ const RoomListTable = () => {
             >
               <i className='ri-edit-box-line text-textSecondary' />
             </IconButton>
+            ) : null}
+            {canDeleteRoom ? (
             <IconButton size='small' onClick={() => setRoomToDelete(row.original)} title='Eliminar'>
               <i className='ri-delete-bin-7-line text-textSecondary' />
             </IconButton>
+            ) : null}
           </div>
         ),
         enableSorting: false
       })
     ],
-    [locale]
+    [canDeleteRoom, canEditRoom, locale]
   )
 
   const table = useReactTable({
@@ -344,6 +355,7 @@ const RoomListTable = () => {
             >
               Actualizar
             </Button>
+            {canCreateRoom ? (
             <Button
               variant='contained'
               component={Link}
@@ -353,6 +365,7 @@ const RoomListTable = () => {
             >
               Nueva habitación
             </Button>
+            ) : null}
           </div>
         </div>
 

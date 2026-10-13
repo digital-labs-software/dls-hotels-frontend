@@ -108,9 +108,6 @@ const SupportStatusCard = ({ status, connected, compact = false }: Props) => {
               {line}
             </Typography>
           ))}
-          <Typography variant='caption' color='text.disabled'>
-            Hora de Lima (Perú).
-          </Typography>
         </div>
       </Collapse>
     </div>

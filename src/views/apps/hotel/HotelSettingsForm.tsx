@@ -25,6 +25,7 @@ import { getUploadsApiErrorMessage, uploadHotelLogo } from '@/libs/uploadsApi'
 import TimeField from '@/components/date-picker/TimeField'
 import HotelLogoField from './HotelLogoField'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { HOTEL_EDIT, HOTEL_LOGO } from '@/types/apps/hotelPermissions'
 import { getLocalizedUrl } from '@/utils/i18n'
 import type { Locale } from '@configs/i18n'
 
@@ -106,7 +107,9 @@ const buildChangedPayload = (initial: FormValues, current: FormValues): UpdatePr
 const HotelSettingsForm = () => {
   const { data: session, status: sessionStatus } = useSession()
   const { lang: locale } = useParams()
-  const { canSettingsInvoices } = useSubscriptionAccess()
+  const { canSettingsInvoices, can } = useSubscriptionAccess()
+  const canEditHotel = can(HOTEL_EDIT)
+  const canChangeLogo = can(HOTEL_LOGO)
   const propertyId = session?.user?.propertyId ?? 1
 
   const [loading, setLoading] = useState(true)
@@ -250,7 +253,7 @@ const HotelSettingsForm = () => {
               >
                 Descartar
               </Button>
-              <Button variant='contained' type='submit' disabled={isSubmitting}>
+              <Button variant='contained' type='submit' disabled={isSubmitting || (!canEditHotel && !canChangeLogo)}>
                 {isSubmitting ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
               </Button>
             </div>
@@ -380,7 +383,7 @@ const HotelSettingsForm = () => {
                   <HotelLogoField
                     key={logoFieldKey}
                     logoUrl={removeLogo ? null : settings.logoUrl}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !canChangeLogo}
                     onFileChange={file => {
                       setLogoFile(file)
                       setRemoveLogo(false)
@@ -474,7 +477,7 @@ const HotelSettingsForm = () => {
                 control={control}
                 rules={{
                   required: 'La hora de ingreso (check-in) es obligatoria.',
-                  validate: value => TIME_REGEX.test(value) || 'Usa el formato HH:mm.'
+                  validate: value => TIME_REGEX.test(value) || 'Selecciona una hora válida.'
                 }}
                 render={({ field }) => (
                   <TimeField
@@ -495,7 +498,7 @@ const HotelSettingsForm = () => {
                 control={control}
                 rules={{
                   required: 'La hora de salida (check-out) es obligatoria.',
-                  validate: value => TIME_REGEX.test(value) || 'Usa el formato HH:mm.'
+                  validate: value => TIME_REGEX.test(value) || 'Selecciona una hora válida.'
                 }}
                 render={({ field }) => (
                   <TimeField

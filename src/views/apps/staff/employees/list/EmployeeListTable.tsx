@@ -131,7 +131,7 @@ const EmployeeListTable = () => {
   const propertyId = session?.user?.propertyId ?? 1
   const myEmployeeUuid = session?.user?.employeeUuid
   const { lang: locale } = useParams()
-  const { canManageEmployees } = useSubscriptionAccess()
+  const { canCreateEmployees, canEditEmployees, canDeleteEmployees } = useSubscriptionAccess()
 
   const [employees, setEmployees] = useState<Employee[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
@@ -205,7 +205,7 @@ const EmployeeListTable = () => {
           <Typography
             component={Link}
             href={getLocalizedUrl(
-              canManageEmployees
+              canEditEmployees
                 ? `/apps/staff/employees/edit/${row.original.uuid}`
                 : `/apps/staff/employees/edit/${row.original.uuid}?mode=view`,
               locale as Locale
@@ -271,7 +271,7 @@ const EmployeeListTable = () => {
                 <Switch
                   size='small'
                   checked={row.original.isActive}
-                  disabled={!canManageEmployees || isSelf || pendingUuid === row.original.uuid}
+                  disabled={!canEditEmployees || isSelf || pendingUuid === row.original.uuid}
                   onChange={(_, checked) => handleToggleActive(row.original, checked)}
                 />
               }
@@ -293,7 +293,7 @@ const EmployeeListTable = () => {
             >
               <i className='ri-eye-line text-textSecondary' />
             </IconButton>
-            {canManageEmployees ? (
+            {canEditEmployees ? (
               <IconButton
                 size='small'
                 component={Link}
@@ -303,7 +303,7 @@ const EmployeeListTable = () => {
                 <i className='ri-edit-box-line text-textSecondary' />
               </IconButton>
             ) : null}
-            {canManageEmployees && row.original.uuid !== myEmployeeUuid ? (
+            {canDeleteEmployees && row.original.uuid !== myEmployeeUuid ? (
               <IconButton size='small' onClick={() => setEmployeeToDelete(row.original)} title='Eliminar'>
                 <i className='ri-delete-bin-7-line text-textSecondary' />
               </IconButton>
@@ -313,7 +313,7 @@ const EmployeeListTable = () => {
         enableSorting: false
       })
     ],
-    [canManageEmployees, locale, myEmployeeUuid, pendingUuid, propertyId]
+    [canDeleteEmployees, canEditEmployees, locale, myEmployeeUuid, pendingUuid, propertyId]
   )
 
   const table = useReactTable({
@@ -363,7 +363,7 @@ const EmployeeListTable = () => {
             >
               Actualizar
             </Button>
-            {canManageEmployees ? (
+            {canCreateEmployees ? (
               <Button
                 variant='contained'
                 component={Link}

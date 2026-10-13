@@ -14,6 +14,8 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import classnames from 'classnames'
 
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { SUPPORT_ACTIVE_VIEW, SUPPORT_RESOLVED_VIEW } from '@/types/apps/hotelPermissions'
 import type { SupportStatus, SupportTicket } from '@/types/apps/supportTypes'
 import { SUPPORT_CATEGORY_LABELS, SUPPORT_STATUS_COLORS, SUPPORT_STATUS_LABELS } from '@/types/apps/supportTypes'
 import SupportStatusCard from './SupportStatusCard'
@@ -50,7 +52,10 @@ const SupportSidebar = (props: Props) => {
     onNew
   } = props
 
-  const [tab, setTab] = useState<SupportListTab>('active')
+  const { can } = useSubscriptionAccess()
+  const showActive = can(SUPPORT_ACTIVE_VIEW)
+  const showResolved = can(SUPPORT_RESOLVED_VIEW)
+  const [tab, setTab] = useState<SupportListTab>(showActive || !showResolved ? 'active' : 'resolved')
   const [search, setSearch] = useState('')
 
   const counts = useMemo(
@@ -127,8 +132,8 @@ const SupportSidebar = (props: Props) => {
         variant='fullWidth'
         className='border-be'
       >
-        <Tab value='active' label={`Activas (${counts.active})`} />
-        <Tab value='resolved' label={`Resueltas (${counts.resolved})`} />
+        {showActive ? <Tab value='active' label={`Activas (${counts.active})`} /> : null}
+        {showResolved ? <Tab value='resolved' label={`Resueltas (${counts.resolved})`} /> : null}
       </Tabs>
 
       <div className='flex-auto overflow-y-auto overflow-x-hidden'>

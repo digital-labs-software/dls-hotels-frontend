@@ -57,7 +57,20 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
   const theme = useTheme()
   const verticalNavOptions = useVerticalNav()
   const params = useParams()
-  const { subscriptionSuspended, canViewSubscription, canViewStaff, canViewInvoices } = useSubscriptionAccess()
+  const {
+    subscriptionSuspended,
+    canViewSubscription,
+    canViewStaff,
+    canViewInvoices,
+    canViewDashboard,
+    canViewReception,
+    canViewReservations,
+    canViewRooms,
+    canViewClients,
+    canViewReports,
+    canViewHotel,
+    canViewSupport
+  } = useSubscriptionAccess()
   const handleLogout = useHotelLogout()
   const { unread: supportUnread } = useSupport()
 
@@ -130,15 +143,19 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
         renderExpandedMenuItemIcon={{ icon: <i className='ri-circle-line' /> }}
         menuSectionStyles={menuSectionStyles(verticalNavOptions, theme)}
       >
-        <MenuItem
-          href={`/${locale}/apps/dashboard`}
-          exactMatch={false}
-          activeUrl='/apps/dashboard'
-          icon={<i className='ri-home-smile-line' />}
-        >
-          {dictionary['navigation'].dashboards}
-        </MenuItem>
+        {canViewDashboard ? (
+          <MenuItem
+            href={`/${locale}/apps/dashboard`}
+            exactMatch={false}
+            activeUrl='/apps/dashboard'
+            icon={<i className='ri-home-smile-line' />}
+          >
+            {dictionary['navigation'].dashboards}
+          </MenuItem>
+        ) : null}
+        {canViewReception || canViewReservations ? (
         <MenuSection label={dictionary['navigation'].operation}>
+          {canViewReception ? (
           <MenuItem
             href={`/${locale}/apps/front-desk`}
             exactMatch={false}
@@ -147,6 +164,8 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].frontDesk}
           </MenuItem>
+          ) : null}
+          {canViewReservations ? (
           <MenuItem
             href={`/${locale}/apps/reservations`}
             exactMatch={false}
@@ -155,8 +174,12 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].reservations}
           </MenuItem>
+          ) : null}
         </MenuSection>
+        ) : null}
+        {canViewRooms || canViewClients ? (
         <MenuSection label={dictionary['navigation'].propertySection}>
+          {canViewRooms ? (
           <MenuItem
             href={`/${locale}/apps/rooms`}
             exactMatch={false}
@@ -165,6 +188,8 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].rooms}
           </MenuItem>
+          ) : null}
+          {canViewClients ? (
           <MenuItem
             href={`/${locale}/apps/clients`}
             exactMatch={false}
@@ -173,7 +198,9 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].clients}
           </MenuItem>
+          ) : null}
         </MenuSection>
+        ) : null}
         <MenuSection label={dictionary['navigation'].finance}>
           {canViewInvoices ? (
             <MenuItem
@@ -185,6 +212,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
               {dictionary['navigation'].invoicing}
             </MenuItem>
           ) : null}
+          {canViewReports ? (
           <MenuItem
             href={`/${locale}/apps/reports`}
             exactMatch={false}
@@ -193,6 +221,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].reports}
           </MenuItem>
+          ) : null}
           {canViewSubscription ? (
             <MenuItem
               href={`/${locale}/apps/billing`}
@@ -215,6 +244,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
               {dictionary['navigation'].staff}
             </MenuItem>
           ) : null}
+          {canViewHotel ? (
           <MenuItem
             href={`/${locale}/apps/hotel`}
             exactMatch={false}
@@ -223,9 +253,10 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           >
             {dictionary['navigation'].hotel}
           </MenuItem>
+          ) : null}
         </MenuSection>
         <MenuSection label={dictionary['navigation'].account}>
-          {supportItem}
+          {canViewSupport ? supportItem : null}
           <MenuItem icon={<i className='ri-logout-box-r-line' />} onClick={() => void handleLogout()}>
             {dictionary['navigation'].logout}
           </MenuItem>

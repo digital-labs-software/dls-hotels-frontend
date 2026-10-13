@@ -19,6 +19,7 @@ import Typography from '@mui/material/Typography'
 import type { Locale } from '@configs/i18n'
 import CustomTabList from '@core/components/mui/TabList'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { SUBSCRIPTION_HISTORY_VIEW, SUBSCRIPTION_VIEW } from '@/types/apps/billingTypes'
 import { billingApi, getBillingApiErrorMessage } from '@/libs/billingApi'
 import { openCulqiCheckout } from '@/libs/culqiCheckout'
 import { getLocalizedUrl } from '@/utils/i18n'
@@ -40,7 +41,9 @@ const BillingPage = () => {
   const searchParams = useSearchParams()
   const { lang: locale } = useParams()
   const { data: session, status } = useSession()
-  const { canPaySubscription, refreshAccess } = useSubscriptionAccess()
+  const { canPaySubscription, can, refreshAccess } = useSubscriptionAccess()
+  const showPlan = can(SUBSCRIPTION_VIEW) || canPaySubscription
+  const showHistory = can(SUBSCRIPTION_HISTORY_VIEW) || can(SUBSCRIPTION_VIEW) || canPaySubscription
   const propertyId = session?.user?.propertyId ?? 1
 
   const tabFromUrl = searchParams.get('tab')
@@ -168,6 +171,7 @@ const BillingPage = () => {
               variant='scrollable'
               pill='true'
             >
+              {showPlan ? (
               <Tab
                 label={
                   <div className='flex items-center gap-1.5'>
@@ -177,6 +181,8 @@ const BillingPage = () => {
                 }
                 value='plan'
               />
+              ) : null}
+              {showHistory ? (
               <Tab
                 label={
                   <div className='flex items-center gap-1.5'>
@@ -186,6 +192,7 @@ const BillingPage = () => {
                 }
                 value='history'
               />
+              ) : null}
             </CustomTabList>
 
             <TabPanel value='plan' className='p-0'>

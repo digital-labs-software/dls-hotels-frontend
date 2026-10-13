@@ -44,7 +44,7 @@ const UserDropdown = () => {
   // Hooks
   const router = useRouter()
   const { data: session } = useSession()
-  const { me } = useSubscriptionAccess()
+  const { me, canViewProfile } = useSubscriptionAccess()
   const { settings } = useSettings()
   const { lang: locale } = useParams()
   const handleUserLogout = useHotelLogout()
@@ -113,10 +113,12 @@ const UserDropdown = () => {
                     </div>
                   </div>
                   <Divider className='mlb-1' />
-                  <MenuItem className='gap-3' onClick={e => handleDropdownClose(e, '/apps/profile')}>
-                    <i className='ri-user-3-line' />
-                    <Typography color='text.primary'>Mi perfil</Typography>
-                  </MenuItem>
+                  {canViewProfile ? (
+                    <MenuItem className='gap-3' onClick={e => handleDropdownClose(e, '/apps/profile')}>
+                      <i className='ri-user-3-line' />
+                      <Typography color='text.primary'>Mi perfil</Typography>
+                    </MenuItem>
+                  ) : null}
                   {/* Settings, Pricing y FAQ de la plantilla: no se usan en v1 (billing está en Suscripción). */}
                   <div className='flex items-center plb-2 pli-4'>
                     <Button

@@ -32,6 +32,14 @@ import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
 import CustomTabList from '@core/components/mui/TabList'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import {
+  RESERVATIONS_CALENDAR_VIEW,
+  RESERVATIONS_CREATE,
+  RESERVATIONS_LIST_VIEW,
+  RESERVATIONS_NOTES_MANAGE,
+  RESERVATIONS_NOTES_VIEW
+} from '@/types/apps/hotelPermissions'
 import DateField from '@/components/date-picker/DateField'
 import type { Floor } from '@/types/apps/floorTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
@@ -69,6 +77,12 @@ const ReservationsPage = () => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { data: session, status } = useSession()
+  const { can } = useSubscriptionAccess()
+  const showCalendar = can(RESERVATIONS_CALENDAR_VIEW)
+  const showList = can(RESERVATIONS_LIST_VIEW)
+  const showNotes = can(RESERVATIONS_NOTES_VIEW) || can(RESERVATIONS_NOTES_MANAGE)
+  const canCreateReservation = can(RESERVATIONS_CREATE)
+  const canManageNotes = can(RESERVATIONS_NOTES_MANAGE)
   const searchParams = useSearchParams()
   const propertyId = session?.user?.propertyId ?? 1
 
@@ -264,6 +278,7 @@ const ReservationsPage = () => {
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <Typography variant='h4'>Reservas</Typography>
         <div className='flex w-full flex-wrap gap-2 sm:w-auto'>
+          {canManageNotes ? (
           <Button
             variant='contained'
             color='warning'
@@ -272,9 +287,12 @@ const ReservationsPage = () => {
           >
             Anotar
           </Button>
+          ) : null}
+          {canCreateReservation ? (
           <Button variant='contained' startIcon={<i className='ri-add-line' />} onClick={() => openWizard()}>
             Nueva reserva
           </Button>
+          ) : null}
         </div>
       </div>
 
@@ -301,9 +319,9 @@ const ReservationsPage = () => {
         <CardContent className='flex flex-col gap-4'>
           <TabContext value={tab}>
             <CustomTabList onChange={(_, value) => setTab(value as MainTab)} variant='scrollable' pill='true'>
-              <Tab value='calendar' label='Calendario' />
-              <Tab value='list' label='Lista' />
-              <Tab value='notes' label={`Por completar${notes.length ? ` (${notes.length})` : ''}`} />
+              {showCalendar ? <Tab value='calendar' label='Calendario' /> : null}
+              {showList ? <Tab value='list' label='Lista' /> : null}
+              {showNotes ? <Tab value='notes' label={`Por completar${notes.length ? ` (${notes.length})` : ''}`} /> : null}
             </CustomTabList>
 
             <TabPanel value='calendar' className='p-0'>

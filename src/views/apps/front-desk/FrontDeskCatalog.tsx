@@ -12,6 +12,15 @@ import TabPanel from '@mui/lab/TabPanel'
 
 import type { Locale } from '@configs/i18n'
 import CustomTabList from '@core/components/mui/TabList'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import {
+  RECEPTION_CHECK_IN,
+  RECEPTION_CHECK_OUT,
+  RECEPTION_DESK_VIEW,
+  RECEPTION_PAYMENTS_CREATE,
+  RECEPTION_PAYMENTS_VIEW,
+  RECEPTION_WALK_IN
+} from '@/types/apps/hotelPermissions'
 import FrontDeskClient from '@views/apps/front-desk/FrontDeskClient'
 import PaymentsCashClient from '@views/apps/front-desk/PaymentsCashClient'
 import { getLocalizedUrl } from '@/utils/i18n'
@@ -29,17 +38,40 @@ const isFrontDeskTab = (value?: string): value is FrontDeskTab => {
   return FRONT_DESK_TABS.includes(value as FrontDeskTab)
 }
 
+const TAB_PERMISSIONS: Record<FrontDeskTab, readonly string[]> = {
+  desk: [RECEPTION_DESK_VIEW, RECEPTION_WALK_IN, RECEPTION_CHECK_IN, RECEPTION_CHECK_OUT],
+  payments: [RECEPTION_PAYMENTS_VIEW, RECEPTION_PAYMENTS_CREATE]
+}
+
 const FrontDeskCatalog = ({ defaultTab }: { defaultTab?: string }) => {
   const router = useRouter()
   const { lang: locale } = useParams()
+  const { canAny, canViewReception, loaded } = useSubscriptionAccess()
+  const allowedTabs = FRONT_DESK_TABS.filter(tab => canAny(TAB_PERMISSIONS[tab]))
+  const allowedKey = allowedTabs.join(',')
   const [activeTab, setActiveTab] = useState<FrontDeskTab>(isFrontDeskTab(defaultTab) ? defaultTab : 'desk')
 
   useEffect(() => {
-    setActiveTab(isFrontDeskTab(defaultTab) ? defaultTab : 'desk')
-  }, [defaultTab])
+    if (!loaded) {
+      return
+    }
+
+    const tabs = allowedKey ? (allowedKey.split(',') as FrontDeskTab[]) : []
+
+    if (!canViewReception || tabs.length === 0) {
+      router.replace(getLocalizedUrl('/apps/dashboard', locale as Locale))
+
+      return
+    }
+
+    const requested = isFrontDeskTab(defaultTab) ? defaultTab : tabs[0]
+    const next = tabs.includes(requested) ? requested : tabs[0]
+
+    setActiveTab(current => (current === next ? current : next))
+  }, [allowedKey, canViewReception, defaultTab, loaded, locale, router])
 
   const handleChange = (_event: SyntheticEvent, value: string) => {
-    if (!isFrontDeskTab(value)) {
+    if (!isFrontDeskTab(value) || !allowedTabs.includes(value)) {
       return
     }
 
@@ -50,11 +82,16 @@ const FrontDeskCatalog = ({ defaultTab }: { defaultTab?: string }) => {
     router.replace(value === 'desk' ? baseUrl : `${baseUrl}?tab=${value}`)
   }
 
+  if (!loaded || allowedTabs.length === 0 || !allowedTabs.includes(activeTab)) {
+    return null
+  }
+
   return (
     <Grid container spacing={6}>
       <Grid size={{ xs: 12 }} className='flex flex-col gap-6'>
         <TabContext value={activeTab}>
           <CustomTabList onChange={handleChange} variant='scrollable' pill='true'>
+            {allowedTabs.includes('desk') ? (
             <Tab
               label={
                 <div className='flex items-center gap-1.5'>
@@ -64,6 +101,8 @@ const FrontDeskCatalog = ({ defaultTab }: { defaultTab?: string }) => {
               }
               value='desk'
             />
+            ) : null}
+            {allowedTabs.includes('payments') ? (
             <Tab
               label={
                 <div className='flex items-center gap-1.5'>
@@ -73,6 +112,7 @@ const FrontDeskCatalog = ({ defaultTab }: { defaultTab?: string }) => {
               }
               value='payments'
             />
+            ) : null}
           </CustomTabList>
 
           <TabPanel value={activeTab} className='p-0'>

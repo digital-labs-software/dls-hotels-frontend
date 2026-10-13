@@ -24,6 +24,14 @@ import TabContext from '@mui/lab/TabContext'
 import TabPanel from '@mui/lab/TabPanel'
 
 import { useSession } from 'next-auth/react'
+
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import {
+  RECEPTION_CHECK_IN,
+  RECEPTION_CHECK_OUT,
+  RECEPTION_PAYMENTS_CREATE,
+  RECEPTION_WALK_IN
+} from '@/types/apps/hotelPermissions'
 import { toast } from 'react-toastify'
 
 import CustomTabList from '@core/components/mui/TabList'
@@ -47,6 +55,11 @@ const VIEW_KEY = 'frontDesk.view'
 
 const FrontDeskPage = () => {
   const { data: session, status } = useSession()
+  const { can } = useSubscriptionAccess()
+  const canWalkIn = can(RECEPTION_WALK_IN)
+  const canCheckIn = can(RECEPTION_CHECK_IN)
+  const canCheckOut = can(RECEPTION_CHECK_OUT)
+  const canRegisterPayment = can(RECEPTION_PAYMENTS_CREATE)
   const propertyId = session?.user?.propertyId ?? 1
 
   const [overview, setOverview] = useState<FrontDesk | null>(null)
@@ -404,7 +417,7 @@ const FrontDeskPage = () => {
       </Grid>
 
       <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={closeMenu}>
-        {menuRoom?.displayStatus === 'AVAILABLE' && !menuRoom.arrival ? (
+        {canWalkIn && menuRoom?.displayStatus === 'AVAILABLE' && !menuRoom.arrival ? (
           <MenuItem
             onClick={() => {
               setWalkInRoom(menuRoom)
@@ -414,7 +427,7 @@ const FrontDeskPage = () => {
             Nuevo ingreso
           </MenuItem>
         ) : null}
-        {menuRoom?.displayStatus === 'AVAILABLE' && menuRoom.arrival ? (
+        {canCheckIn && menuRoom?.displayStatus === 'AVAILABLE' && menuRoom.arrival ? (
           <MenuItem
             onClick={async () => {
               if (!menuRoom.arrival) return
@@ -452,7 +465,7 @@ const FrontDeskPage = () => {
             Ver estadía
           </MenuItem>
         ) : null}
-        {menuRoom?.displayStatus === 'OCCUPIED' && menuRoom.currentStay ? (
+        {canCheckOut && menuRoom?.displayStatus === 'OCCUPIED' && menuRoom.currentStay ? (
           <MenuItem
             onClick={() => {
               setSelectedStay(menuRoom.currentStay)
@@ -463,7 +476,7 @@ const FrontDeskPage = () => {
             Check-out (salida)
           </MenuItem>
         ) : null}
-        {menuRoom?.displayStatus === 'OCCUPIED' && menuRoom.currentStay ? (
+        {canRegisterPayment && menuRoom?.displayStatus === 'OCCUPIED' && menuRoom.currentStay ? (
           <MenuItem
             onClick={() => {
               setSelectedStay(menuRoom.currentStay)
@@ -488,7 +501,7 @@ const FrontDeskPage = () => {
           <MenuItem onClick={() => handleSetStatus('CLEANING')}>Marcar en limpieza</MenuItem>
         ) : null}
         {menuRoom?.displayStatus === 'CLEANING' ? <MenuItem onClick={() => handleSetStatus('AVAILABLE')}>Marcar limpia</MenuItem> : null}
-        {menuRoom?.displayStatus === 'CLEANING' ? (
+        {canWalkIn && menuRoom?.displayStatus === 'CLEANING' ? (
           <MenuItem
             onClick={() => {
               setWalkInRoom(menuRoom)

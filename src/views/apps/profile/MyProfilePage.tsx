@@ -25,6 +25,7 @@ import { DOCUMENT_TYPE_LABELS } from '@/types/apps/clientsTypes'
 import type { AuthProfile } from '@/types/apps/profileTypes'
 import { authProfileApi, getAuthProfileErrorMessage } from '@/libs/authProfileApi'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { PROFILE_EDIT, PROFILE_PASSWORD, PROFILE_VIEW } from '@/types/apps/hotelPermissions'
 import ProfilePhotoField from '@views/apps/profile/ProfilePhotoField'
 
 type ContactValues = {
@@ -76,7 +77,10 @@ const ReadField = ({ label, value }: { label: string; value?: string | null }) =
 
 const MyProfilePage = () => {
   const { data: session, status } = useSession()
-  const { me, refreshAccess } = useSubscriptionAccess()
+  const { me, can, refreshAccess } = useSubscriptionAccess()
+  const canSeeProfile = can(PROFILE_VIEW) || can(PROFILE_EDIT) || can(PROFILE_PASSWORD)
+  const canEditContact = can(PROFILE_EDIT)
+  const canChangePassword = can(PROFILE_PASSWORD)
   const [profile, setProfile] = useState<AuthProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadWarning, setLoadWarning] = useState<string | null>(null)
@@ -129,7 +133,8 @@ const MyProfilePage = () => {
   const photoUrl = user?.photoUrl || me?.image || session?.user?.image || ''
   const hotelName = me?.propertyName || session?.user?.propertyName || ''
   const hasPassword = Boolean(user?.hasPassword)
-  const canEdit = Boolean(profile)
+  const canEdit = Boolean(profile) && canEditContact
+  const canEditPassword = Boolean(profile) && canChangePassword
 
   const persistPhoto = async (nextUrl: string | null) => {
     setSavingPhoto(true)
@@ -359,7 +364,7 @@ const MyProfilePage = () => {
                           fullWidth
                           label='Contraseña actual'
                           type={isCurrentPasswordShown ? 'text' : 'password'}
-                          disabled={!canEdit || passwordForm.formState.isSubmitting}
+                          disabled={!canEditPassword || passwordForm.formState.isSubmitting}
                           slotProps={{
                             input: {
                               endAdornment: (
@@ -399,7 +404,7 @@ const MyProfilePage = () => {
                         fullWidth
                         label='Nueva contraseña'
                         type={isNewPasswordShown ? 'text' : 'password'}
-                        disabled={!canEdit || passwordForm.formState.isSubmitting}
+                        disabled={!canEditPassword || passwordForm.formState.isSubmitting}
                         slotProps={{
                           input: {
                             endAdornment: (
@@ -434,7 +439,7 @@ const MyProfilePage = () => {
                         fullWidth
                         label='Confirmar contraseña'
                         type={isNewPasswordShown ? 'text' : 'password'}
-                        disabled={!canEdit || passwordForm.formState.isSubmitting}
+                        disabled={!canEditPassword || passwordForm.formState.isSubmitting}
                         {...(passwordForm.formState.errors.confirmPassword && {
                           error: true,
                           helperText: passwordForm.formState.errors.confirmPassword.message
@@ -444,7 +449,7 @@ const MyProfilePage = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12 }}>
-                  <Button type='submit' variant='contained' disabled={!canEdit || passwordForm.formState.isSubmitting}>
+                  <Button type='submit' variant='contained' disabled={!canEditPassword || passwordForm.formState.isSubmitting}>
                     {passwordForm.formState.isSubmitting ? (
                       <CircularProgress size={20} color='inherit' />
                     ) : hasPassword ? (

@@ -59,7 +59,7 @@ const RoleListTable = () => {
   const { data: session, status: sessionStatus } = useSession()
   const propertyId = session?.user?.propertyId ?? 1
   const { lang: locale } = useParams()
-  const { canManageRoles, canViewEmployees } = useSubscriptionAccess()
+  const { canCreateRoles, canEditRoles, canViewEmployees } = useSubscriptionAccess()
 
   const [roles, setRoles] = useState<Role[]>([])
   const [employeeCountByRoleId, setEmployeeCountByRoleId] = useState<Record<number, number>>({})
@@ -140,7 +140,7 @@ const RoleListTable = () => {
               <MenuItem value='withoutEmployees'>Sin empleados</MenuItem>
             </Select>
           </FormControl>
-          {canManageRoles ? (
+          {canCreateRoles ? (
             <Button
               variant='contained'
               component={Link}
@@ -194,7 +194,7 @@ const RoleListTable = () => {
                   const assigned = role.permissions.length
                   const employeeCount = employeeCountByRoleId[role.id] ?? 0
                   const href = getLocalizedUrl(
-                    canManageRoles
+                    canEditRoles
                       ? `/apps/staff/roles/edit/${role.uuid}`
                       : `/apps/staff/roles/edit/${role.uuid}?mode=view`,
                     locale as Locale
@@ -225,7 +225,7 @@ const RoleListTable = () => {
                       </td>
                       <td className='px-5 py-4 text-end'>
                         <Button component={Link} href={href} size='small'>
-                          {canManageRoles ? 'Editar' : 'Ver'}
+                          {canEditRoles ? 'Editar' : 'Ver'}
                         </Button>
                       </td>
                     </tr>

@@ -53,9 +53,10 @@ const RoleForm = ({ uuid }: Props) => {
   const searchParams = useSearchParams()
   const { lang: locale } = useParams()
   const { data: session, status: sessionStatus } = useSession()
-  const { canManageRoles, canViewEmployees, canViewRoles, loaded: accessLoaded } = useSubscriptionAccess()
+  const { canCreateRoles, canEditRoles, canViewEmployees, canViewRoles, loaded: accessLoaded } = useSubscriptionAccess()
   const propertyId = session?.user?.propertyId ?? 1
-  const isView = searchParams.get('mode') === 'view' || (accessLoaded && !canManageRoles)
+  const canWrite = uuid ? canEditRoles : canCreateRoles
+  const isView = searchParams.get('mode') === 'view' || (accessLoaded && !canWrite)
   const isEdit = Boolean(uuid) && !isView
   const [loading, setLoading] = useState(true)
   const [employeeCount, setEmployeeCount] = useState(0)
@@ -89,7 +90,7 @@ const RoleForm = ({ uuid }: Props) => {
       return
     }
 
-    if (!uuid && !canManageRoles) {
+    if (!uuid && !canCreateRoles) {
       router.replace(getLocalizedUrl('/apps/staff?tab=roles', locale as Locale))
 
       return
@@ -127,7 +128,7 @@ const RoleForm = ({ uuid }: Props) => {
     }
 
     load()
-  }, [accessLoaded, canManageRoles, canViewEmployees, canViewRoles, locale, propertyId, reset, router, sessionStatus, uuid])
+  }, [accessLoaded, canCreateRoles, canEditRoles, canViewEmployees, canViewRoles, locale, propertyId, reset, router, sessionStatus, uuid])
 
   const tree = useMemo(() => buildPermissionTree(groups, permissions), [groups, permissions])
   const assignedCount = checkedIds.size

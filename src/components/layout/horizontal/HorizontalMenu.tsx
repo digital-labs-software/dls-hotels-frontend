@@ -62,7 +62,20 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
   const theme = useTheme()
   const { settings } = useSettings()
   const params = useParams()
-  const { subscriptionSuspended, canViewSubscription, canViewStaff, canViewInvoices } = useSubscriptionAccess()
+  const {
+    subscriptionSuspended,
+    canViewSubscription,
+    canViewStaff,
+    canViewInvoices,
+    canViewDashboard,
+    canViewReception,
+    canViewReservations,
+    canViewRooms,
+    canViewClients,
+    canViewReports,
+    canViewHotel,
+    canViewSupport
+  } = useSubscriptionAccess()
   const { unread: supportUnread } = useSupport()
 
   // Vars
@@ -157,6 +170,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           menuSectionStyles: verticalMenuSectionStyles(verticalNavOptions, theme)
         }}
       >
+        {canViewDashboard ? (
         <MenuItem
           href={`/${locale}/apps/dashboard`}
           exactMatch={false}
@@ -165,8 +179,11 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
         >
           {dictionary['navigation'].dashboards}
         </MenuItem>
+        ) : null}
 
+        {canViewReception || canViewReservations ? (
         <SubMenu label={dictionary['navigation'].operation} icon={<i className='ri-dashboard-2-line' />}>
+          {canViewReception ? (
           <MenuItem
             href={`/${locale}/apps/front-desk`}
             exactMatch={false}
@@ -175,6 +192,8 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           >
             {dictionary['navigation'].frontDesk}
           </MenuItem>
+          ) : null}
+          {canViewReservations ? (
           <MenuItem
             href={`/${locale}/apps/reservations`}
             exactMatch={false}
@@ -183,8 +202,12 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           >
             {dictionary['navigation'].reservations}
           </MenuItem>
+          ) : null}
         </SubMenu>
+        ) : null}
+        {canViewRooms || canViewClients ? (
         <SubMenu label={dictionary['navigation'].propertySection} icon={<i className='ri-hotel-bed-line' />}>
+          {canViewRooms ? (
           <MenuItem
             href={`/${locale}/apps/rooms`}
             exactMatch={false}
@@ -193,6 +216,8 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           >
             {dictionary['navigation'].rooms}
           </MenuItem>
+          ) : null}
+          {canViewClients ? (
           <MenuItem
             href={`/${locale}/apps/clients`}
             exactMatch={false}
@@ -201,7 +226,9 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           >
             {dictionary['navigation'].clients}
           </MenuItem>
+          ) : null}
         </SubMenu>
+        ) : null}
         <SubMenu label={dictionary['navigation'].finance} icon={<i className='ri-bill-line' />}>
           {canViewInvoices ? (
             <MenuItem
@@ -213,6 +240,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
               {dictionary['navigation'].invoicing}
             </MenuItem>
           ) : null}
+          {canViewReports ? (
           <MenuItem
             href={`/${locale}/apps/reports`}
             exactMatch={false}
@@ -221,6 +249,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           >
             {dictionary['navigation'].reports}
           </MenuItem>
+          ) : null}
           {canViewSubscription ? subscriptionItem : null}
         </SubMenu>
         <SubMenu label={dictionary['navigation'].administration} icon={<i className='ri-settings-3-line' />}>
@@ -234,6 +263,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
               {dictionary['navigation'].staff}
             </MenuItem>
           ) : null}
+          {canViewHotel ? (
           <MenuItem
             href={`/${locale}/apps/hotel`}
             exactMatch={false}
@@ -242,8 +272,9 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           >
             {dictionary['navigation'].hotel}
           </MenuItem>
+          ) : null}
         </SubMenu>
-        {supportItem}
+        {canViewSupport ? supportItem : null}
           {/* Plantilla Materio oculta en v1. Las rutas siguen existiendo. */}
           {false && (
             <>

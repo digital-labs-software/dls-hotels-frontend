@@ -14,6 +14,8 @@ import Typography from '@mui/material/Typography'
 
 import type { Locale } from '@configs/i18n'
 import CustomTabList from '@core/components/mui/TabList'
+import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { REPORT_TAB_PERMISSION } from '@/types/apps/hotelPermissions'
 import { getLocalizedUrl } from '@/utils/i18n'
 
 const loading = () => (
@@ -101,15 +103,37 @@ const tabLabel = (icon: string, label: string) => (
 const ReportsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
   const router = useRouter()
   const { lang: locale } = useParams()
+  const { can, canViewReports, loaded } = useSubscriptionAccess()
+  const visibleGroups = GROUPS.map(group => ({
+    ...group,
+    tabs: group.tabs.filter(tab => can(REPORT_TAB_PERMISSION[tab.value]))
+  })).filter(group => group.tabs.length > 0)
+  const visibleTabs = visibleGroups.flatMap(group => group.tabs)
   const [activeTab, setActiveTab] = useState(resolveTab(defaultTab).value)
 
-  useEffect(() => {
-    setActiveTab(resolveTab(defaultTab).value)
-  }, [defaultTab])
+  const visibleKey = visibleTabs.map(tab => tab.value).join(',')
 
-  const current = resolveTab(activeTab)
-  const group = GROUPS.find(item => item.value === current.group)!
-  const Report = current.component
+  useEffect(() => {
+    if (!loaded) {
+      return
+    }
+
+    const tabs = visibleKey ? visibleKey.split(',') : []
+
+    if (!canViewReports || tabs.length === 0) {
+      router.replace(getLocalizedUrl('/apps/dashboard', locale as Locale))
+
+      return
+    }
+
+    const requested = tabs.includes(defaultTab || '') ? defaultTab! : tabs[0]
+
+    setActiveTab(current => (current === requested ? current : requested))
+  }, [canViewReports, defaultTab, loaded, locale, router, visibleKey])
+
+  const current = visibleTabs.find(tab => tab.value === activeTab) ?? visibleTabs[0]
+  const group = visibleGroups.find(item => item.tabs.some(tab => tab.value === current?.value))
+  const Report = current?.component
 
   const goTo = (value: string) => {
     setActiveTab(value)
@@ -120,14 +144,18 @@ const ReportsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
   }
 
   const handleGroupChange = (_event: SyntheticEvent, value: string) => {
-    const next = GROUPS.find(item => item.value === value)
+    const next = visibleGroups.find(item => item.value === value)
 
-    if (next && next.value !== group.value) {
+    if (next && group && next.value !== group.value) {
       goTo(next.tabs[0].value)
     }
   }
 
   const handleTabChange = (_event: SyntheticEvent, value: string) => goTo(value)
+
+  if (!loaded || !current || !group || !Report) {
+    return null
+  }
 
   return (
     <div className='flex flex-col gap-6'>
@@ -138,7 +166,7 @@ const ReportsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
 
       <TabContext value={group.value}>
         <CustomTabList onChange={handleGroupChange} variant='scrollable' pill='true' aria-label='Grupos de reportes'>
-          {GROUPS.map(item => (
+          {visibleGroups.map(item => (
             <Tab key={item.value} value={item.value} label={tabLabel(item.icon, item.label)} />
           ))}
         </CustomTabList>

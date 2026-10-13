@@ -63,9 +63,10 @@ const EmployeeForm = ({ uuid }: Props) => {
   const searchParams = useSearchParams()
   const { lang: locale } = useParams()
   const { data: session, status: sessionStatus } = useSession()
-  const { canManageEmployees, canViewEmployees, loaded: accessLoaded } = useSubscriptionAccess()
+  const { canCreateEmployees, canEditEmployees, canViewEmployees, loaded: accessLoaded } = useSubscriptionAccess()
   const propertyId = session?.user?.propertyId ?? 1
-  const isView = searchParams.get('mode') === 'view' || (accessLoaded && !canManageEmployees)
+  const canWrite = uuid ? canEditEmployees : canCreateEmployees
+  const isView = searchParams.get('mode') === 'view' || (accessLoaded && !canWrite)
   const isEdit = Boolean(uuid) && !isView
   const [loading, setLoading] = useState(true)
   const [roles, setRoles] = useState<Role[]>([])
@@ -121,7 +122,7 @@ const EmployeeForm = ({ uuid }: Props) => {
       return
     }
 
-    if (!uuid && !canManageEmployees) {
+    if (!uuid && !canCreateEmployees) {
       router.replace(getLocalizedUrl('/apps/staff', locale as Locale))
 
       return
@@ -168,7 +169,7 @@ const EmployeeForm = ({ uuid }: Props) => {
     }
 
     load()
-  }, [accessLoaded, canManageEmployees, canViewEmployees, locale, propertyId, reset, router, sessionStatus, uuid])
+  }, [accessLoaded, canCreateEmployees, canEditEmployees, canViewEmployees, locale, propertyId, reset, router, sessionStatus, uuid])
 
   const goBack = () => {
     router.push(getLocalizedUrl('/apps/staff', locale as Locale))

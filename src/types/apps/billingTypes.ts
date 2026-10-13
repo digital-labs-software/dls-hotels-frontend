@@ -4,6 +4,7 @@ export const SUBSCRIPTION_SUSPENDED_CODE = 'SUBSCRIPTION_SUSPENDED'
 export const SUBSCRIPTION_SUSPENDED_EVENT = 'dls:subscription-suspended'
 
 export const SUBSCRIPTION_VIEW = 'subscription.view'
+export const SUBSCRIPTION_HISTORY_VIEW = 'subscription.history.view'
 export const SUBSCRIPTION_PAY = 'subscription.pay'
 
 export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CANCELLED' | 'EXPIRED'

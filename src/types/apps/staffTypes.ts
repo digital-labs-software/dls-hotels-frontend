@@ -3,9 +3,13 @@ import type { DocumentType } from '@/types/apps/clientsTypes'
 export type { DocumentType }
 
 export const EMPLOYEES_VIEW = 'employees.view'
-export const EMPLOYEES_MANAGE = 'employees.manage'
+export const EMPLOYEES_CREATE = 'employees.create'
+export const EMPLOYEES_EDIT = 'employees.edit'
+export const EMPLOYEES_DELETE = 'employees.delete'
 export const ROLES_VIEW = 'roles.view'
-export const ROLES_MANAGE = 'roles.manage'
+export const ROLES_CREATE = 'roles.create'
+export const ROLES_EDIT = 'roles.edit'
+export const ROLES_DELETE = 'roles.delete'
 
 export interface RolePermission {
   id: number

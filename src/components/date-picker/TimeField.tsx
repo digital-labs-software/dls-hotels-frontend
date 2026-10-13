@@ -5,28 +5,32 @@ import type { ReactNode } from 'react'
 import InputAdornment from '@mui/material/InputAdornment'
 import TextField from '@mui/material/TextField'
 import { format, isValid, parse } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { enUS } from 'date-fns/locale'
 import { registerLocale } from 'react-datepicker'
 
 import AppReactDatepicker from '@/libs/styles/AppReactDatepicker'
 
-registerLocale('es', es)
+registerLocale('en', enUS)
 
-const TIME_FORMAT = 'HH:mm'
+/** Valor guardado (API). */
+const VALUE_FORMAT = 'HH:mm'
+
+/** Lo que ve el usuario: 02:00 PM. */
+const DISPLAY_FORMAT = 'hh:mm a'
 
 const toDate = (value?: string | null) => {
   if (!value) {
     return null
   }
 
-  const date = parse(value.slice(0, 5), TIME_FORMAT, new Date())
+  const date = parse(value.slice(0, 5), VALUE_FORMAT, new Date())
 
   return isValid(date) ? date : null
 }
 
 type Props = {
 
-  /** Hora en formato HH:mm (24 horas); vacío = sin hora. */
+  /** Hora en formato HH:mm (24 horas) para el API. En pantalla se muestra AM/PM. */
   value: string | null | undefined
   onChange: (value: string) => void
   onBlur?: () => void
@@ -57,18 +61,18 @@ const TimeField = ({
     <AppReactDatepicker
       boxProps={{ sx: fullWidth ? { inlineSize: '100%' } : undefined }}
       selected={toDate(value)}
-      onChange={(date: Date | null) => onChange(date && isValid(date) ? format(date, TIME_FORMAT) : '')}
+      onChange={(date: Date | null) => onChange(date && isValid(date) ? format(date, VALUE_FORMAT) : '')}
       onBlur={onBlur}
       disabled={disabled}
       name={name}
-      locale='es'
+      locale='en'
       showTimeSelect
       showTimeSelectOnly
       timeIntervals={intervalMinutes}
       timeCaption='Hora'
-      timeFormat={TIME_FORMAT}
-      dateFormat={TIME_FORMAT}
-      placeholderText='hh:mm'
+      timeFormat={DISPLAY_FORMAT}
+      dateFormat={DISPLAY_FORMAT}
+      placeholderText='hh:mm AM'
       popperProps={{ strategy: 'fixed' }}
       autoComplete='off'
       customInputRef='inputRef'
