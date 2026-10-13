@@ -8,9 +8,8 @@ import type { MouseEvent } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
 // MUI Imports
-import { styled } from '@mui/material/styles'
-import Badge from '@mui/material/Badge'
 import Avatar from '@mui/material/Avatar'
+import IconButton from '@mui/material/IconButton'
 import Popper from '@mui/material/Popper'
 import Fade from '@mui/material/Fade'
 import Paper from '@mui/material/Paper'
@@ -35,22 +34,12 @@ import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
 import useHotelLogout from '@components/layout/shared/useHotelLogout'
 
-// Styled component for badge content
-const BadgeContentSpan = styled('span')({
-  width: 8,
-  height: 8,
-  borderRadius: '50%',
-  cursor: 'pointer',
-  backgroundColor: 'var(--mui-palette-success-main)',
-  boxShadow: '0 0 0 2px var(--mui-palette-background-paper)'
-})
-
 const UserDropdown = () => {
   // States
   const [open, setOpen] = useState(false)
 
   // Refs
-  const anchorRef = useRef<HTMLDivElement>(null)
+  const anchorRef = useRef<HTMLButtonElement>(null)
 
   // Hooks
   const router = useRouter()
@@ -82,21 +71,15 @@ const UserDropdown = () => {
 
   return (
     <>
-      <Badge
+      <IconButton
         ref={anchorRef}
-        overlap='circular'
-        badgeContent={<BadgeContentSpan onClick={handleDropdownOpen} />}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        className='mis-2'
+        onClick={handleDropdownOpen}
+        aria-label='Abrir el menú de la cuenta'
+        aria-expanded={open}
+        className='mis-2 cursor-pointer p-1'
       >
-        <Avatar
-          ref={anchorRef}
-          alt={displayName}
-          src={displayImage}
-          onClick={handleDropdownOpen}
-          className='cursor-pointer bs-[38px] is-[38px]'
-        />
-      </Badge>
+        <Avatar alt={displayName} src={displayImage} className='pointer-events-none bs-[38px] is-[38px]' />
+      </IconButton>
       <Popper
         open={open}
         transition
