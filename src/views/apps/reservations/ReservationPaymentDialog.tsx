@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
+import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
@@ -19,6 +20,7 @@ import { toast } from 'react-toastify'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import type { PaymentMethod } from '@/types/apps/reservationsTypes'
 import { PAYMENT_LABELS, PAYMENT_METHODS } from '@/types/apps/reservationsTypes'
+import { CASH_REQUIRED_MESSAGE, useCashSessionOpen } from '@/hooks/useCashSessionOpen'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
 
 type Props = {
@@ -31,6 +33,7 @@ type Props = {
 }
 
 const ReservationPaymentDialog = ({ open, propertyId, reservationUuid, balance = 0, onClose, onSuccess }: Props) => {
+  const cashOpen = useCashSessionOpen(propertyId, open)
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<PaymentMethod>('YAPE')
   const [reference, setReference] = useState('')
@@ -61,6 +64,12 @@ const ReservationPaymentDialog = ({ open, propertyId, reservationUuid, balance =
       return
     }
 
+    if (cashOpen === false) {
+      toast.error(CASH_REQUIRED_MESSAGE)
+
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -84,6 +93,7 @@ const ReservationPaymentDialog = ({ open, propertyId, reservationUuid, balance =
     <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='xs'>
       <DialogTitle>Registrar pago</DialogTitle>
       <DialogContent className='flex flex-col gap-4 pt-4'>
+        {cashOpen === false ? <Alert severity='warning'>{CASH_REQUIRED_MESSAGE}</Alert> : null}
         <TextField
           label='Monto'
           value={amount}
@@ -112,7 +122,7 @@ const ReservationPaymentDialog = ({ open, propertyId, reservationUuid, balance =
         <Button variant='outlined' color='secondary' disabled={saving} onClick={onClose}>
           Cancelar
         </Button>
-        <Button variant='contained' disabled={saving} onClick={handleSubmit}>
+        <Button variant='contained' disabled={saving || cashOpen === false} onClick={handleSubmit}>
           {saving ? <CircularProgress size={20} color='inherit' /> : 'Registrar'}
         </Button>
       </DialogActions>

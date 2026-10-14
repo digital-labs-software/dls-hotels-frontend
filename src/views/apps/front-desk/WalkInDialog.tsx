@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 
+import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
@@ -31,6 +32,7 @@ import { capacityLabel } from '@/types/apps/roomTypeTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import DateField from '@/components/date-picker/DateField'
 import GuestPicker from './GuestPicker'
+import { CASH_REQUIRED_MESSAGE, useCashSessionOpen } from '@/hooks/useCashSessionOpen'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
 import { listRates } from '@/libs/ratesApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
@@ -98,6 +100,7 @@ type Props = {
 }
 
 const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Props) => {
+  const cashOpen = useCashSessionOpen(propertyId, open)
   const [checkOutDate, setCheckOutDate] = useState('')
   const [adults, setAdults] = useState('2')
   const [children, setChildren] = useState('0')
@@ -248,6 +251,13 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
 
     try {
       const paymentAmount = Number(amount)
+
+      if (Number.isFinite(paymentAmount) && paymentAmount > 0 && cashOpen === false) {
+        toast.error(CASH_REQUIRED_MESSAGE)
+
+        return
+      }
+
       const payload = {
         roomId: room.id,
         checkOutDate,
@@ -381,6 +391,7 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
         ))}
         <Divider />
         <Typography className='font-medium'>Adelanto (opcional)</Typography>
+        {cashOpen === false ? <Alert severity='warning'>{CASH_REQUIRED_MESSAGE}</Alert> : null}
         <div className='flex gap-3'>
           <TextField fullWidth label='Monto' value={amount} onChange={e => setAmount(e.target.value)} />
           <FormControl fullWidth>
