@@ -292,7 +292,7 @@ export const buildReportXlsx = (report: ReportDocument) => {
         return
       }
 
-      const isTotal = item.type === 'total'
+      const isTotal = item.type === 'total' || item.type === 'grand'
 
       rows.push(
         `<row r="${rowNumber}">${table.columns

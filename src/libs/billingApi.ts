@@ -129,7 +129,9 @@ const normalizePaymentDetail = (payment: BillingPaymentDetail): BillingPaymentDe
 })
 
 const normalizeSubscription = (payload: BillingSubscriptionResponse): BillingSubscriptionResponse => {
-  const voucherMethods = (payload.paymentOptions?.voucherMethods || DEFAULT_VOUCHER_METHODS).filter(Boolean)
+  const voucherMethods = (payload.paymentOptions?.voucherMethods || DEFAULT_VOUCHER_METHODS).filter(
+    item => item && item !== 'CASH'
+  )
 
   return {
     ...payload,

@@ -60,11 +60,14 @@ const BodyRow = ({ table, item }: { table: ReportTable; item: ReportRow }) => {
   }
 
   const isTotal = item.type === 'total'
+  const isGrand = item.type === 'grand'
+  const tone = item.type === 'row' ? item.tone : undefined
 
   return (
     <tr
       className={classnames(
-        isTotal ? 'bg-[var(--mui-palette-action-hover)]' : item.tone ? ROW_TONE_CLASS[item.tone] : undefined
+        isTotal ? 'bg-[var(--mui-palette-action-hover)]' : tone ? ROW_TONE_CLASS[tone] : undefined,
+        isGrand ? 'border-t-2 border-textPrimary' : undefined
       )}
     >
       {table.columns.map((column, index) => (
@@ -73,7 +76,7 @@ const BodyRow = ({ table, item }: { table: ReportTable; item: ReportRow }) => {
           value={item.cells[index]}
           kind={column.kind ?? 'text'}
           width={column.width}
-          bold={isTotal}
+          bold={isTotal || isGrand}
         />
       ))}
     </tr>

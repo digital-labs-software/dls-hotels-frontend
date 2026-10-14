@@ -42,7 +42,9 @@ const tableHtml = (table: ReportTable) => {
 
           const cells = table.columns.map((column, index) => cellHtml(column, item.cells[index])).join('')
 
-          return `<tr class="${item.type === 'total' ? 'total' : (item.tone ?? '')}">${cells}</tr>`
+          const rowClass = item.type === 'total' ? 'total' : item.type === 'grand' ? 'grand' : (item.tone ?? '')
+
+          return `<tr class="${rowClass}">${cells}</tr>`
         })
         .join('')
     : `<tr><td colspan="${table.columns.length}" class="empty">${escapeHtml(table.emptyText ?? 'Sin registros.')}</td></tr>`
@@ -63,6 +65,16 @@ export const buildReportHtml = (report: ReportDocument) => {
   const shift = report.showShift
     ? '<div class="shift"><span>Turno: ________________</span><span>Responsable: ______________________________</span></div>'
     : ''
+
+  const handover = report.highlight
+    ? `<div class="handover"><span>${escapeHtml(report.highlight.label)}</span><strong>${escapeHtml(report.highlight.value)}</strong>${
+        report.highlight.detail ? `<p>${text(report.highlight.detail)}</p>` : ''
+      }</div>`
+    : ''
+
+  const tables = report.highlight
+    ? `${report.tables.slice(0, 1).map(tableHtml).join('')}${handover}${report.tables.slice(1).map(tableHtml).join('')}`
+    : report.tables.map(tableHtml).join('')
 
   const notes = report.notes?.length
     ? `<ul class="notes">${report.notes.map(note => `<li>${text(note)}</li>`).join('')}</ul>`
@@ -106,6 +118,12 @@ export const buildReportHtml = (report: ReportDocument) => {
     tr.section.warning td { background: #ffe9c2; }
     tr.section.error td { background: #ffd6d6; }
     tr.total td { font-weight: bold; background: #f2f2f2; }
+    tr.grand td { font-weight: bold; font-size: 13px; background: #fff; border-top: 2px solid #111; }
+    tr.grand td.num { font-size: 16px; }
+    .handover { margin: 4px 0 12px; border: 2px solid #111; border-radius: 6px; padding: 10px 14px; }
+    .handover span { display: block; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .handover strong { display: block; font-size: 26px; margin-top: 2px; }
+    .handover p { margin: 4px 0 0; font-size: 11px; color: #333; }
     tr.warning td { background: #fff6e5; }
     tr.error td { background: #ffeeee; }
     tr.muted td { color: #666; }
@@ -129,7 +147,7 @@ export const buildReportHtml = (report: ReportDocument) => {
   </header>
   ${shift}
   ${summary}
-  ${report.tables.map(tableHtml).join('')}
+  ${tables}
   ${notes}
   ${signatures}
   <script>window.onload = function () { window.focus(); window.print(); }</script>

@@ -4,7 +4,7 @@ import ReportsCatalog from '@views/apps/reports/ReportsCatalog'
 
 export const metadata: Metadata = {
   title: 'Reportes',
-  description: 'Llegadas, salidas, huéspedes alojados, limpieza, caja, comprobantes, saldos, ocupación y ventas'
+  description: 'Llegadas, salidas, huéspedes alojados, limpieza, comprobantes, saldos, ocupación y ventas'
 }
 
 type Props = {

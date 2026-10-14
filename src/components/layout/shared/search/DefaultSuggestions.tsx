@@ -70,6 +70,11 @@ const defaultSuggestions: DefaultSuggestionsType[] = [
         icon: 'ri-bill-line'
       },
       {
+        label: 'Caja',
+        href: '/apps/cash',
+        icon: 'ri-safe-2-line'
+      },
+      {
         label: 'Reportes',
         href: '/apps/reports',
         icon: 'ri-file-chart-line'

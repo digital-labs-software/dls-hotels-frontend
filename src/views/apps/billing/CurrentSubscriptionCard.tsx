@@ -60,7 +60,7 @@ const CurrentSubscriptionCard = ({ data, canPay, onPay }: Props) => {
   if (!account || !subscription) {
     return (
       <Alert severity='info'>
-        Tu alojamiento aún no tiene suscripción asignada; comunícate con DLS.
+        Tu alojamiento aún no tiene suscripción asignada; comunícate con DLS Hoteles.
       </Alert>
     )
   }
@@ -79,7 +79,7 @@ const CurrentSubscriptionCard = ({ data, canPay, onPay }: Props) => {
           <Alert severity='error'>
             <AlertTitle>Servicio suspendido</AlertTitle>
             {subscription.suspensionReason ||
-              'El servicio de este alojamiento está suspendido por falta de pago. Regularice su pago o comuníquese con DLS.'}
+              'El servicio de este alojamiento está suspendido por falta de pago. Regularice su pago o comuníquese con DLS Hoteles.'}
           </Alert>
         </Grid>
       ) : null}
@@ -87,7 +87,7 @@ const CurrentSubscriptionCard = ({ data, canPay, onPay }: Props) => {
       {balance && balance.pendingVouchers > 0 ? (
         <Grid size={{ xs: 12 }}>
           <Alert severity='warning'>
-            Tienes {balance.pendingVouchers} constancia(s) de pago en revisión por DLS.
+            Tienes {balance.pendingVouchers} constancia(s) de pago en revisión por DLS Hoteles.
           </Alert>
         </Grid>
       ) : null}
@@ -215,7 +215,7 @@ const CurrentSubscriptionCard = ({ data, canPay, onPay }: Props) => {
             {paymentOptions?.instructions ? (
               <Typography sx={{ whiteSpace: 'pre-line' }}>{paymentOptions.instructions}</Typography>
             ) : (
-              <Typography>DLS aún no ha publicado las cuentas de pago. Comunícate con soporte.</Typography>
+              <Typography>DLS Hoteles aún no ha publicado las cuentas de pago. Comunícate con soporte.</Typography>
             )}
           </CardContent>
         </Card>

@@ -22,6 +22,13 @@ export type ReportRow =
   | { type: 'row'; cells: CellValue[]; tone?: RowTone }
   | { type: 'section'; label: string; tone?: RowTone }
   | { type: 'total'; cells: CellValue[] }
+  | { type: 'grand'; cells: CellValue[] }
+
+export interface ReportHighlight {
+  label: string
+  value: string
+  detail?: string
+}
 
 export interface ReportTable {
   title?: string
@@ -44,6 +51,9 @@ export interface ReportDocument {
   period: string
   orientation?: 'portrait' | 'landscape'
   summary?: ReportSummaryItem[]
+
+  /** Recuadro aparte del total de la tabla, por ejemplo el efectivo que se entrega. */
+  highlight?: ReportHighlight
   tables: ReportTable[]
   notes?: string[]
 
@@ -59,6 +69,9 @@ export const row = (cells: CellValue[], tone?: RowTone): ReportRow => ({ type: '
 export const section = (label: string, tone?: RowTone): ReportRow => ({ type: 'section', label, tone })
 
 export const total = (cells: CellValue[]): ReportRow => ({ type: 'total', cells })
+
+/** Total de la tabla, en negrita y más grande, sin fondo de color. */
+export const grand = (cells: CellValue[]): ReportRow => ({ type: 'grand', cells })
 
 const moneyFormatter = new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 

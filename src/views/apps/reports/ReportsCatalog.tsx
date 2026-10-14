@@ -51,8 +51,7 @@ const GROUPS: ReportGroup[] = [
       { value: 'arrivals', label: 'Llegadas del día', icon: 'ri-login-box-line', component: lazy(() => import('./daily/ArrivalsReport')) },
       { value: 'departures', label: 'Salidas del día', icon: 'ri-logout-box-r-line', component: lazy(() => import('./daily/DeparturesReport')) },
       { value: 'in-house', label: 'Huéspedes alojados', icon: 'ri-hotel-bed-line', component: lazy(() => import('./daily/InHouseReport')) },
-      { value: 'housekeeping', label: 'Hoja de limpieza', icon: 'ri-brush-line', component: lazy(() => import('./daily/HousekeepingReport')) },
-      { value: 'cash', label: 'Cierre de caja', icon: 'ri-safe-2-line', component: lazy(() => import('./daily/CashClosingReport')) }
+      { value: 'housekeeping', label: 'Hoja de limpieza', icon: 'ri-brush-line', component: lazy(() => import('./daily/HousekeepingReport')) }
     ]
   },
   {

@@ -28,6 +28,7 @@ import {
   PAYMENT_PROOF_HELP,
   PAYMENT_PROOF_LABEL,
   VOUCHER_METHOD_LABELS,
+  VOUCHER_METHOD_ORDER,
   formatBillingMoney
 } from '@/types/apps/billingTypes'
 
@@ -48,14 +49,24 @@ type Props = {
   onSuccess: () => void
 }
 
+const orderMethods = (available: VoucherMethod[]) => {
+  const known = VOUCHER_METHOD_ORDER.filter(item => available.includes(item))
+  const extra = available.filter(item => !VOUCHER_METHOD_ORDER.includes(item))
+
+  return [...known, ...extra]
+}
+
 const ReportPaymentDialog = ({ open, propertyId, payment, today, paymentOptions, onClose, onSuccess }: Props) => {
-  const methods = paymentOptions?.voucherMethods?.length ? paymentOptions.voucherMethods : DEFAULT_VOUCHER_METHODS
-  const [method, setMethod] = useState<VoucherMethod>('TRANSFER')
+  const methods = orderMethods(
+    paymentOptions?.voucherMethods?.length ? paymentOptions.voucherMethods : DEFAULT_VOUCHER_METHODS
+  ).filter(item => item !== 'CASH')
+  const [method, setMethod] = useState<VoucherMethod>('YAPE')
   const [amount, setAmount] = useState('')
   const [operationDate, setOperationDate] = useState(today)
   const [reference, setReference] = useState('')
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [proofError, setProofError] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -63,13 +74,16 @@ const ReportPaymentDialog = ({ open, propertyId, payment, today, paymentOptions,
       return
     }
 
-    setMethod((paymentOptions?.voucherMethods?.[0] as VoucherMethod) || 'TRANSFER')
+    setMethod(methods.includes('YAPE') ? 'YAPE' : methods[0] || 'YAPE')
     setAmount(String(payment.total ?? ''))
     setOperationDate(today)
     setReference('')
     setNotes('')
     setFile(null)
-  }, [open, payment, paymentOptions, today])
+    setProofError(false)
+    // El orden de medios es estable; no hace falta reabrir el formulario si cambia la referencia.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, payment, today])
 
   const { getRootProps, getInputProps } = useDropzone({
     multiple: false,
@@ -96,11 +110,13 @@ const ReportPaymentDialog = ({ open, propertyId, payment, today, paymentOptions,
       }
 
       setFile(next)
+      setProofError(false)
     }
   })
 
   const handleSubmit = async () => {
     if (!payment || !file) {
+      setProofError(true)
       toast.error('Adjunta la constancia de pago.')
 
       return
@@ -141,7 +157,7 @@ const ReportPaymentDialog = ({ open, propertyId, payment, today, paymentOptions,
         notes: notes.trim() || null
       })
 
-      toast.success('Constancia de pago enviada. DLS la revisará en breve.')
+      toast.success('Constancia de pago enviada. DLS Hoteles la revisará en breve.')
       onSuccess()
       onClose()
     } catch (error) {
@@ -181,18 +197,11 @@ const ReportPaymentDialog = ({ open, propertyId, payment, today, paymentOptions,
         <TextField label='Monto' value={amount} onChange={e => setAmount(e.target.value)} />
         <DateField label='Fecha de operación' value={operationDate} onChange={setOperationDate} maxDate={today} fullWidth />
         <TextField
-          label='N.º de operación'
+          label='N.º de operación (opcional)'
           value={reference}
           onChange={e => setReference(e.target.value)}
+          helperText='Si el número ya se ve en la foto, puedes dejarlo vacío.'
           inputProps={{ maxLength: 100 }}
-        />
-        <TextField
-          label='Comentario para DLS'
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          multiline
-          minRows={2}
-          inputProps={{ maxLength: 1000 }}
         />
         <Dropzone>
           <div {...getRootProps({ className: 'dropzone' })}>
@@ -202,12 +211,22 @@ const ReportPaymentDialog = ({ open, propertyId, payment, today, paymentOptions,
               <Typography>
                 {file ? file.name : `Arrastra la ${PAYMENT_PROOF_LABEL.toLowerCase()} o haz clic para elegir`}
               </Typography>
-              <Typography variant='body2' color='text.disabled'>
+              <Typography variant='body2' color={proofError ? 'error' : 'text.disabled'}>
+                {proofError ? 'La constancia es obligatoria. ' : ''}
                 JPG, PNG, WEBP o PDF · máx. 5 MB
               </Typography>
             </div>
           </div>
         </Dropzone>
+        <TextField
+          label='Nota para DLS Hoteles (opcional)'
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          helperText='Algo que DLS Hoteles deba saber de este pago.'
+          multiline
+          minRows={2}
+          inputProps={{ maxLength: 1000 }}
+        />
       </DialogContent>
       <DialogActions>
         <Button variant='outlined' color='secondary' disabled={saving} onClick={onClose}>

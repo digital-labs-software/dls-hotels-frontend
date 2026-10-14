@@ -157,7 +157,7 @@ const BillingPage = () => {
           <Typography variant='h4' className='mbe-1'>
             Suscripción
           </Typography>
-          <Typography>Tu plan DLS Hotels, deudas y constancias de pago</Typography>
+          <Typography>Tu plan DLS Hoteles, deudas y constancias de pago</Typography>
         </div>
 
         {loading && !data ? (
@@ -223,8 +223,8 @@ const BillingPage = () => {
               </Button>
             }
           >
-            No se pudo cargar la suscripción. Si el hotel demo aún no tiene cuenta o cobro, pídele a DLS que cargue los
-            datos de prueba.
+            No se pudo cargar la suscripción. Si el hotel demo aún no tiene cuenta o cobro, pídele a DLS Hoteles que
+            cargue los datos de prueba.
           </Alert>
         )}
       </Grid>

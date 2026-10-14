@@ -56,12 +56,14 @@ export const BILLING_CYCLE_LABELS: Record<string, string> = {
   QUARTERLY: 'Trimestral'
 }
 
-export const DEFAULT_VOUCHER_METHODS: VoucherMethod[] = ['TRANSFER', 'YAPE', 'PLIN', 'CASH', 'OTHER']
+export const DEFAULT_VOUCHER_METHODS: VoucherMethod[] = ['YAPE', 'PLIN', 'TRANSFER', 'OTHER']
+
+export const VOUCHER_METHOD_ORDER: VoucherMethod[] = ['YAPE', 'PLIN', 'TRANSFER', 'OTHER']
 
 export const PAYMENT_PROOF_LABEL = 'Constancia de pago'
 
 export const PAYMENT_PROOF_HELP =
-  'Se refiere al voucher o recibo del pago: captura de Yape, Plin o constancia del banco. No es una boleta ni una factura.'
+  'La constancia es obligatoria: captura de Yape o Plin, constancia del banco, u otra prueba del pago. No es una boleta ni una factura. El efectivo lo registra DLS Hoteles cuando cobra en el hotel.'
 
 export type BillingAccount = {
   uuid: string

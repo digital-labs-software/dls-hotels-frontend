@@ -62,6 +62,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
     canViewSubscription,
     canViewStaff,
     canViewInvoices,
+    canViewCash,
     canViewDashboard,
     canViewReception,
     canViewReservations,
@@ -210,6 +211,16 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
               icon={<i className='ri-bill-line' />}
             >
               {dictionary['navigation'].invoicing}
+            </MenuItem>
+          ) : null}
+          {canViewCash ? (
+            <MenuItem
+              href={`/${locale}/apps/cash`}
+              exactMatch={false}
+              activeUrl='/apps/cash'
+              icon={<i className='ri-safe-2-line' />}
+            >
+              {dictionary['navigation'].cash}
             </MenuItem>
           ) : null}
           {canViewReports ? (

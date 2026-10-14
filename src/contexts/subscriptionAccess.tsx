@@ -11,6 +11,10 @@ import { getAuthMe } from '@/libs/authApi'
 import { isSubscriptionSuspendedError, notifySubscriptionSuspended } from '@/libs/subscriptionSuspended'
 import { SUBSCRIPTION_HISTORY_VIEW, SUBSCRIPTION_PAY, SUBSCRIPTION_SUSPENDED_EVENT, SUBSCRIPTION_VIEW } from '@/types/apps/billingTypes'
 import {
+  CASH_CLOSE,
+  CASH_EXPENSE,
+  CASH_MENU_PERMISSIONS,
+  CASH_OPEN,
   CLIENT_MENU_PERMISSIONS,
   DASHBOARD_VIEW,
   HOTEL_MENU_PERMISSIONS,
@@ -45,6 +49,10 @@ type SubscriptionAccessValue = {
   canViewRooms: boolean
   canViewClients: boolean
   canViewReports: boolean
+  canViewCash: boolean
+  canOpenCash: boolean
+  canRecordCashExpense: boolean
+  canCloseCash: boolean
   canViewHotel: boolean
   canViewSupport: boolean
   canViewProfile: boolean
@@ -84,6 +92,10 @@ const SubscriptionAccessContext = createContext<SubscriptionAccessValue>({
   canViewRooms: true,
   canViewClients: true,
   canViewReports: true,
+  canViewCash: true,
+  canOpenCash: true,
+  canRecordCashExpense: true,
+  canCloseCash: true,
   canViewHotel: true,
   canViewSupport: true,
   canViewProfile: true,
@@ -208,6 +220,10 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
   const canViewRooms = canAny(ROOM_MENU_PERMISSIONS)
   const canViewClients = canAny(CLIENT_MENU_PERMISSIONS)
   const canViewReports = canAny(REPORT_MENU_PERMISSIONS)
+  const canViewCash = canAny(CASH_MENU_PERMISSIONS)
+  const canOpenCash = can(CASH_OPEN)
+  const canRecordCashExpense = can(CASH_EXPENSE)
+  const canCloseCash = can(CASH_CLOSE)
   const canViewHotel = canAny(HOTEL_MENU_PERMISSIONS)
   const canViewSupport = canAny(SUPPORT_MENU_PERMISSIONS)
   const canViewProfile = canAny(PROFILE_MENU_PERMISSIONS)
@@ -248,6 +264,10 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
       canViewRooms,
       canViewClients,
       canViewReports,
+      canViewCash,
+      canOpenCash,
+      canRecordCashExpense,
+      canCloseCash,
       canViewHotel,
       canViewSupport,
       canViewProfile,
@@ -291,6 +311,10 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
       canViewProfile,
       canViewReception,
       canViewReports,
+      canViewCash,
+      canOpenCash,
+      canRecordCashExpense,
+      canCloseCash,
       canViewReservations,
       canViewRoles,
       canViewRooms,

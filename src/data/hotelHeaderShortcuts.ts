@@ -26,6 +26,12 @@ const hotelHeaderShortcuts: ShortcutsType[] = [
     subtitle: 'Tipos y tarifas'
   },
   {
+    url: '/apps/cash',
+    icon: 'ri-safe-2-line',
+    title: 'Caja',
+    subtitle: 'Cierre de caja'
+  },
+  {
     url: '/apps/reports',
     icon: 'ri-file-chart-line',
     title: 'Reportes',

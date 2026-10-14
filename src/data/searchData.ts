@@ -115,6 +115,13 @@ const data: SearchData[] = [
     section: 'Administración'
   },
   {
+    id: 'cash',
+    name: 'Caja',
+    url: '/apps/cash',
+    icon: 'ri-safe-2-line',
+    section: 'Finanzas'
+  },
+  {
     id: 'reports',
     name: 'Reportes',
     url: '/apps/reports',

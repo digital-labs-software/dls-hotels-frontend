@@ -90,6 +90,13 @@ const horizontalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>
         activeUrl: '/apps/staff'
       },
       {
+        label: dictionary['navigation'].cash,
+        icon: 'ri-safe-2-line',
+        href: '/apps/cash',
+        exactMatch: false,
+        activeUrl: '/apps/cash'
+      },
+      {
         label: dictionary['navigation'].reports,
         icon: 'ri-file-chart-line',
         href: '/apps/reports',
