@@ -21,16 +21,18 @@ import {
   RECEPTION_PAYMENTS_VIEW,
   RECEPTION_WALK_IN
 } from '@/types/apps/hotelPermissions'
+import AccountsClient from '@views/apps/front-desk/AccountsClient'
 import FrontDeskClient from '@views/apps/front-desk/FrontDeskClient'
 import PaymentsCashClient from '@views/apps/front-desk/PaymentsCashClient'
 import { getLocalizedUrl } from '@/utils/i18n'
 
-const FRONT_DESK_TABS = ['desk', 'payments'] as const
+const FRONT_DESK_TABS = ['desk', 'accounts', 'payments'] as const
 
 type FrontDeskTab = (typeof FRONT_DESK_TABS)[number]
 
 const tabContentList: Record<FrontDeskTab, ReactElement> = {
   desk: <FrontDeskClient />,
+  accounts: <AccountsClient />,
   payments: <PaymentsCashClient />
 }
 
@@ -40,6 +42,7 @@ const isFrontDeskTab = (value?: string): value is FrontDeskTab => {
 
 const TAB_PERMISSIONS: Record<FrontDeskTab, readonly string[]> = {
   desk: [RECEPTION_DESK_VIEW, RECEPTION_WALK_IN, RECEPTION_CHECK_IN, RECEPTION_CHECK_OUT],
+  accounts: [RECEPTION_DESK_VIEW, RECEPTION_PAYMENTS_VIEW, RECEPTION_PAYMENTS_CREATE],
   payments: [RECEPTION_PAYMENTS_VIEW, RECEPTION_PAYMENTS_CREATE]
 }
 
@@ -100,6 +103,17 @@ const FrontDeskCatalog = ({ defaultTab }: { defaultTab?: string }) => {
                 </div>
               }
               value='desk'
+            />
+            ) : null}
+            {allowedTabs.includes('accounts') ? (
+            <Tab
+              label={
+                <div className='flex items-center gap-1.5'>
+                  <i className='ri-bill-line text-lg' />
+                  Cuentas
+                </div>
+              }
+              value='accounts'
             />
             ) : null}
             {allowedTabs.includes('payments') ? (

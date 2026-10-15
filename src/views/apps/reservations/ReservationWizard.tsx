@@ -66,7 +66,12 @@ import GuestPicker from '@views/apps/front-desk/GuestPicker'
 import CompanyPicker from './CompanyPicker'
 import CreateCompanyDialog from './CreateCompanyDialog'
 import CreateGuestDialog from './CreateGuestDialog'
+import { useCashSessionOpen } from '@/hooks/useCashSessionOpen'
+import { cashApi, getCashApiErrorMessage } from '@/libs/cashApi'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
+
+const CASH_ADVANCE_MESSAGE =
+  'No hay una caja abierta. No se puede guardar la reserva con este adelanto: abre la caja y vuelve a crearla.'
 
 type RoomDraft = {
   key: string
@@ -138,6 +143,8 @@ const Section = ({ title, action, footer, children }: { title: string; action?: 
 const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreated }: Props) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const cashOpen = useCashSessionOpen(propertyId, open)
+  const createdReservation = useRef<{ uuid: string; code: string } | null>(null)
   const [step, setStep] = useState(0)
   const [rooms, setRooms] = useState<RoomDraft[]>([emptyRoom(today, prefill)])
   const [availability, setAvailability] = useState<AvailabilityRoomType[]>([])
@@ -160,6 +167,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   const [roomWarning, setRoomWarning] = useState('')
   const [roomAttempted, setRoomAttempted] = useState(false)
   const [bookerAttempted, setBookerAttempted] = useState(false)
+  const [cashBlocked, setCashBlocked] = useState(false)
 
   const primary = rooms[0]
   const stayNights = primary ? nightsBetween(primary.checkInDate, primary.checkOutDate) : 1
@@ -190,6 +198,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     setPayAmount('')
     setPayMethod('YAPE')
     setPayReference('')
+    createdReservation.current = null
+    setCashBlocked(false)
     setRoomWarning('')
     setRoomAttempted(false)
     setBookerAttempted(false)
@@ -461,6 +471,10 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     return true
   }
 
+  const advanceAmount = Number(payAmount)
+  const wantsAdvance = Number.isFinite(advanceAmount) && advanceAmount > 0
+  const cashAdvanceBlocked = wantsAdvance && (cashOpen === false || cashBlocked)
+
   const handleCreate = async () => {
     if (!validateStep2()) {
       setStep(1)
@@ -468,9 +482,31 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
       return
     }
 
+    if (wantsAdvance && cashOpen !== true) {
+      return
+    }
+
     setSaving(true)
 
     try {
+      if (wantsAdvance) {
+        let sessionOpen = false
+
+        try {
+          sessionOpen = (await cashApi.current(propertyId)) != null
+        } catch (error) {
+          toast.error(getCashApiErrorMessage(error, 'No se pudo consultar la caja.'))
+
+          return
+        }
+
+        if (!sessionOpen) {
+          setCashBlocked(true)
+
+          return
+        }
+      }
+
       const payloadRooms: CreateReservationRoomBody[] = rooms.map(room => ({
         roomTypeId: Number(room.roomTypeId),
         roomId: room.roomId === 'later' || room.roomId === '' ? null : Number(room.roomId),
@@ -482,30 +518,39 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
         pricePerNight: room.pricePerNight ? Number(room.pricePerNight) : null
       }))
 
-      const reservation = await reservationsApi.create(propertyId, {
-        guestId: guest?.id ?? null,
-        companyId: company?.id ?? null,
-        source,
-        externalCode: EXTERNAL_CODE_SOURCES.includes(source) ? externalCode.trim() || null : null,
-        status: confirmed ? 'CONFIRMED' : 'PENDING',
-        discountAmount: Number(discountAmount) || 0,
-        notes: notes.trim() || null,
-        rooms: payloadRooms
-      })
+      const reservation =
+        createdReservation.current ??
+        (await reservationsApi.create(propertyId, {
+          guestId: guest?.id ?? null,
+          companyId: company?.id ?? null,
+          source,
+          externalCode: EXTERNAL_CODE_SOURCES.includes(source) ? externalCode.trim() || null : null,
+          status: confirmed ? 'CONFIRMED' : 'PENDING',
+          discountAmount: Number(discountAmount) || 0,
+          notes: notes.trim() || null,
+          rooms: payloadRooms
+        }))
 
-      const advance = Number(payAmount)
+      createdReservation.current = { uuid: reservation.uuid, code: reservation.code }
 
-      if (Number.isFinite(advance) && advance > 0) {
+      if (wantsAdvance) {
         await reservationsApi.addPayment(propertyId, reservation.uuid, {
-          amount: advance,
+          amount: advanceAmount,
           method: payMethod,
           reference: payReference.trim() || null
         })
       }
 
+      createdReservation.current = null
       onCreated(reservation.uuid, reservation.code)
     } catch (error) {
       const message = getReservationsApiErrorMessage(error, 'No se pudo crear la reserva.')
+
+      if (message.toLowerCase().includes('caja')) {
+        setCashBlocked(true)
+
+        return
+      }
 
       toast.error(message)
 
@@ -1004,6 +1049,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                 onChange={e => setNotes(e.target.value)}
                 helperText='Opcional. Nota para recepción.'
               />
+              {cashAdvanceBlocked ? <Alert severity='error'>{CASH_ADVANCE_MESSAGE}</Alert> : null}
             </div>
           ) : null}
         </DialogContent>
@@ -1034,7 +1080,11 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
               Siguiente
             </Button>
           ) : (
-            <Button variant='contained' disabled={saving} onClick={handleCreate}>
+            <Button
+              variant='contained'
+              disabled={saving || cashAdvanceBlocked || (wantsAdvance && cashOpen === null)}
+              onClick={handleCreate}
+            >
               {saving ? <CircularProgress size={20} color='inherit' /> : 'Guardar reserva'}
             </Button>
           )}

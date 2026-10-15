@@ -30,7 +30,8 @@ export const useCashSessionOpen = (propertyId: number, enabled: boolean) => {
       })
       .catch(() => {
         if (!cancelled) {
-          setOpen(null)
+          // Si no se pudo consultar, no dejamos el formulario bloqueado: el cobro lo resuelve el servidor.
+          setOpen(true)
         }
       })
 

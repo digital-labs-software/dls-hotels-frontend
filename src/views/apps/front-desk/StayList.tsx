@@ -81,9 +81,11 @@ const StayList = ({ kind, stays, onOpenStay, onCheckIn, onCheckOut, onAssign, on
                 Check-out (salida)
               </Button>
             ) : null}
-            <Button size='small' onClick={() => onPay(stay)}>
-              Pago
-            </Button>
+            {stay.reservationBalance !== 0 ? (
+              <Button size='small' onClick={() => onPay(stay)}>
+                {stay.reservationBalance < 0 ? 'Devolución' : 'Pago'}
+              </Button>
+            ) : null}
           </div>
         </div>
       ))}

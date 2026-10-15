@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography'
 import { alpha, useTheme } from '@mui/material/styles'
 
 import type { RackRoom, RackStatus } from '@/types/apps/frontDeskTypes'
-import { formatFrontDeskDate as formatDate } from '@/types/apps/frontDeskTypes'
+import { accountTone, formatFrontDeskDate as formatDate } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice as formatPrice } from '@/types/apps/roomsTypes'
 import { ROOM_PHOTO_THUMB, cloudinaryTransformedUrl } from '@/libs/cloudinary'
 
@@ -31,7 +31,24 @@ const RoomCard = ({ room, view, onOpenMenu, onOpenPhoto }: Props) => {
   const palette = STATUS_COLORS[room.displayStatus] ?? STATUS_COLORS.AVAILABLE
   const isDark = theme.palette.mode === 'dark'
   const stay = room.currentStay
+  const billed = stay ?? room.arrival
   const compact = view === 'compact'
+  const tone = billed ? accountTone(billed.reservationBalance, billed.reservationPaidAmount) : null
+
+  const paymentChip =
+    tone === 'due' ? (
+      <Chip size='small' label={`Debe ${formatPrice(billed?.reservationBalance)}`} sx={{ bgcolor: '#B71C1C', color: 'white' }} />
+    ) : tone === 'partial' ? (
+      <Chip size='small' label={`Falta ${formatPrice(billed?.reservationBalance)}`} sx={{ bgcolor: '#EF6C00', color: 'white' }} />
+    ) : tone === 'paid' ? (
+      <Chip size='small' label='Pagada' sx={{ bgcolor: '#2E7D32', color: 'white' }} />
+    ) : tone === 'credit' ? (
+      <Chip
+        size='small'
+        label={`A favor ${formatPrice(Math.abs(billed?.reservationBalance ?? 0))}`}
+        sx={{ bgcolor: '#01579B', color: 'white' }}
+      />
+    ) : null
 
   const photo = (
     <button
@@ -125,20 +142,7 @@ const RoomCard = ({ room, view, onOpenMenu, onOpenPhoto }: Props) => {
         {stay?.departureOverdue ? (
           <Chip size='small' label='Salida vencida' sx={{ bgcolor: '#6A1B9A', color: 'white' }} />
         ) : null}
-        {(stay?.reservationBalance ?? room.arrival?.reservationBalance ?? 0) > 0 ? (
-          <Chip
-            size='small'
-            label={`Saldo ${formatPrice(stay?.reservationBalance ?? room.arrival?.reservationBalance)}`}
-            sx={{ bgcolor: '#B71C1C', color: 'white' }}
-          />
-        ) : null}
-        {(stay?.reservationBalance ?? room.arrival?.reservationBalance ?? 0) < 0 ? (
-          <Chip
-            size='small'
-            label={`A favor ${formatPrice(Math.abs(stay?.reservationBalance ?? room.arrival?.reservationBalance ?? 0))}`}
-            sx={{ bgcolor: '#01579B', color: 'white' }}
-          />
-        ) : null}
+        {paymentChip}
         {room.notes ? (
           <Tooltip title={room.notes}>
             <Chip size='small' label={<i className='ri-sticky-note-line' />} variant='outlined' />

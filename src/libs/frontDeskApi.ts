@@ -7,6 +7,7 @@ import type {
   AvailabilityRoomType,
   FrontDesk,
   FrontDeskPayment,
+  GuestAccounts,
   ListPaymentsQuery,
   PaymentMethod,
   RackStatus,
@@ -116,6 +117,7 @@ const normalizeStay = (stay: Stay): Stay => ({
   guestName: stay.guestName ?? null,
   companyName: stay.companyName ?? null,
   reservationBalance: toNumber(stay.reservationBalance),
+  reservationPaidAmount: toNumber(stay.reservationPaidAmount),
   actualCheckInAt: stay.actualCheckInAt ?? null,
   arrivalOverdue: Boolean(stay.arrivalOverdue),
   departureOverdue: Boolean(stay.departureOverdue)
@@ -214,6 +216,25 @@ const toWalkInPayload = (body: WalkInPayload) => {
 export const frontDeskApi = {
   overview: async (propertyId: number, token?: string) => {
     return normalizeFrontDesk(await request<FrontDesk>(`/properties/${propertyId}/front-desk`, {}, token))
+  },
+  accounts: async (propertyId: number, date?: string, token?: string) => {
+    const query = date ? `?date=${encodeURIComponent(date)}` : ''
+    const payload = await request<GuestAccounts>(`/properties/${propertyId}/front-desk/accounts${query}`, {}, token)
+
+    return {
+      date: payload?.date ?? date ?? '',
+      accounts: Array.isArray(payload?.accounts)
+        ? payload.accounts.map(account => ({
+            ...account,
+            guestName: account.guestName ?? null,
+            companyName: account.companyName ?? null,
+            totalAmount: toNumber(account.totalAmount),
+            paidAmount: toNumber(account.paidAmount),
+            balance: toNumber(account.balance),
+            rooms: Array.isArray(account.rooms) ? account.rooms : []
+          }))
+        : []
+    }
   },
   walkIn: async (propertyId: number, body: WalkInPayload, token?: string) => {
     return normalizeReservation(

@@ -77,9 +77,33 @@ export interface Stay {
   guestName: string | null
   companyName: string | null
   reservationBalance: number
+  reservationPaidAmount: number
   actualCheckInAt: string | null
   arrivalOverdue: boolean
   departureOverdue: boolean
+}
+
+export interface GuestAccountRoom {
+  roomNumber: string | null
+  roomTypeName: string
+}
+
+export interface GuestAccount {
+  reservationUuid: string
+  code: string
+  guestName: string | null
+  companyName: string | null
+  checkInDate: string
+  checkOutDate: string
+  totalAmount: number
+  paidAmount: number
+  balance: number
+  rooms: GuestAccountRoom[]
+}
+
+export interface GuestAccounts {
+  date: string
+  accounts: GuestAccount[]
 }
 
 export interface RackRoom {
@@ -281,6 +305,25 @@ export const reservationBalanceTone = (balance: number): BalanceTone => {
   }
 
   return 'credit'
+}
+
+export type AccountTone = 'due' | 'partial' | 'paid' | 'credit'
+
+/** Debe: nada pagado. Adelantó: ya pagó y falta. Pagada: saldo cero. A favor: pagó de más. */
+export const accountTone = (balance: number, paidAmount: number): AccountTone => {
+  if (balance < 0) {
+    return 'credit'
+  }
+
+  if (balance === 0) {
+    return 'paid'
+  }
+
+  if (paidAmount > 0) {
+    return 'partial'
+  }
+
+  return 'due'
 }
 
 export interface AvailabilityFreeRoom {

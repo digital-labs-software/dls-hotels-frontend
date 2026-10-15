@@ -192,9 +192,11 @@ const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheck
                 <BalanceChip balance={reservation.balance} />
               </div>
               <div className='flex gap-2'>
-                <Button variant='contained' onClick={() => stay && onPay(stay)}>
-                  Registrar pago
-                </Button>
+                {reservation.balance !== 0 && stay ? (
+                  <Button variant='contained' onClick={() => onPay(stay)}>
+                    {reservation.balance < 0 ? 'Registrar devolución' : 'Registrar pago'}
+                  </Button>
+                ) : null}
                 {canIssueInvoices && stay ? (
                   <Button
                     variant='outlined'

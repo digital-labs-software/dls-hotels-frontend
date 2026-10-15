@@ -476,7 +476,10 @@ const FrontDeskPage = () => {
             Check-out (salida)
           </MenuItem>
         ) : null}
-        {canRegisterPayment && menuRoom?.displayStatus === 'OCCUPIED' && menuRoom.currentStay ? (
+        {canRegisterPayment &&
+        menuRoom?.displayStatus === 'OCCUPIED' &&
+        menuRoom.currentStay &&
+        menuRoom.currentStay.reservationBalance !== 0 ? (
           <MenuItem
             onClick={() => {
               setSelectedStay(menuRoom.currentStay)
@@ -484,7 +487,7 @@ const FrontDeskPage = () => {
               closeMenu()
             }}
           >
-            Registrar pago
+            {menuRoom.currentStay.reservationBalance < 0 ? 'Registrar devolución' : 'Registrar pago'}
           </MenuItem>
         ) : null}
         {menuRoom?.displayStatus === 'OCCUPIED' && menuRoom.currentStay ? (
