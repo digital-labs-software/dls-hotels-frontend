@@ -24,7 +24,6 @@ import {
   suggestRoomTypeCode,
   toRoomTypeCode
 } from '@/types/apps/roomTypeTypes'
-import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { createRoomType, getRoomTypesApiErrorMessage, updateRoomType } from '@/libs/roomTypesApi'
 import { sameCatalogName, toCatalogName } from '@/utils/string'
 
@@ -159,7 +158,13 @@ const RoomTypeFormDrawer = (props: Props) => {
           ? await updateRoomType(propertyId, roomType.uuid, payload)
           : await createRoomType(propertyId, payload)
 
-      toast.success(isEdit ? 'Tipo de habitación actualizado.' : 'Tipo de habitación creado.')
+      toast.success(
+        isEdit
+          ? 'Tipo de habitación actualizado.'
+          : saved.restored
+            ? 'Este tipo estaba eliminado. Se recuperó con los datos que acaba de guardar.'
+            : 'Tipo de habitación creado.'
+      )
       onSuccess(saved)
       handleReset()
     } catch (error) {
@@ -222,9 +227,7 @@ const RoomTypeFormDrawer = (props: Props) => {
                   field.onBlur()
                 }}
                 error={Boolean(errors.name)}
-                helperText={
-                  errors.name?.message || 'La categoría. Por ejemplo: Matrimonial, Doble o Triple.'
-                }
+                helperText={errors.name?.message}
               />
             )}
           />
@@ -262,9 +265,7 @@ const RoomTypeFormDrawer = (props: Props) => {
                   field.onChange(code)
                 }}
                 error={Boolean(errors.code)}
-                helperText={
-                  errors.code?.message || 'Se llena sola. Puede cambiarla si quiere, por ejemplo MAT, DBL o TPL.'
-                }
+                helperText={errors.code?.message}
               />
             )}
           />
@@ -339,21 +340,10 @@ const RoomTypeFormDrawer = (props: Props) => {
                   }
                 }}
                 error={Boolean(errors.maxOccupancy)}
-                helperText={
-                  errors.maxOccupancy?.message || 'Cuántas personas duermen aquí. Por ejemplo: Doble 2, Triple 3.'
-                }
+                helperText={errors.maxOccupancy?.message}
               />
             )}
           />
-
-          {summary ? (
-            <div className='flex items-start gap-2'>
-              <i className='ri-group-line text-xl text-textSecondary' />
-              <Typography variant='body2' color='text.primary'>
-                {summary}
-              </Typography>
-            </div>
-          ) : null}
 
           {!isView ? (
             <Button
@@ -369,11 +359,7 @@ const RoomTypeFormDrawer = (props: Props) => {
           ) : null}
 
           {showLimits ? (
-            <div className='flex flex-col gap-4'>
-              <Typography variant='body2' color='text.secondary'>
-                Solo si quiere una regla especial. Las personas de arriba siguen siendo el tope.
-              </Typography>
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                 <Controller
                   name='maxAdults'
                   control={control}
@@ -455,33 +441,13 @@ const RoomTypeFormDrawer = (props: Props) => {
                     />
                   )}
                 />
-              </div>
             </div>
           ) : null}
 
-          {mode === 'create' ? (
+          {showLimits && summary ? (
             <Typography variant='body2' color='text.secondary'>
-              El tipo nuevo queda al final de la lista. Para cambiar el orden, arrástrelo en la lista.
+              {summary}
             </Typography>
-          ) : null}
-
-          {isView && roomType ? (
-            <div className='flex flex-col gap-2'>
-              <Typography variant='body2' color='text.secondary'>
-                Precio base: {formatRoomPrice(roomType.basePrice)}
-              </Typography>
-              <Typography variant='body2' color='text.secondary'>
-                Posición en la lista: {roomType.displayOrder}
-              </Typography>
-              <Typography variant='body2' color='text.secondary'>
-                UUID: {roomType.uuid}
-              </Typography>
-              {roomType.createdAt ? (
-                <Typography variant='body2' color='text.secondary'>
-                  Creado: {new Date(roomType.createdAt).toLocaleString()}
-                </Typography>
-              ) : null}
-            </div>
           ) : null}
 
           <div className='flex items-center gap-4'>

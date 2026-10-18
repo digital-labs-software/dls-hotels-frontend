@@ -71,6 +71,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
     canViewDashboard,
     canViewReception,
     canViewReservations,
+    canViewPrices,
     canViewRooms,
     canViewClients,
     canViewReports,
@@ -182,7 +183,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
         </MenuItem>
         ) : null}
 
-        {canViewReception || canViewReservations ? (
+        {canViewReception || canViewReservations || canViewPrices ? (
         <SubMenu label={dictionary['navigation'].operation} icon={<i className='ri-dashboard-2-line' />}>
           {canViewReception ? (
           <MenuItem
@@ -202,6 +203,16 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
             icon={<i className='ri-calendar-check-line' />}
           >
             {dictionary['navigation'].reservations}
+          </MenuItem>
+          ) : null}
+          {canViewPrices ? (
+          <MenuItem
+            href={`/${locale}/apps/prices`}
+            exactMatch={false}
+            activeUrl='/apps/prices'
+            icon={<i className='ri-price-tag-3-line' />}
+          >
+            {dictionary['navigation'].prices}
           </MenuItem>
           ) : null}
         </SubMenu>
@@ -230,6 +241,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           ) : null}
         </SubMenu>
         ) : null}
+        {canViewInvoices || canViewCash || canViewSubscription ? (
         <SubMenu label={dictionary['navigation'].finance} icon={<i className='ri-bill-line' />}>
           {canViewInvoices ? (
             <MenuItem
@@ -251,6 +263,11 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
               {dictionary['navigation'].cash}
             </MenuItem>
           ) : null}
+          {canViewSubscription ? subscriptionItem : null}
+        </SubMenu>
+        ) : null}
+        {canViewReports || canViewStaff || canViewHotel ? (
+        <SubMenu label={dictionary['navigation'].administration} icon={<i className='ri-settings-3-line' />}>
           {canViewReports ? (
           <MenuItem
             href={`/${locale}/apps/reports`}
@@ -261,9 +278,6 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
             {dictionary['navigation'].reports}
           </MenuItem>
           ) : null}
-          {canViewSubscription ? subscriptionItem : null}
-        </SubMenu>
-        <SubMenu label={dictionary['navigation'].administration} icon={<i className='ri-settings-3-line' />}>
           {canViewStaff ? (
             <MenuItem
               href={`/${locale}/apps/staff`}
@@ -285,6 +299,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
           </MenuItem>
           ) : null}
         </SubMenu>
+        ) : null}
         {canViewSupport ? supportItem : null}
           {/* Plantilla Materio oculta en v1. Las rutas siguen existiendo. */}
           {false && (

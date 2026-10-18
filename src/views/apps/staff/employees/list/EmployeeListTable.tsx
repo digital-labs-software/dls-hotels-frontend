@@ -16,10 +16,7 @@ import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
+import DeleteReasonDialog from '@/components/dialogs/DeleteReasonDialog'
 import type { TextFieldProps } from '@mui/material/TextField'
 
 import classnames from 'classnames'
@@ -177,7 +174,7 @@ const EmployeeListTable = () => {
     }
   }
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (reason: string) => {
     if (!employeeToDelete) {
       return
     }
@@ -185,7 +182,7 @@ const EmployeeListTable = () => {
     setDeleting(true)
 
     try {
-      await employeesApi.remove(propertyId, employeeToDelete.uuid)
+      await employeesApi.remove(propertyId, employeeToDelete.uuid, reason)
       setEmployees(prev => prev.filter(item => item.uuid !== employeeToDelete.uuid))
       toast.success('Empleado eliminado.')
       setEmployeeToDelete(null)
@@ -452,24 +449,17 @@ const EmployeeListTable = () => {
         )}
       </Card>
 
-      <Dialog open={Boolean(employeeToDelete)} onClose={() => !deleting && setEmployeeToDelete(null)}>
-        <DialogTitle>Eliminar empleado</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Eliminar a{' '}
-            {employeeToDelete ? `"${employeeToDelete.person.lastName}, ${employeeToDelete.person.firstName}"` : ''}?
-            Dejará de poder iniciar sesión en este hotel.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button variant='outlined' color='secondary' disabled={deleting} onClick={() => setEmployeeToDelete(null)}>
-            Cancelar
-          </Button>
-          <Button variant='contained' color='error' disabled={deleting} onClick={handleConfirmDelete}>
-            {deleting ? <CircularProgress size={20} color='inherit' /> : 'Eliminar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteReasonDialog
+        open={Boolean(employeeToDelete)}
+        title='Eliminar empleado'
+        description={`¿Eliminar a ${
+          employeeToDelete ? `"${employeeToDelete.person.lastName}, ${employeeToDelete.person.firstName}"` : ''
+        }? Dejará de poder iniciar sesión en este hotel.`}
+        placeholder='Ya no trabaja en el hotel'
+        confirming={deleting}
+        onClose={() => setEmployeeToDelete(null)}
+        onConfirm={reason => void handleConfirmDelete(reason)}
+      />
     </>
   )
 }

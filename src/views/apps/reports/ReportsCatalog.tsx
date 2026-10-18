@@ -63,7 +63,8 @@ const GROUPS: ReportGroup[] = [
       { value: 'invoices', label: 'Comprobantes emitidos', icon: 'ri-file-list-3-line', component: lazy(() => import('./admin/SalesRegisterReport')) },
       { value: 'balances', label: 'Saldos pendientes', icon: 'ri-hand-coin-line', component: lazy(() => import('./admin/BalancesReport')) },
       { value: 'occupancy', label: 'Ocupación del mes', icon: 'ri-bar-chart-box-line', component: lazy(() => import('./admin/OccupancyReport')) },
-      { value: 'mincetur', label: 'Estadística MINCETUR', icon: 'ri-government-line', component: lazy(() => import('./admin/MonthlyStatsReport')) }
+      { value: 'mincetur', label: 'Estadística MINCETUR', icon: 'ri-government-line', component: lazy(() => import('./admin/MonthlyStatsReport')) },
+      { value: 'audit', label: 'Bitácora', icon: 'ri-history-line', component: lazy(() => import('../audit/AuditPage')) }
     ]
   },
   {

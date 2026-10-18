@@ -214,12 +214,16 @@ const RoleForm = ({ uuid }: Props) => {
         })
         toast.success('Rol actualizado.')
       } else {
-        await rolesApi.create(propertyId, {
+        const created = await rolesApi.create(propertyId, {
           name: data.name.trim(),
           description: data.description.trim() || null,
           permissionIds
         })
-        toast.success('Rol creado.')
+        toast.success(
+          created.restored
+            ? 'Este rol estaba eliminado. Se recuperó con los datos que acaba de guardar.'
+            : 'Rol creado.'
+        )
       }
 
       goBack()

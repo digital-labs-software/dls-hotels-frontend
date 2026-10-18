@@ -16,9 +16,11 @@ import {
   CASH_MENU_PERMISSIONS,
   CASH_OPEN,
   CLIENT_MENU_PERMISSIONS,
+  AUDIT_VIEW,
   DASHBOARD_VIEW,
   HOTEL_MENU_PERMISSIONS,
   PROFILE_MENU_PERMISSIONS,
+  PRICES_VIEW,
   RECEPTION_PERMISSIONS,
   REPORT_MENU_PERMISSIONS,
   RESERVATION_PERMISSIONS,
@@ -46,9 +48,11 @@ type SubscriptionAccessValue = {
   canViewDashboard: boolean
   canViewReception: boolean
   canViewReservations: boolean
+  canViewPrices: boolean
   canViewRooms: boolean
   canViewClients: boolean
   canViewReports: boolean
+  canViewAudit: boolean
   canViewCash: boolean
   canOpenCash: boolean
   canRecordCashExpense: boolean
@@ -89,9 +93,11 @@ const SubscriptionAccessContext = createContext<SubscriptionAccessValue>({
   canViewDashboard: true,
   canViewReception: true,
   canViewReservations: true,
+  canViewPrices: true,
   canViewRooms: true,
   canViewClients: true,
   canViewReports: true,
+  canViewAudit: true,
   canViewCash: true,
   canOpenCash: true,
   canRecordCashExpense: true,
@@ -217,6 +223,8 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
   const canViewDashboard = can(DASHBOARD_VIEW)
   const canViewReception = canAny(RECEPTION_PERMISSIONS)
   const canViewReservations = canAny(RESERVATION_PERMISSIONS)
+  const canViewPrices = can(PRICES_VIEW)
+  const canViewAudit = can(AUDIT_VIEW)
   const canViewRooms = canAny(ROOM_MENU_PERMISSIONS)
   const canViewClients = canAny(CLIENT_MENU_PERMISSIONS)
   const canViewReports = canAny(REPORT_MENU_PERMISSIONS)
@@ -261,6 +269,8 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
       canViewDashboard,
       canViewReception,
       canViewReservations,
+      canViewPrices,
+      canViewAudit,
       canViewRooms,
       canViewClients,
       canViewReports,
@@ -309,6 +319,8 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
       canViewEmployees,
       canViewHotel,
       canViewProfile,
+      canViewPrices,
+      canViewAudit,
       canViewReception,
       canViewReports,
       canViewCash,

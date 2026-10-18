@@ -38,9 +38,10 @@ export const buildCashSessionDocument = (session: CashSessionDetail, hotelName: 
       : `Abierta desde ${formatDateTime(session.openedAt)}`,
     orientation: 'portrait',
     highlight: {
-      label: 'Efectivo a entregar',
+      label: session.cashExpected < 0 ? 'Faltante' : 'Efectivo a entregar',
+      tone: session.cashExpected < 0 ? 'short' : undefined,
       value: formatMoney(session.cashExpected),
-      detail: `Monto inicial ${formatMoney(session.openingAmount)} + efectivo cobrado ${formatMoney(session.cashCharges)} − devoluciones ${formatMoney(session.cashRefunds)} − egresos ${formatMoney(session.expenseTotal)}. Lo entrega ${session.cashier.name}. Yape, Plin, transferencia y tarjeta ya están en la cuenta del hotel.`
+      detail: `Monto inicial ${formatMoney(session.openingAmount)} + refuerzo ${formatMoney(session.reinforcementTotal)} + efectivo cobrado ${formatMoney(session.cashCharges)} − devoluciones ${formatMoney(session.cashRefunds)} − egresos ${formatMoney(session.expenseTotal)}. Lo entrega ${session.cashier.name}. Yape, Plin, transferencia y tarjeta ya están en la cuenta del hotel.`
     },
     summary: [
       { label: 'Turno', value: session.number },
@@ -48,10 +49,14 @@ export const buildCashSessionDocument = (session: CashSessionDetail, hotelName: 
       { label: 'Abrió', value: session.openedBy.name },
       { label: 'Cerró', value: session.closedBy?.name ?? '—' },
       { label: 'Monto inicial', value: formatMoney(session.openingAmount) },
+      { label: 'Refuerzo', value: formatMoney(session.reinforcementTotal) },
       { label: 'Efectivo cobrado', value: formatMoney(session.cashCharges) },
       { label: 'Devoluciones en efectivo', value: formatMoney(session.cashRefunds) },
       { label: 'Egresos', value: formatMoney(session.expenseTotal) },
-      { label: 'Efectivo a entregar', value: formatMoney(session.cashExpected) },
+      {
+        label: session.cashExpected < 0 ? 'Faltante' : 'Efectivo a entregar',
+        value: formatMoney(session.cashExpected)
+      },
       { label: 'Efectivo contado', value: session.countedCash === null ? '—' : formatMoney(session.countedCash) },
       { label: 'Diferencia', value: difference }
     ],
@@ -63,6 +68,29 @@ export const buildCashSessionDocument = (session: CashSessionDetail, hotelName: 
           { header: 'Monto', kind: 'money', width: 16 }
         ],
         rows: [...methods.map(item => row([item.label, item.net])), grand(['Total cobrado en el turno', collected])]
+      },
+      {
+        title: 'Refuerzo',
+        columns: [
+          { header: 'Hora', width: 10 },
+          { header: 'De dónde', width: 36 },
+          { header: 'Monto', kind: 'money', width: 14 },
+          { header: 'Registró', width: 18 }
+        ],
+        rows: session.reinforcements.length
+          ? [
+              ...session.reinforcements.map(reinforcement =>
+                row([
+                  formatTime(reinforcement.receivedAt),
+                  reinforcement.notes,
+                  reinforcement.amount,
+                  reinforcement.employeeName
+                ])
+              ),
+              total(['', 'Total de refuerzo', session.reinforcementTotal, ''])
+            ]
+          : [],
+        emptyText: 'No entró refuerzo a esta caja.'
       },
       {
         title: 'Egresos',

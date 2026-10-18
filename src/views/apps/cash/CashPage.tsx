@@ -6,6 +6,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
+import DeleteReasonDialog from '@/components/dialogs/DeleteReasonDialog'
+
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -29,7 +31,7 @@ import { PAYMENT_METHOD_LABELS } from '@/types/apps/frontDeskTypes'
 import { getLocalizedUrl } from '@/utils/i18n'
 import { buildCashSessionDocument, cashMethodRows, collectedTotal } from '@views/apps/reports/document/cashSessionDocument'
 import { formatDateTime, formatMoney, formatTime } from '@views/apps/reports/document/reportDocument'
-import { printReport } from '@views/apps/reports/document/printReport'
+import { openReportPdf } from '@views/apps/reports/document/openReportPdf'
 
 const moneyValue = (value: string) => {
   const parsed = Number(value.replace(',', '.'))
@@ -70,8 +72,11 @@ const CashPage = () => {
   const [openNotes, setOpenNotes] = useState('')
   const [expenseAmount, setExpenseAmount] = useState('')
   const [expenseNotes, setExpenseNotes] = useState('')
+  const [reinforcementAmount, setReinforcementAmount] = useState('')
+  const [reinforcementNotes, setReinforcementNotes] = useState('')
   const [countedCash, setCountedCash] = useState('')
   const [closeNotes, setCloseNotes] = useState('')
+  const [pendingRemoval, setPendingRemoval] = useState<{ kind: 'expense' | 'reinforcement'; uuid: string } | null>(null)
 
   const load = useCallback(async () => {
     if (!propertyId) {
@@ -130,7 +135,7 @@ const CashPage = () => {
     try {
       const detail = uuid === current?.uuid && current ? current : await cashApi.findOne(propertyId, uuid)
 
-      printReport(buildCashSessionDocument(detail, hotelName))
+      await openReportPdf(buildCashSessionDocument(detail, hotelName))
     } catch (error) {
       toast.error(getCashApiErrorMessage(error, 'No se pudo preparar el cierre de caja.'))
     }
@@ -175,6 +180,71 @@ const CashPage = () => {
     }
   }
 
+  const addReinforcement = async () => {
+    if (!propertyId || !current) {
+      return
+    }
+
+    const amount = moneyValue(reinforcementAmount)
+
+    if (amount === null || amount <= 0) {
+      toast.error('Escribe cuánto entró a la caja.')
+
+      return
+    }
+
+    if (!reinforcementNotes.trim()) {
+      toast.error('Escribe de dónde entró el dinero.')
+
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      const updated = await cashApi.addReinforcement(propertyId, current.uuid, {
+        amount,
+        notes: reinforcementNotes.trim()
+      })
+
+      setCurrent(updated)
+      setReinforcementAmount('')
+      setReinforcementNotes('')
+      toast.success('Refuerzo registrado.')
+    } catch (error) {
+      toast.error(getCashApiErrorMessage(error, 'No se pudo registrar el refuerzo.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const confirmRemoval = async (reason: string) => {
+    if (!propertyId || !current || !pendingRemoval) {
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      const updated =
+        pendingRemoval.kind === 'expense'
+          ? await cashApi.removeExpense(propertyId, current.uuid, pendingRemoval.uuid, reason)
+          : await cashApi.removeReinforcement(propertyId, current.uuid, pendingRemoval.uuid, reason)
+
+      setCurrent(updated)
+      setPendingRemoval(null)
+    } catch (error) {
+      toast.error(
+        getCashApiErrorMessage(
+          error,
+          pendingRemoval.kind === 'expense' ? 'No se pudo quitar el egreso.' : 'No se pudo quitar el refuerzo.'
+        )
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const addExpense = async () => {
     if (!propertyId || !current) {
       return
@@ -213,22 +283,6 @@ const CashPage = () => {
     }
   }
 
-  const removeExpense = async (expenseUuid: string) => {
-    if (!propertyId || !current) {
-      return
-    }
-
-    setSaving(true)
-
-    try {
-      setCurrent(await cashApi.removeExpense(propertyId, current.uuid, expenseUuid))
-    } catch (error) {
-      toast.error(getCashApiErrorMessage(error, 'No se pudo quitar el egreso.'))
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const closeCash = async () => {
     if (!propertyId || !current) {
       return
@@ -254,7 +308,7 @@ const CashPage = () => {
       setCountedCash('')
       setCloseNotes('')
       toast.success('Caja cerrada. Puedes abrir el siguiente turno.')
-      printReport(buildCashSessionDocument(closed, hotelName))
+      await openReportPdf(buildCashSessionDocument(closed, hotelName))
       await load()
     } catch (error) {
       toast.error(getCashApiErrorMessage(error, 'No se pudo cerrar la caja.'))
@@ -288,8 +342,8 @@ const CashPage = () => {
             <Button variant='outlined' color='secondary' startIcon={<i className='ri-refresh-line' />} onClick={() => void load()}>
               Actualizar
             </Button>
-            <Button variant='outlined' startIcon={<i className='ri-printer-line' />} onClick={() => void printSession(current.uuid)}>
-              Imprimir cierre de caja
+            <Button variant='outlined' startIcon={<i className='ri-file-pdf-2-line' />} onClick={() => void printSession(current.uuid)}>
+              Ver cierre de caja
             </Button>
           </div>
         ) : null}
@@ -297,11 +351,17 @@ const CashPage = () => {
 
       {current ? (
         <>
-          <div className='grid gap-4 md:grid-cols-4'>
+          <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-5'>
             <Card>
               <CardContent>
                 <Typography color='text.secondary'>Monto inicial</Typography>
                 <Typography variant='h5'>{formatMoney(current.openingAmount)}</Typography>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent>
+                <Typography color='text.secondary'>Refuerzo</Typography>
+                <Typography variant='h5'>{formatMoney(current.reinforcementTotal)}</Typography>
               </CardContent>
             </Card>
             <Card>
@@ -318,8 +378,13 @@ const CashPage = () => {
             </Card>
             <Card>
               <CardContent>
-                <Typography color='text.secondary'>Efectivo a entregar</Typography>
-                <Typography variant='h5'>{formatMoney(current.cashExpected)}</Typography>
+                <Typography color='text.secondary'>{current.cashExpected < 0 ? 'Faltante' : 'Efectivo a entregar'}</Typography>
+                <Typography
+                  variant='h5'
+                  color={current.cashExpected < 0 ? 'error.main' : current.cashExpected === 0 ? 'text.primary' : 'success.main'}
+                >
+                  {formatMoney(current.cashExpected)}
+                </Typography>
               </CardContent>
             </Card>
           </div>
@@ -362,19 +427,96 @@ const CashPage = () => {
             </CardContent>
           </Card>
 
-          <Card className='border-2 border-success'>
+          <Card
+            className='border-2'
+            sx={{
+              borderColor:
+                current.cashExpected < 0 ? 'error.main' : current.cashExpected === 0 ? 'divider' : 'success.main'
+            }}
+          >
             <CardContent className='flex flex-col gap-1'>
-              <Typography color='success.main' className='font-medium uppercase'>
-                Efectivo a entregar
+              <Typography
+                color={current.cashExpected < 0 ? 'error.main' : current.cashExpected === 0 ? 'text.primary' : 'success.main'}
+                className='font-medium uppercase'
+              >
+                {current.cashExpected < 0 ? 'Faltante' : 'Efectivo a entregar'}
               </Typography>
-              <Typography variant='h3' color='success.main'>
+              <Typography
+                variant='h3'
+                color={current.cashExpected < 0 ? 'error.main' : current.cashExpected === 0 ? 'text.primary' : 'success.main'}
+              >
                 {formatMoney(current.cashExpected)}
               </Typography>
               <Typography color='text.secondary'>
-                Monto inicial {formatMoney(current.openingAmount)} + efectivo {formatMoney(current.cashCharges)} −
-                devoluciones {formatMoney(current.cashRefunds)} − egresos {formatMoney(current.expenseTotal)}. Yape, Plin,
-                transferencia y tarjeta ya están en la cuenta del hotel.
+                Monto inicial {formatMoney(current.openingAmount)} + refuerzo {formatMoney(current.reinforcementTotal)} +
+                efectivo {formatMoney(current.cashCharges)} − devoluciones {formatMoney(current.cashRefunds)} − egresos{' '}
+                {formatMoney(current.expenseTotal)}. Yape, Plin, transferencia y tarjeta ya están en la cuenta del hotel.
               </Typography>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className='flex flex-col gap-4'>
+              <Typography variant='h6'>Refuerzo</Typography>
+              {canRecordCashExpense ? (
+                <div className='flex flex-wrap items-end gap-3'>
+                  <TextField
+                    label='Monto'
+                    value={reinforcementAmount}
+                    onChange={event => setReinforcementAmount(event.target.value)}
+                    className='min-is-[140px]'
+                    placeholder='50.00'
+                  />
+                  <TextField
+                    label='¿De dónde entró?'
+                    value={reinforcementNotes}
+                    onChange={event => setReinforcementNotes(event.target.value)}
+                    className='min-is-[280px] is-full max-is-[480px]'
+                    placeholder='Para gastos del turno'
+                  />
+                  <Button variant='contained' disabled={saving} onClick={() => void addReinforcement()}>
+                    Registrar refuerzo
+                  </Button>
+                </div>
+              ) : null}
+              <Table size='small'>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Hora</TableCell>
+                    <TableCell>De dónde</TableCell>
+                    <TableCell align='right'>Monto</TableCell>
+                    <TableCell>Registró</TableCell>
+                    <TableCell />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {current.reinforcements.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5}>No ha entrado refuerzo a esta caja.</TableCell>
+                    </TableRow>
+                  ) : (
+                    current.reinforcements.map(reinforcement => (
+                      <TableRow key={reinforcement.uuid}>
+                        <TableCell>{formatTime(reinforcement.receivedAt)}</TableCell>
+                        <TableCell>{reinforcement.notes}</TableCell>
+                        <TableCell align='right'>{formatMoney(reinforcement.amount)}</TableCell>
+                        <TableCell>{reinforcement.employeeName}</TableCell>
+                        <TableCell align='right'>
+                          {canRecordCashExpense ? (
+                            <IconButton
+                              aria-label='Quitar refuerzo'
+                              disabled={saving}
+                              onClick={() => setPendingRemoval({ kind: 'reinforcement', uuid: reinforcement.uuid })}
+                            >
+                              <i className='ri-delete-bin-line' />
+                            </IconButton>
+                          ) : null}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
 
@@ -426,7 +568,7 @@ const CashPage = () => {
                         <TableCell>{expense.employeeName}</TableCell>
                         <TableCell align='right'>
                           {canRecordCashExpense ? (
-                            <IconButton aria-label='Quitar egreso' disabled={saving} onClick={() => void removeExpense(expense.uuid)}>
+                            <IconButton aria-label='Quitar egreso' disabled={saving} onClick={() => setPendingRemoval({ kind: 'expense', uuid: expense.uuid })}>
                               <i className='ri-delete-bin-line' />
                             </IconButton>
                           ) : null}
@@ -482,23 +624,24 @@ const CashPage = () => {
               <CardContent className='flex flex-col gap-4'>
                 <Typography variant='h6'>Cerrar caja</Typography>
                 <Typography color='text.secondary'>
-                  Cuenta solo los billetes y monedas. El efectivo a entregar es {formatMoney(current.cashExpected)}.
+                  Cuenta solo los billetes y monedas. El {current.cashExpected < 0 ? 'faltante' : 'efectivo a entregar'} es{' '}
+                  {formatMoney(current.cashExpected)}.
                 </Typography>
                 <div className='flex flex-wrap items-end gap-3'>
                   <TextField
                     label='Efectivo contado'
                     value={countedCash}
                     onChange={event => setCountedCash(event.target.value)}
-                    className='min-is-[180px]'
+                    className='min-is-[140px]'
                   />
                   <TextField
                     label='Nota'
                     value={closeNotes}
                     onChange={event => setCloseNotes(event.target.value)}
-                    className='min-is-[280px]'
+                    className='min-is-[280px] is-full max-is-[480px]'
                     placeholder='Opcional'
                   />
-                  <Button variant='contained' color='warning' disabled={saving} onClick={() => void closeCash()}>
+                  <Button variant='contained' color='warning' className='shrink-0' disabled={saving} onClick={() => void closeCash()}>
                     Cerrar caja
                   </Button>
                 </div>
@@ -592,12 +735,14 @@ const CashPage = () => {
                       <br />
                       {formatDateTime(turn.closedAt)}
                     </TableCell>
-                    <TableCell align='right'>{formatMoney(turn.cashExpected)}</TableCell>
+                    <TableCell align='right' sx={{ color: turn.cashExpected < 0 ? 'error.main' : undefined }}>
+                      {formatMoney(turn.cashExpected)}
+                    </TableCell>
                     <TableCell align='right'>{turn.countedCash === null ? '—' : formatMoney(turn.countedCash)}</TableCell>
                     <TableCell>{differenceLabel(turn)}</TableCell>
                     <TableCell align='right'>
                       <Button size='small' onClick={() => void printSession(turn.uuid)}>
-                        Imprimir
+                        Ver
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -607,6 +752,16 @@ const CashPage = () => {
           </Table>
         </CardContent>
       </Card>
+      <DeleteReasonDialog
+        open={Boolean(pendingRemoval)}
+        title={pendingRemoval?.kind === 'expense' ? 'Quitar egreso' : 'Quitar refuerzo'}
+        description='El movimiento sale de esta caja. Escriba por qué.'
+        confirmLabel='Quitar'
+        placeholder='Se registró por error'
+        confirming={saving}
+        onClose={() => setPendingRemoval(null)}
+        onConfirm={reason => void confirmRemoval(reason)}
+      />
     </div>
   )
 }

@@ -67,7 +67,7 @@ export const buildReportHtml = (report: ReportDocument) => {
     : ''
 
   const handover = report.highlight
-    ? `<div class="handover"><span>${escapeHtml(report.highlight.label)}</span><strong>${escapeHtml(report.highlight.value)}</strong>${
+    ? `<div class="handover${report.highlight.tone === 'short' ? ' short' : ''}"><span>${escapeHtml(report.highlight.label)}</span><strong>${escapeHtml(report.highlight.value)}</strong>${
         report.highlight.detail ? `<p>${text(report.highlight.detail)}</p>` : ''
       }</div>`
     : ''
@@ -124,6 +124,8 @@ export const buildReportHtml = (report: ReportDocument) => {
     .handover span { display: block; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
     .handover strong { display: block; font-size: 26px; margin-top: 2px; }
     .handover p { margin: 4px 0 0; font-size: 11px; color: #333; }
+    .handover.short { border-color: #b71c1c; color: #b71c1c; }
+    .handover.short p { color: #333; }
     tr.warning td { background: #fff6e5; }
     tr.error td { background: #ffeeee; }
     tr.muted td { color: #666; }

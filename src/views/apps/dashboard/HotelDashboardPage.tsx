@@ -74,7 +74,7 @@ const HotelDashboardPage = () => {
       setCollectedToday(payments.data.reduce((sum, payment) => sum + Number(payment.amount || 0), 0))
     } catch (error) {
       toast.error(
-        getFrontDeskApiErrorMessage(error, getReservationsApiErrorMessage(error, 'No se pudo cargar el dashboard.'))
+        getFrontDeskApiErrorMessage(error, getReservationsApiErrorMessage(error, 'No se pudo cargar el inicio.'))
       )
     } finally {
       setLoading(false)
@@ -149,7 +149,7 @@ const HotelDashboardPage = () => {
   return (
     <Grid container spacing={6}>
       <Grid size={{ xs: 12 }}>
-        <Typography variant='h4'>Dashboard</Typography>
+        <Typography variant='h4'>Inicio</Typography>
       </Grid>
 
       {loading && !frontDesk ? (

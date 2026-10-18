@@ -66,6 +66,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
     canViewDashboard,
     canViewReception,
     canViewReservations,
+    canViewPrices,
     canViewRooms,
     canViewClients,
     canViewReports,
@@ -154,7 +155,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             {dictionary['navigation'].dashboards}
           </MenuItem>
         ) : null}
-        {canViewReception || canViewReservations ? (
+        {canViewReception || canViewReservations || canViewPrices ? (
         <MenuSection label={dictionary['navigation'].operation}>
           {canViewReception ? (
           <MenuItem
@@ -174,6 +175,16 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             icon={<i className='ri-calendar-check-line' />}
           >
             {dictionary['navigation'].reservations}
+          </MenuItem>
+          ) : null}
+          {canViewPrices ? (
+          <MenuItem
+            href={`/${locale}/apps/prices`}
+            exactMatch={false}
+            activeUrl='/apps/prices'
+            icon={<i className='ri-price-tag-3-line' />}
+          >
+            {dictionary['navigation'].prices}
           </MenuItem>
           ) : null}
         </MenuSection>
@@ -202,6 +213,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           ) : null}
         </MenuSection>
         ) : null}
+        {canViewInvoices || canViewCash || canViewSubscription ? (
         <MenuSection label={dictionary['navigation'].finance}>
           {canViewInvoices ? (
             <MenuItem
@@ -223,16 +235,6 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
               {dictionary['navigation'].cash}
             </MenuItem>
           ) : null}
-          {canViewReports ? (
-          <MenuItem
-            href={`/${locale}/apps/reports`}
-            exactMatch={false}
-            activeUrl='/apps/reports'
-            icon={<i className='ri-file-chart-line' />}
-          >
-            {dictionary['navigation'].reports}
-          </MenuItem>
-          ) : null}
           {canViewSubscription ? (
             <MenuItem
               href={`/${locale}/apps/billing`}
@@ -244,7 +246,19 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             </MenuItem>
           ) : null}
         </MenuSection>
+        ) : null}
+        {canViewReports || canViewStaff || canViewHotel ? (
         <MenuSection label={dictionary['navigation'].administration}>
+          {canViewReports ? (
+          <MenuItem
+            href={`/${locale}/apps/reports`}
+            exactMatch={false}
+            activeUrl='/apps/reports'
+            icon={<i className='ri-file-chart-line' />}
+          >
+            {dictionary['navigation'].reports}
+          </MenuItem>
+          ) : null}
           {canViewStaff ? (
             <MenuItem
               href={`/${locale}/apps/staff`}
@@ -266,6 +280,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           </MenuItem>
           ) : null}
         </MenuSection>
+        ) : null}
         <MenuSection label={dictionary['navigation'].account}>
           {canViewSupport ? supportItem : null}
           <MenuItem icon={<i className='ri-logout-box-r-line' />} onClick={() => void handleLogout()}>

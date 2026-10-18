@@ -40,9 +40,10 @@ import type { Rate } from '@/types/apps/rateTypes'
 import {
   formatRateDate,
   isRateValidOn,
+  pickRateForDate,
   priceSourceLabel,
-  rateEndsDuringStay,
-  ratesValidOn
+  sortRatesForDate,
+  rateEndsDuringStay
 } from '@/types/apps/rateTypes'
 import type {
   AvailabilityRoomType,
@@ -78,6 +79,8 @@ type RoomDraft = {
   roomTypeId: number | ''
   roomId: number | '' | 'later'
   rateId: number | ''
+  /** true cuando el recepcionista eligió la tarifa o «Precio normal». */
+  rateManual: boolean
   rateNotice: string
   pricePerNight: string
   checkInDate: string
@@ -107,6 +110,7 @@ const emptyRoom = (today: string, prefill?: NewReservationPrefill | null): RoomD
   roomTypeId: prefill?.roomTypeId ?? '',
   roomId: prefill?.roomId ?? 'later',
   rateId: '',
+  rateManual: false,
   rateNotice: '',
   pricePerNight: '',
   checkInDate: prefill?.checkInDate || today,
@@ -275,6 +279,21 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
       const page = await reservationsApi.rates(propertyId, roomTypeId)
 
       setRatesByType(current => ({ ...current, [roomTypeId]: page.data }))
+      setRooms(current =>
+        current.map(room => {
+          if (room.rateManual || Number(room.roomTypeId) !== roomTypeId) {
+            return room
+          }
+
+          const best = pickRateForDate(page.data, room.checkInDate)
+
+          if (!best || room.rateId === best.id) {
+            return room
+          }
+
+          return { ...room, rateId: best.id, pricePerNight: String(best.price), rateNotice: '' }
+        })
+      )
     } catch {
       setRatesByType(current => ({ ...current, [roomTypeId]: [] }))
     }
@@ -294,7 +313,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   }, [open, rooms])
 
   const ratesForRoom = (room: RoomDraft) =>
-    room.roomTypeId ? ratesValidOn(ratesByType[Number(room.roomTypeId)] ?? [], room.checkInDate) : []
+    room.roomTypeId ? sortRatesForDate(ratesByType[Number(room.roomTypeId)] ?? [], room.checkInDate) : []
 
   const roomPriceFor = (room: RoomDraft) => {
     const type = availability.find(item => item.roomTypeId === Number(room.roomTypeId))
@@ -349,6 +368,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
         return {
           ...room,
           rateId: '',
+          rateManual: false,
           rateNotice: `Se quitó la tarifa «${rate.name}» porque no aplica para estas fechas. Se usa el precio de la habitación.`,
           pricePerNight: price === undefined ? room.pricePerNight : String(price)
         }
@@ -356,6 +376,41 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rooms, ratesByType])
+
+  useEffect(() => {
+    setRooms(current => {
+      let changed = false
+
+      const next = current.map(room => {
+        if (room.rateManual || !room.roomTypeId) {
+          return room
+        }
+
+        const rates = ratesByType[Number(room.roomTypeId)]
+
+        if (!rates) {
+          return room
+        }
+
+        const best = pickRateForDate(rates, room.checkInDate)
+
+        if (!best || room.rateId === best.id) {
+          return room
+        }
+
+        changed = true
+
+        return {
+          ...room,
+          rateId: best.id,
+          pricePerNight: String(best.price),
+          rateNotice: ''
+        }
+      })
+
+      return changed ? next : current
+    })
+  }, [ratesByType, rooms])
 
   const updateRoom = (key: string, patch: Partial<RoomDraft>) => {
     setRooms(current => current.map(room => (room.key === key ? { ...room, ...patch } : room)))
@@ -404,12 +459,14 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     const chosen = prefilled ?? free[0]
 
     const people = Math.max(1, Math.min(roomCapacity(type), Number(type.maxAdults) || roomCapacity(type)))
+    const best = pickRateForDate(ratesByType[type.roomTypeId] ?? [], room.checkInDate)
 
     updateRoom(room.key, {
       roomTypeId: type.roomTypeId,
       roomId: chosen?.id ?? 'later',
-      pricePerNight: String(chosen?.effectivePrice ?? type.basePrice),
-      rateId: '',
+      pricePerNight: best ? String(best.price) : String(chosen?.effectivePrice ?? type.basePrice),
+      rateId: best?.id ?? '',
+      rateManual: false,
       rateNotice: '',
       adults: String(people),
       children: '0'
@@ -435,6 +492,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
     updateRoom(room.key, {
       rateId,
+      rateManual: true,
       rateNotice: '',
       pricePerNight: rate ? String(rate.price) : roomPrice !== undefined ? String(roomPrice) : room.pricePerNight
     })
@@ -776,12 +834,12 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                 handleSelectRate(room, value === '' ? '' : Number(value))
               }}
             >
-              <MenuItem value=''>Precio normal</MenuItem>
               {rates.map(rate => (
                 <MenuItem key={rate.id} value={rate.id}>
                   {rate.name} · {formatRoomPrice(rate.price)}
                 </MenuItem>
               ))}
+              <MenuItem value=''>Precio normal</MenuItem>
             </Select>
             {selectedRate && rateEndsDuringStay(selectedRate, room.checkOutDate) ? (
               <FormHelperText sx={{ color: 'warning.main' }}>

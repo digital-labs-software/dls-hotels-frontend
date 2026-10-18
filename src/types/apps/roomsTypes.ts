@@ -18,6 +18,7 @@ export type Room = {
   notes: string | null
   createdAt: string
   updatedAt: string
+  restored?: boolean
 }
 
 export type CreateRoomDto = {
@@ -33,6 +34,7 @@ export type CreateRoomDto = {
 export type UpdateRoomDto = {
   roomTypeId?: number
   floorId?: number
+  number?: string
   priceOverride?: number | null
   photoUrl?: string | null
   status?: RoomStatus

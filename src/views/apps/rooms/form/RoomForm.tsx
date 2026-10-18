@@ -25,7 +25,6 @@ import { toast } from 'react-toastify'
 import type { Locale } from '@configs/i18n'
 import type { Floor } from '@/types/apps/floorTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
-import { capacityLabel } from '@/types/apps/roomTypeTypes'
 import type { RoomStatus } from '@/types/apps/roomsTypes'
 import { formatRoomPrice, ROOM_STATUS_LABELS, ROOM_STATUSES } from '@/types/apps/roomsTypes'
 import { listFloors } from '@/libs/floorsApi'
@@ -171,6 +170,7 @@ const RoomForm = ({ uuid }: Props) => {
         await updateRoom(propertyId, uuid, {
           floorId: Number(data.floorId),
           roomTypeId: Number(data.roomTypeId),
+          number: data.number.trim(),
           status: data.status,
           priceOverride,
           notes: data.notes.trim() ? data.notes.trim() : null
@@ -197,11 +197,15 @@ const RoomForm = ({ uuid }: Props) => {
           notes: data.notes.trim() ? data.notes.trim() : null
         })
 
+        const createdMessage = created.restored
+          ? 'Esta habitación estaba eliminada. Se recuperó con los datos que acaba de guardar.'
+          : 'Habitación creada.'
+
         if (pendingPhoto) {
           try {
             await savePhoto(created.uuid)
           } catch (error) {
-            toast.success('Habitación creada.')
+            toast.success(createdMessage)
             toast.error(getUploadsApiErrorMessage(error, 'No se pudo subir la foto. Puedes cargarla al editar.'))
             router.push(getLocalizedUrl(`/apps/rooms/edit/${created.uuid}`, locale as Locale))
 
@@ -209,7 +213,7 @@ const RoomForm = ({ uuid }: Props) => {
           }
         }
 
-        toast.success('Habitación creada.')
+        toast.success(createdMessage)
       }
 
       goBack()
@@ -246,34 +250,23 @@ const RoomForm = ({ uuid }: Props) => {
       <Grid container spacing={6}>
         <Grid size={{ xs: 12 }}>
           <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col gap-6'>
-            <div>
-              <Typography variant='h4' className='mbe-1'>
-                {title}
-              </Typography>
-              <Typography>
-                {isView
-                  ? 'Consulta los datos de la habitación'
-                  : isEdit
-                    ? 'Actualiza tipo, piso, precio, estado, foto o notas. El número no se puede cambiar.'
-                    : 'Registra una habitación del hotel. Si eliges foto, se sube después de crearla.'}
-              </Typography>
-            </div>
+            <Typography variant='h4'>{title}</Typography>
             {actions}
           </div>
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
           <Card className='bs-full'>
-            <CardHeader title='Organizar' subheader='Qué tipo es, en qué piso está y cómo se encuentra.' />
+            <CardHeader title='Clasificación' />
             <CardContent className='flex flex-col gap-5'>
               <FormControl fullWidth error={Boolean(errors.roomTypeId)}>
-                <InputLabel id='room-type'>Tipo</InputLabel>
+                <InputLabel id='room-type'>Tipo de habitación</InputLabel>
                 <Controller
                   name='roomTypeId'
                   control={control}
-                  rules={{ required: 'El tipo es obligatorio.' }}
+                  rules={{ required: 'El tipo de habitación es obligatorio.' }}
                   render={({ field }) => (
-                    <Select {...field} label='Tipo' labelId='room-type' disabled={isView || isSubmitting}>
+                    <Select {...field} label='Tipo de habitación' labelId='room-type' disabled={isView || isSubmitting}>
                       {selectableTypes.map(type => (
                         <MenuItem key={type.uuid} value={type.id}>
                           {type.name} · {formatRoomPrice(type.basePrice)}
@@ -282,14 +275,13 @@ const RoomForm = ({ uuid }: Props) => {
                     </Select>
                   )}
                 />
-                <FormHelperText>
-                  {errors.roomTypeId?.message ||
-                    (selectedType
-                      ? `${capacityLabel(selectedType)} · ${formatRoomPrice(selectedType.basePrice)} por noche.`
-                      : selectableTypes.length === 0
-                        ? 'Primero cree un tipo en la pestaña «Tipos de habitación».'
-                        : 'La categoría. Por ejemplo: Matrimonial, Doble o Triple.')}
-                </FormHelperText>
+                {errors.roomTypeId?.message ? (
+                  <FormHelperText>{errors.roomTypeId.message}</FormHelperText>
+                ) : selectableTypes.length === 0 ? (
+                  <FormHelperText sx={{ color: 'warning.main' }}>
+                    Primero cree un tipo en la pestaña «Tipos de habitación».
+                  </FormHelperText>
+                ) : null}
               </FormControl>
 
               <FormControl fullWidth error={Boolean(errors.floorId)}>
@@ -308,12 +300,13 @@ const RoomForm = ({ uuid }: Props) => {
                     </Select>
                   )}
                 />
-                <FormHelperText>
-                  {errors.floorId?.message ||
-                    (floors.length === 0
-                      ? 'Primero cree un piso en la pestaña «Pisos».'
-                      : 'El piso donde está la habitación.')}
-                </FormHelperText>
+                {errors.floorId?.message ? (
+                  <FormHelperText>{errors.floorId.message}</FormHelperText>
+                ) : floors.length === 0 ? (
+                  <FormHelperText sx={{ color: 'warning.main' }}>
+                    Primero cree un piso en la pestaña «Pisos».
+                  </FormHelperText>
+                ) : null}
               </FormControl>
 
               <FormControl fullWidth>
@@ -332,7 +325,6 @@ const RoomForm = ({ uuid }: Props) => {
                     </Select>
                   )}
                 />
-                <FormHelperText>Si está lista para recibir huéspedes o no.</FormHelperText>
               </FormControl>
             </CardContent>
           </Card>
@@ -340,7 +332,7 @@ const RoomForm = ({ uuid }: Props) => {
 
         <Grid size={{ xs: 12, md: 6 }}>
           <Card className='bs-full'>
-            <CardHeader title='Información de la habitación' subheader='Su número y el precio por noche.' />
+            <CardHeader title='Información de la habitación' />
             <CardContent className='flex flex-col gap-5'>
               <Controller
                 name='number'
@@ -355,11 +347,9 @@ const RoomForm = ({ uuid }: Props) => {
                     fullWidth
                     label='Número'
                     placeholder='101'
-                    disabled={isView || isEdit || isSubmitting}
+                    disabled={isView || isSubmitting}
                     error={Boolean(errors.number)}
-                    helperText={
-                      errors.number?.message || (isEdit ? 'El número no se puede cambiar.' : 'El número que tiene en la puerta.')
-                    }
+                    helperText={errors.number?.message}
                   />
                 )}
               />
@@ -390,8 +380,8 @@ const RoomForm = ({ uuid }: Props) => {
                     helperText={
                       errors.priceOverride?.message ||
                       (selectedType
-                        ? `Si lo dejas vacío se usa el precio del tipo: ${formatRoomPrice(selectedType.basePrice)}`
-                        : 'Si lo dejas vacío se usa el precio del tipo.')
+                        ? `Si lo dejas vacío, se usa el precio del tipo de habitación: ${formatRoomPrice(selectedType.basePrice)}.`
+                        : 'Si lo dejas vacío, se usa el precio del tipo de habitación.')
                     }
                     {...(errors.priceOverride && { error: true })}
                   />
@@ -407,7 +397,7 @@ const RoomForm = ({ uuid }: Props) => {
 
         <Grid size={{ xs: 12 }}>
           <Card>
-            <CardHeader title='Foto y notas' subheader='Opcional.' />
+            <CardHeader title='Foto y notas' />
             <CardContent>
               <Grid container spacing={5}>
                 <Grid size={{ xs: 12, md: 6 }}>

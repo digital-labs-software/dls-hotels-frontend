@@ -209,8 +209,14 @@ export const rolesApi = {
       )
     )
   },
-  remove: async (propertyId: number, uuid: string, token?: string) => {
-    return normalizeRole(await request<Role>(`/properties/${propertyId}/roles/${uuid}`, { method: 'DELETE' }, token))
+  remove: async (propertyId: number, uuid: string, reason: string, token?: string) => {
+    return normalizeRole(
+      await request<Role>(
+        `/properties/${propertyId}/roles/${uuid}`,
+        { method: 'DELETE', body: JSON.stringify({ reason }) },
+        token
+      )
+    )
   }
 }
 
@@ -261,9 +267,13 @@ export const employeesApi = {
       )
     )
   },
-  remove: async (propertyId: number, uuid: string, token?: string) => {
+  remove: async (propertyId: number, uuid: string, reason: string, token?: string) => {
     return normalizeEmployee(
-      await request<Employee>(`/properties/${propertyId}/employees/${uuid}`, { method: 'DELETE' }, token)
+      await request<Employee>(
+        `/properties/${propertyId}/employees/${uuid}`,
+        { method: 'DELETE', body: JSON.stringify({ reason }) },
+        token
+      )
     )
   }
 }

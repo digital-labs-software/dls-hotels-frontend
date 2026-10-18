@@ -177,8 +177,12 @@ const CompanyForm = ({ uuid }: Props) => {
         await companiesApi.update(propertyId, uuid, payload)
         toast.success('Empresa actualizada.')
       } else {
-        await companiesApi.create(propertyId, payload)
-        toast.success('Empresa creada.')
+        const created = await companiesApi.create(propertyId, payload)
+        toast.success(
+          created.restored
+            ? 'Esta empresa estaba eliminada. Se recuperó con los datos que acaba de guardar.'
+            : 'Empresa creada.'
+        )
       }
 
       goBack()

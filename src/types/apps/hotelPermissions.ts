@@ -15,6 +15,9 @@ export const RESERVATIONS_EDIT = 'reservations.edit'
 export const RESERVATIONS_CANCEL = 'reservations.cancel'
 export const RESERVATIONS_NOTES_MANAGE = 'reservations.notes.manage'
 
+export const PRICES_VIEW = 'prices.view'
+export const AUDIT_VIEW = 'audit.view'
+
 export const ROOMS_VIEW = 'rooms.view'
 export const ROOMS_CREATE = 'rooms.create'
 export const ROOMS_EDIT = 'rooms.edit'
@@ -90,6 +93,7 @@ export const REPORT_TAB_PERMISSION: Record<string, string> = {
   balances: REPORTS_BALANCES_VIEW,
   occupancy: REPORTS_OCCUPANCY_VIEW,
   mincetur: REPORTS_MINCETUR_VIEW,
+  audit: AUDIT_VIEW,
   sources: REPORTS_SOURCES_VIEW,
   companies: REPORTS_COMPANIES_VIEW,
   cancellations: REPORTS_CANCELLATIONS_VIEW

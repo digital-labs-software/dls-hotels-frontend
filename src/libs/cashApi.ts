@@ -62,6 +62,14 @@ export type CashExpenseLine = {
   employeeName: string
 }
 
+export type CashReinforcementLine = {
+  uuid: string
+  receivedAt: string
+  amount: number
+  notes: string
+  employeeName: string
+}
+
 export type CashSession = {
   uuid: string
   number: string
@@ -74,6 +82,7 @@ export type CashSession = {
   closedBy: { name: string } | null
   cashCharges: number
   cashRefunds: number
+  reinforcementTotal: number
   expenseTotal: number
   cashExpected: number
   countedCash: number | null
@@ -84,6 +93,7 @@ export type CashSession = {
 
 export type CashSessionDetail = CashSession & {
   payments: CashPaymentLine[]
+  reinforcements: CashReinforcementLine[]
   expenses: CashExpenseLine[]
 }
 
@@ -128,8 +138,21 @@ export const cashApi = {
       method: 'POST',
       body: JSON.stringify(body)
     }),
-  removeExpense: (propertyId: number, uuid: string, expenseUuid: string) =>
-    request<CashSessionDetail>(`${base(propertyId)}/${uuid}/expenses/${expenseUuid}`, { method: 'DELETE' }),
+  removeExpense: (propertyId: number, uuid: string, expenseUuid: string, reason: string) =>
+    request<CashSessionDetail>(`${base(propertyId)}/${uuid}/expenses/${expenseUuid}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reason })
+    }),
+  addReinforcement: (propertyId: number, uuid: string, body: { amount: number; notes: string }) =>
+    request<CashSessionDetail>(`${base(propertyId)}/${uuid}/reinforcements`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    }),
+  removeReinforcement: (propertyId: number, uuid: string, reinforcementUuid: string, reason: string) =>
+    request<CashSessionDetail>(`${base(propertyId)}/${uuid}/reinforcements/${reinforcementUuid}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reason })
+    }),
   close: (propertyId: number, uuid: string, body: { countedCash: number; notes?: string }) =>
     request<CashSessionDetail>(`${base(propertyId)}/${uuid}/close`, {
       method: 'POST',

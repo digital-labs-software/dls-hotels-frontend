@@ -15,10 +15,8 @@ import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
+
+import DeleteReasonDialog from '@/components/dialogs/DeleteReasonDialog'
 import type { TextFieldProps } from '@mui/material/TextField'
 
 import classnames from 'classnames'
@@ -175,7 +173,7 @@ const RoomListTable = () => {
     fetchData()
   }, [fetchData, sessionStatus])
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (reason: string) => {
     if (!roomToDelete) {
       return
     }
@@ -183,7 +181,7 @@ const RoomListTable = () => {
     setDeleting(true)
 
     try {
-      await deleteRoom(propertyId, roomToDelete.uuid)
+      await deleteRoom(propertyId, roomToDelete.uuid, reason)
       toast.success('Habitación eliminada.')
       setRoomToDelete(null)
       await fetchData()
@@ -441,22 +439,15 @@ const RoomListTable = () => {
         )}
       </Card>
 
-      <Dialog open={Boolean(roomToDelete)} onClose={() => !deleting && setRoomToDelete(null)}>
-        <DialogTitle>Eliminar habitación</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Eliminar la habitación {roomToDelete ? `"${roomToDelete.number}"` : ''}? Dejará de aparecer en el listado.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button variant='outlined' color='secondary' disabled={deleting} onClick={() => setRoomToDelete(null)}>
-            Cancelar
-          </Button>
-          <Button variant='contained' color='error' disabled={deleting} onClick={handleConfirmDelete}>
-            {deleting ? <CircularProgress size={20} color='inherit' /> : 'Eliminar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteReasonDialog
+        open={Boolean(roomToDelete)}
+        title='Eliminar habitación'
+        description={`¿Eliminar la habitación ${roomToDelete ? `"${roomToDelete.number}"` : ''}? Dejará de aparecer en el listado.`}
+        placeholder='Se unió con la 306'
+        confirming={deleting}
+        onClose={() => setRoomToDelete(null)}
+        onConfirm={reason => void handleConfirmDelete(reason)}
+      />
     </>
   )
 }

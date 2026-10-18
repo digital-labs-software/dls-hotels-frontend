@@ -5,6 +5,7 @@ export type HotelRole = {
   name: string
   createdAt: string
   updatedAt: string
+  restored?: boolean
 }
 
 export type CreateHotelRoleDto = {

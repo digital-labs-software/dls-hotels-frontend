@@ -189,8 +189,18 @@ const FloorListTable = () => {
 
     try {
       const { created } = await createFloorSequence(propertyId, count)
+      const recovered = created.filter(floor => floor.restored).length
+      const fresh = created.length - recovered
+      const parts = [
+        fresh === 1 ? 'Se creó 1 piso.' : fresh > 1 ? `Se crearon ${fresh} pisos.` : '',
+        recovered === 1
+          ? 'Se recuperó 1 piso que estaba eliminado.'
+          : recovered > 1
+            ? `Se recuperaron ${recovered} pisos que estaban eliminados.`
+            : ''
+      ].filter(Boolean)
 
-      toast.success(created.length === 1 ? 'Se creó 1 piso.' : `Se crearon ${created.length} pisos.`)
+      toast.success(parts.join(' ') || 'No había pisos nuevos.')
       setSequenceOpen(false)
       await fetchFloors()
     } catch (error) {

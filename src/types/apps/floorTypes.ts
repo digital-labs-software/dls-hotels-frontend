@@ -8,6 +8,7 @@ export type Floor = {
   displayOrder: number
   createdAt: string
   updatedAt: string
+  restored?: boolean
 }
 
 export type CreateFloorDto = {

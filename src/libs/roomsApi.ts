@@ -197,6 +197,12 @@ export async function updateRoom(propertyId: number, uuid: string, body: UpdateR
   )
 }
 
-export async function deleteRoom(propertyId: number, uuid: string, token?: string) {
-  return normalizeRoom(await request<Room>(`/properties/${propertyId}/rooms/${uuid}`, { method: 'DELETE' }, token))
+export async function deleteRoom(propertyId: number, uuid: string, reason: string, token?: string) {
+  return normalizeRoom(
+    await request<Room>(
+      `/properties/${propertyId}/rooms/${uuid}`,
+      { method: 'DELETE', body: JSON.stringify({ reason }) },
+      token
+    )
+  )
 }

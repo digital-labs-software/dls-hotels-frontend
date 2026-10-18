@@ -1,3 +1,4 @@
+/** Precio de una temporada para un tipo. El id es el que se envía al reservar. */
 export type Rate = {
   id: number
   uuid: string
@@ -13,16 +14,41 @@ export type Rate = {
   updatedAt: string
 }
 
-export type CreateRatePayload = {
+export type SeasonPrice = {
+  id: number
   roomTypeId: number
-  name: string
+  roomTypeName: string
   price: number
+}
+
+export type Season = {
+  id: number
+  uuid: string
+  propertyId: number
+  name: string
+  validFrom: string | null
+  validTo: string | null
+  isActive: boolean
+  prices: SeasonPrice[]
+  createdAt: string
+  updatedAt: string
+  restored?: boolean
+}
+
+export type SeasonPriceInput = {
+  roomTypeId: number
+  price: number
+}
+
+export type CreateSeasonPayload = {
+  name: string
   validFrom?: string | null
   validTo?: string | null
   isActive?: boolean
+  prices: SeasonPriceInput[]
 }
 
-export type UpdateRatePayload = Partial<Omit<CreateRatePayload, 'roomTypeId'>>
+export type UpdateSeasonPayload = Partial<CreateSeasonPayload>
 
 export type ListRatesQuery = {
   page?: number
@@ -53,6 +79,38 @@ export const isRateValidOn = (rate: Pick<Rate, 'validFrom' | 'validTo'>, checkIn
 
 export const ratesValidOn = <T extends Pick<Rate, 'validFrom' | 'validTo'>>(rates: T[], checkInDate: string) =>
   rates.filter(rate => isRateValidOn(rate, checkInDate))
+
+const rateSpan = (rate: Pick<Rate, 'validFrom' | 'validTo'>) => {
+  const from = Date.parse(`${rate.validFrom ?? '0000-01-01'}T00:00:00Z`)
+  const to = Date.parse(`${rate.validTo ?? '9999-12-31'}T00:00:00Z`)
+
+  return to - from
+}
+
+/** Tarifas que cubren el día, de la vigencia más corta a la más larga. */
+export const sortRatesForDate = <T extends Pick<Rate, 'validFrom' | 'validTo' | 'price' | 'isActive' | 'id'>>(
+  rates: T[],
+  day: string
+) =>
+  rates
+    .filter(rate => rate.isActive !== false && isRateValidOn(rate, day))
+    .sort((a, b) => {
+      const span = rateSpan(a) - rateSpan(b)
+
+      if (span !== 0) {
+        return span
+      }
+
+      const price = Number(b.price) - Number(a.price)
+
+      return price !== 0 ? price : a.id - b.id
+    })
+
+/** La tarifa activa de menor vigencia gana. Si empatan, gana el precio más alto. */
+export const pickRateForDate = <T extends Pick<Rate, 'validFrom' | 'validTo' | 'price' | 'isActive' | 'id'>>(
+  rates: T[],
+  day: string
+) => sortRatesForDate(rates, day)[0]
 
 /** La última noche es la víspera de la salida; si cae después del fin de la tarifa, la estadía la sobrepasa. */
 export const rateEndsDuringStay = (rate: Pick<Rate, 'validTo'> | null | undefined, checkOutDate: string) =>

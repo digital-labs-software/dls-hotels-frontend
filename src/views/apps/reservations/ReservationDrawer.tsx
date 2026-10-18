@@ -999,9 +999,6 @@ const RoomRow = ({
             />
           ))}
         </div>
-        <Typography variant='caption' color='text.secondary'>
-          El titular es a quien se llama en esta habitación. Al elegirlo o registrarlo, queda guardado. Si no está, usa Registrar: el documento es opcional.
-        </Typography>
         <div className='flex flex-wrap gap-2'>
           {canMutate ? (
             <Button size='small' onClick={() => setMore(current => !current)}>

@@ -74,7 +74,7 @@ const PlanningDayList = ({ planning, day, roomTypeId, onBookingClick, onAvailabl
                         {formatPlanningDate(booking.checkInDate)} – {formatPlanningDate(booking.checkOutDate)}
                       </Typography>
                       {booking.reservationBalance > 0 ? (
-                        <Chip size='small' color='error' label={`💲 ${formatRoomPrice(booking.reservationBalance)}`} />
+                        <Chip size='small' color='error' label={`Debe ${formatRoomPrice(booking.reservationBalance)}`} />
                       ) : null}
                       {arrivesToday(booking, day) ? <Chip size='small' color='info' label='Llega hoy' /> : null}
                     </div>

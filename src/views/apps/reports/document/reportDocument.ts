@@ -28,6 +28,9 @@ export interface ReportHighlight {
   label: string
   value: string
   detail?: string
+
+  /** short: faltante de caja, se imprime en rojo. */
+  tone?: 'short'
 }
 
 export interface ReportTable {

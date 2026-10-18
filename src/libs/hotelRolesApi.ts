@@ -105,10 +105,11 @@ export async function updateHotelRole(uuid: string, body: UpdateHotelRoleDto): P
   return normalizeHotelRole(await parseResponse<HotelRole>(res))
 }
 
-export async function deleteHotelRole(uuid: string): Promise<HotelRole> {
+export async function deleteHotelRole(uuid: string, reason: string): Promise<HotelRole> {
   const res = await fetch(`${getApiBase()}/roles/${uuid}`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason })
   })
 
   return normalizeHotelRole(await parseResponse<HotelRole>(res))

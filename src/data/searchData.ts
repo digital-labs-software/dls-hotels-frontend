@@ -11,7 +11,7 @@ type SearchData = {
 const data: SearchData[] = [
   {
     id: 'dashboard',
-    name: 'Dashboard',
+    name: 'Inicio',
     url: '/apps/dashboard',
     icon: 'ri-home-smile-line',
     section: 'Operación'
@@ -28,6 +28,13 @@ const data: SearchData[] = [
     name: 'Reservas',
     url: '/apps/reservations',
     icon: 'ri-calendar-check-line',
+    section: 'Operación'
+  },
+  {
+    id: 'prices',
+    name: 'Precios',
+    url: '/apps/prices',
+    icon: 'ri-price-tag-3-line',
     section: 'Operación'
   },
   {
@@ -126,14 +133,21 @@ const data: SearchData[] = [
     name: 'Reportes',
     url: '/apps/reports',
     icon: 'ri-file-chart-line',
-    section: 'Finanzas'
+    section: 'Administración'
+  },
+  {
+    id: 'audit',
+    name: 'Bitácora',
+    url: '/apps/reports?tab=audit',
+    icon: 'ri-history-line',
+    section: 'Administración'
   },
   {
     id: 'guest-sheet',
     name: 'Parte de huéspedes',
     url: '/apps/reports',
     icon: 'ri-file-list-3-line',
-    section: 'Finanzas'
+    section: 'Administración'
   },
   {
     id: 'subscription',

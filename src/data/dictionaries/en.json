@@ -1,6 +1,6 @@
 {
   "navigation": {
-    "dashboards": "Dashboard",
+    "dashboards": "Inicio",
     "crm": "CRM",
     "analytics": "Analytics",
     "eCommerce": "eCommerce",
@@ -27,6 +27,7 @@
     "roomTypes": "Tipos de habitación",
     "frontDesk": "Recepción",
     "reservations": "Reservas",
+    "prices": "Precios",
     "rooms": "Habitaciones",
     "clients": "Clientes",
     "guests": "Huéspedes",
@@ -35,6 +36,7 @@
     "employees": "Empleados",
     "staffRoles": "Roles y permisos",
     "reports": "Reportes",
+    "audit": "Bitácora",
     "cash": "Caja",
     "subscription": "Suscripción",
     "support": "Soporte",

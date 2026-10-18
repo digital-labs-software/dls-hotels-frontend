@@ -88,6 +88,7 @@ export interface Company {
   address: string | null
   createdAt: string
   updatedAt: string
+  restored?: boolean
 }
 
 export interface CreateCompanyInput {

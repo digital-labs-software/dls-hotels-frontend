@@ -16,7 +16,7 @@ const menuSectionStyles = (verticalNavOptions: VerticalNavState, theme: Theme): 
 
   return {
     root: {
-      marginBlockStart: theme.spacing(4),
+      marginBlockStart: theme.spacing(2),
       [`& .${menuClasses.menuSectionContent}`]: {
         color: 'var(--mui-palette-text-disabled)',
         paddingInline: '0 !important',

@@ -140,7 +140,7 @@ const BookingBar = ({
           {layout.cutLeft ? '◀ ' : ''}
           {label}
           {layout.cutRight ? ' ▶' : ''}
-          {booking.reservationBalance > 0 ? ' 💲' : ''}
+          {booking.reservationBalance > 0 ? ' Debe' : ''}
           {booking.arrivalOverdue || booking.departureOverdue ? ' ⚠️' : ''}
         </Box>
       </Tooltip>

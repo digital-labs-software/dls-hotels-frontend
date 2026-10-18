@@ -25,7 +25,7 @@ const defaultSuggestions: DefaultSuggestionsType[] = [
     sectionLabel: 'Operación',
     items: [
       {
-        label: 'Dashboard',
+        label: 'Inicio',
         href: '/apps/dashboard',
         icon: 'ri-home-smile-line'
       },
@@ -38,6 +38,11 @@ const defaultSuggestions: DefaultSuggestionsType[] = [
         label: 'Reservas',
         href: '/apps/reservations',
         icon: 'ri-calendar-check-line'
+      },
+      {
+        label: 'Precios',
+        href: '/apps/prices',
+        icon: 'ri-price-tag-3-line'
       }
     ]
   },
@@ -75,11 +80,6 @@ const defaultSuggestions: DefaultSuggestionsType[] = [
         icon: 'ri-safe-2-line'
       },
       {
-        label: 'Reportes',
-        href: '/apps/reports',
-        icon: 'ri-file-chart-line'
-      },
-      {
         label: 'Suscripción',
         href: '/apps/billing',
         icon: 'ri-secure-payment-line'
@@ -89,6 +89,16 @@ const defaultSuggestions: DefaultSuggestionsType[] = [
   {
     sectionLabel: 'Administración',
     items: [
+      {
+        label: 'Reportes',
+        href: '/apps/reports',
+        icon: 'ri-file-chart-line'
+      },
+      {
+        label: 'Bitácora',
+        href: '/apps/reports?tab=audit',
+        icon: 'ri-history-line'
+      },
       {
         label: 'Hotel',
         href: '/apps/hotel',

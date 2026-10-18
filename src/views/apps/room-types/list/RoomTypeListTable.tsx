@@ -12,10 +12,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import Switch from '@mui/material/Switch'
 import CircularProgress from '@mui/material/CircularProgress'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
+import DeleteReasonDialog from '@/components/dialogs/DeleteReasonDialog'
 import type { TextFieldProps } from '@mui/material/TextField'
 
 import { rankItem } from '@tanstack/match-sorter-utils'
@@ -167,7 +164,7 @@ const RoomTypeListTable = () => {
     }
   }
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (reason: string) => {
     if (!roomTypeToDelete) {
       return
     }
@@ -175,7 +172,7 @@ const RoomTypeListTable = () => {
     setDeleting(true)
 
     try {
-      await deleteRoomType(propertyId, roomTypeToDelete.uuid)
+      await deleteRoomType(propertyId, roomTypeToDelete.uuid, reason)
       setData(prev => prev.filter(item => item.uuid !== roomTypeToDelete.uuid))
       toast.success('Tipo de habitación eliminado.')
       setRoomTypeToDelete(null)
@@ -334,22 +331,15 @@ const RoomTypeListTable = () => {
         onSuccess={handleDrawerSuccess}
       />
 
-      <Dialog open={Boolean(roomTypeToDelete)} onClose={() => !deleting && setRoomTypeToDelete(null)}>
-        <DialogTitle>Eliminar tipo de habitación</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Eliminar el tipo {roomTypeToDelete ? `"${roomTypeToDelete.name}"` : ''}? Dejará de aparecer en el listado.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button variant='outlined' color='secondary' disabled={deleting} onClick={() => setRoomTypeToDelete(null)}>
-            Cancelar
-          </Button>
-          <Button variant='contained' color='error' disabled={deleting} onClick={handleConfirmDelete}>
-            {deleting ? <CircularProgress size={20} color='inherit' /> : 'Eliminar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteReasonDialog
+        open={Boolean(roomTypeToDelete)}
+        title='Eliminar tipo de habitación'
+        description={`¿Eliminar el tipo ${roomTypeToDelete ? `"${roomTypeToDelete.name}"` : ''}? Dejará de aparecer en el listado.`}
+        placeholder='Ya no se ofrece'
+        confirming={deleting}
+        onClose={() => setRoomTypeToDelete(null)}
+        onConfirm={reason => void handleConfirmDelete(reason)}
+      />
     </>
   )
 }

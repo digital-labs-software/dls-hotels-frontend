@@ -105,7 +105,13 @@ const FloorFormDrawer = (props: Props) => {
           ? await updateFloor(propertyId, floor.uuid, payload)
           : await createFloor(propertyId, payload)
 
-      toast.success(isEdit ? 'Piso actualizado correctamente.' : 'Piso creado correctamente.')
+      toast.success(
+        isEdit
+          ? 'Piso actualizado correctamente.'
+          : saved.restored
+            ? 'Este piso estaba eliminado. Se recuperó con los datos que acaba de guardar.'
+            : 'Piso creado correctamente.'
+      )
       onSuccess(saved)
       handleReset()
     } catch (error) {
@@ -161,7 +167,7 @@ const FloorFormDrawer = (props: Props) => {
                   field.onBlur()
                 }}
                 error={Boolean(errors.name)}
-                helperText={errors.name?.message || 'El piso del hotel. Por ejemplo: Piso 1, Planta baja o Sótano.'}
+                helperText={errors.name?.message}
               />
             )}
           />
@@ -182,36 +188,6 @@ const FloorFormDrawer = (props: Props) => {
                   onClick={() => setValue('name', name, { shouldValidate: true, shouldDirty: true })}
                 />
               ))}
-            </div>
-          ) : null}
-
-          {mode === 'create' ? (
-            <Typography variant='body2' color='text.secondary'>
-              El piso nuevo queda al final de la lista. Para cambiar el orden, arrástrelo en la lista.
-            </Typography>
-          ) : null}
-
-          {isView && floor ? (
-            <div className='flex flex-col gap-2'>
-              <Typography variant='body2' color='text.secondary'>
-                Posición en la lista: {floor.displayOrder}
-              </Typography>
-              <Typography variant='body2' color='text.secondary'>
-                UUID: {floor.uuid}
-              </Typography>
-              <Typography variant='body2' color='text.secondary'>
-                Alojamiento: #{floor.propertyId}
-              </Typography>
-              {floor.createdAt ? (
-                <Typography variant='body2' color='text.secondary'>
-                  Creado: {new Date(floor.createdAt).toLocaleString()}
-                </Typography>
-              ) : null}
-              {floor.updatedAt ? (
-                <Typography variant='body2' color='text.secondary'>
-                  Actualizado: {new Date(floor.updatedAt).toLocaleString()}
-                </Typography>
-              ) : null}
             </div>
           ) : null}
 

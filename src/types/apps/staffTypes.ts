@@ -29,6 +29,7 @@ export interface Role {
   permissions: RolePermission[]
   createdAt: string
   updatedAt: string
+  restored?: boolean
 }
 
 export interface CreateRoleInput {

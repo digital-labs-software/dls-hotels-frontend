@@ -272,7 +272,7 @@ export const reservationsApi = {
   rates: async (propertyId: number, roomTypeId: number, token?: string) => {
     return normalizePage(
       await request<Paginated<Rate> | Rate[]>(
-        `/properties/${propertyId}/rates?${q({ roomTypeId, isActive: true, limit: 100 })}`,
+        `/properties/${propertyId}/seasons/prices?${q({ roomTypeId, isActive: true, limit: 100 })}`,
         {},
         token
       ),

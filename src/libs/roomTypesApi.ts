@@ -181,8 +181,12 @@ export async function reorderRoomTypes(propertyId: number, uuids: string[], toke
   return roomTypes.map(normalizeRoomType)
 }
 
-export async function deleteRoomType(propertyId: number, uuid: string, token?: string) {
+export async function deleteRoomType(propertyId: number, uuid: string, reason: string, token?: string) {
   return normalizeRoomType(
-    await request<RoomType>(`/properties/${propertyId}/room-types/${uuid}`, { method: 'DELETE' }, token)
+    await request<RoomType>(
+      `/properties/${propertyId}/room-types/${uuid}`,
+      { method: 'DELETE', body: JSON.stringify({ reason }) },
+      token
+    )
   )
 }

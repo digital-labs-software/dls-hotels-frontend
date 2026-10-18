@@ -10,10 +10,7 @@ import TextField from '@mui/material/TextField'
 import TablePagination from '@mui/material/TablePagination'
 import IconButton from '@mui/material/IconButton'
 import CircularProgress from '@mui/material/CircularProgress'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
+import DeleteReasonDialog from '@/components/dialogs/DeleteReasonDialog'
 import type { TextFieldProps } from '@mui/material/TextField'
 
 import classnames from 'classnames'
@@ -153,7 +150,7 @@ const HotelRoleListTable = () => {
     }
   }
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (reason: string) => {
     if (!roleToDelete) {
       return
     }
@@ -161,7 +158,7 @@ const HotelRoleListTable = () => {
     setDeleting(true)
 
     try {
-      await deleteHotelRole(roleToDelete.uuid)
+      await deleteHotelRole(roleToDelete.uuid, reason)
       setData(prev => prev.filter(item => item.uuid !== roleToDelete.uuid))
       toast.success('Rol eliminado.')
       setRoleToDelete(null)
@@ -363,22 +360,15 @@ const HotelRoleListTable = () => {
         onSuccess={handleDrawerSuccess}
       />
 
-      <Dialog open={Boolean(roleToDelete)} onClose={() => !deleting && setRoleToDelete(null)}>
-        <DialogTitle>Eliminar rol</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Eliminar el rol {roleToDelete ? `"${roleToDelete.name}"` : ''}? Dejará de aparecer en el listado.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button variant='outlined' color='secondary' disabled={deleting} onClick={() => setRoleToDelete(null)}>
-            Cancelar
-          </Button>
-          <Button variant='contained' color='error' disabled={deleting} onClick={handleConfirmDelete}>
-            {deleting ? <CircularProgress size={20} color='inherit' /> : 'Eliminar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteReasonDialog
+        open={Boolean(roleToDelete)}
+        title='Eliminar rol'
+        description={`¿Eliminar el rol ${roleToDelete ? `"${roleToDelete.name}"` : ''}? Dejará de aparecer en el listado.`}
+        placeholder='Ya no se usa'
+        confirming={deleting}
+        onClose={() => setRoleToDelete(null)}
+        onConfirm={reason => void handleConfirmDelete(reason)}
+      />
     </>
   )
 }

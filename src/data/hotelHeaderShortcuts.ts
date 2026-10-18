@@ -14,6 +14,12 @@ const hotelHeaderShortcuts: ShortcutsType[] = [
     subtitle: 'Calendario'
   },
   {
+    url: '/apps/prices',
+    icon: 'ri-price-tag-3-line',
+    title: 'Precios',
+    subtitle: 'Cuánto cobrar'
+  },
+  {
     url: '/apps/clients',
     icon: 'ri-group-line',
     title: 'Clientes',
@@ -38,9 +44,15 @@ const hotelHeaderShortcuts: ShortcutsType[] = [
     subtitle: 'Parte de huéspedes'
   },
   {
+    url: '/apps/reports?tab=audit',
+    icon: 'ri-history-line',
+    title: 'Bitácora',
+    subtitle: 'Quién cambió qué'
+  },
+  {
     url: '/apps/dashboard',
     icon: 'ri-home-smile-line',
-    title: 'Dashboard',
+    title: 'Inicio',
     subtitle: 'Resumen del día'
   }
 ]

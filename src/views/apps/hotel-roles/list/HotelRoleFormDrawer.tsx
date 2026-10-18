@@ -84,7 +84,13 @@ const HotelRoleFormDrawer = (props: Props) => {
               name
             })
 
-      toast.success(isEdit ? 'Rol actualizado.' : 'Rol creado.')
+      toast.success(
+        isEdit
+          ? 'Rol actualizado.'
+          : saved.restored
+            ? 'Este rol estaba eliminado. Se recuperó con los datos que acaba de guardar.'
+            : 'Rol creado.'
+      )
       onSuccess(saved)
       handleReset()
     } catch (error) {

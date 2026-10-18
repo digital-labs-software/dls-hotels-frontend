@@ -15,6 +15,7 @@ export type RoomType = {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  restored?: boolean
 }
 
 export type CreateRoomTypeDto = {

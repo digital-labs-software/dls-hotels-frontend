@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Button from '@mui/material/Button'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import Grid from '@mui/material/Grid'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -17,10 +19,8 @@ import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
+
+import DeleteReasonDialog from '@/components/dialogs/DeleteReasonDialog'
 import type { TextFieldProps } from '@mui/material/TextField'
 
 import classnames from 'classnames'
@@ -38,14 +38,12 @@ import type { RankingInfo } from '@tanstack/match-sorter-utils'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
-import type { Rate } from '@/types/apps/rateTypes'
+import type { Locale } from '@configs/i18n'
+import type { Season } from '@/types/apps/rateTypes'
 import { formatRateValidity } from '@/types/apps/rateTypes'
-import type { RoomType } from '@/types/apps/roomTypeTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
-import RateFormDrawer from './RateFormDrawer'
-import type { RateDrawerMode } from './RateFormDrawer'
-import { deleteRate, getRate, getRatesApiErrorMessage, listRates, updateRate } from '@/libs/ratesApi'
-import { listRoomTypes } from '@/libs/roomTypesApi'
+import { deleteSeason, getRatesApiErrorMessage, listSeasons, updateSeason } from '@/libs/ratesApi'
+import { getLocalizedUrl } from '@/utils/i18n'
 import tableStyles from '@core/styles/table.module.css'
 
 declare module '@tanstack/table-core' {
@@ -57,7 +55,7 @@ declare module '@tanstack/table-core' {
   }
 }
 
-type RateWithAction = Rate & {
+type RateWithAction = Season & {
   action?: string
 }
 
@@ -100,22 +98,21 @@ const DebouncedInput = ({
 const columnHelper = createColumnHelper<RateWithAction>()
 
 const RateListTable = () => {
+  const { lang: locale } = useParams()
   const { data: session, status } = useSession()
   const propertyId = session?.user?.propertyId ?? 1
+  const addUrl = getLocalizedUrl('/apps/rooms/rates/add', locale as Locale)
+  const editUrl = (uuid: string, mode?: 'view') =>
+    getLocalizedUrl(`/apps/rooms/rates/edit/${uuid}${mode === 'view' ? '?mode=view' : ''}`, locale as Locale)
 
-  const [data, setData] = useState<Rate[]>([])
-  const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
+  const [data, setData] = useState<Season[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
   const [loading, setLoading] = useState(true)
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [drawerMode, setDrawerMode] = useState<RateDrawerMode>('create')
-  const [selectedRate, setSelectedRate] = useState<Rate | null>(null)
-  const [rateToDelete, setRateToDelete] = useState<Rate | null>(null)
+  const [rateToDelete, setRateToDelete] = useState<Season | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(20)
   const [total, setTotal] = useState(0)
-  const [roomTypeFilter, setRoomTypeFilter] = useState<number | ''>('')
   const [activeFilter, setActiveFilter] = useState<'' | 'true' | 'false'>('')
   const [pendingUuid, setPendingUuid] = useState<string | null>(null)
 
@@ -123,19 +120,14 @@ const RateListTable = () => {
     setLoading(true)
 
     try {
-      const [ratesRes, typesRes] = await Promise.all([
-        listRates(propertyId, {
-          page: page + 1,
-          limit: pageSize,
-          roomTypeId: roomTypeFilter === '' ? undefined : roomTypeFilter,
-          isActive: activeFilter === '' ? undefined : activeFilter === 'true'
-        }),
-        listRoomTypes(propertyId, { limit: 100 })
-      ])
+      const ratesRes = await listSeasons(propertyId, {
+        page: page + 1,
+        limit: pageSize,
+        isActive: activeFilter === '' ? undefined : activeFilter === 'true'
+      })
 
       setData(ratesRes.data)
       setTotal(ratesRes.meta.total)
-      setRoomTypes(typesRes.data)
     } catch (error) {
       toast.error(getRatesApiErrorMessage(error, 'No se pudieron cargar las tarifas.'))
       setData([])
@@ -143,7 +135,7 @@ const RateListTable = () => {
     } finally {
       setLoading(false)
     }
-  }, [activeFilter, page, pageSize, propertyId, roomTypeFilter])
+  }, [activeFilter, page, pageSize, propertyId])
 
   useEffect(() => {
     if (status === 'loading') {
@@ -153,12 +145,12 @@ const RateListTable = () => {
     fetchRates()
   }, [fetchRates, status])
 
-  const handleToggleActive = async (rate: Rate, isActive: boolean) => {
+  const handleToggleActive = async (rate: Season, isActive: boolean) => {
     setPendingUuid(rate.uuid)
     setData(prev => prev.map(item => (item.uuid === rate.uuid ? { ...item, isActive } : item)))
 
     try {
-      const updated = await updateRate(propertyId, rate.uuid, { isActive })
+      const updated = await updateSeason(propertyId, rate.uuid, { isActive })
 
       setData(prev => prev.map(item => (item.uuid === updated.uuid ? updated : item)))
     } catch (error) {
@@ -169,22 +161,7 @@ const RateListTable = () => {
     }
   }
 
-  const openDrawer = async (mode: RateDrawerMode, rate?: Rate) => {
-    setDrawerMode(mode)
-    setSelectedRate(rate ?? null)
-    setDrawerOpen(true)
-
-    if ((mode === 'view' || mode === 'edit') && rate?.uuid) {
-      try {
-        setSelectedRate(await getRate(propertyId, rate.uuid))
-      } catch (error) {
-        toast.error(getRatesApiErrorMessage(error, 'No se encontró la tarifa solicitada.'))
-        setDrawerOpen(false)
-      }
-    }
-  }
-
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (reason: string) => {
     if (!rateToDelete) {
       return
     }
@@ -192,7 +169,7 @@ const RateListTable = () => {
     setDeleting(true)
 
     try {
-      await deleteRate(propertyId, rateToDelete.uuid)
+      await deleteSeason(propertyId, rateToDelete.uuid, reason)
       toast.success('Tarifa eliminada.')
       setRateToDelete(null)
       await fetchRates()
@@ -209,21 +186,25 @@ const RateListTable = () => {
         header: 'Tarifa',
         cell: ({ row }) => (
           <Typography
+            component={Link}
+            href={editUrl(row.original.uuid, 'view')}
             color='text.primary'
-            className='font-medium cursor-pointer hover:text-primary'
-            onClick={() => openDrawer('view', row.original)}
+            className='font-medium hover:text-primary'
           >
             {row.original.name}
           </Typography>
         )
       }),
-      columnHelper.accessor('roomTypeName', {
-        header: 'Tipo',
-        cell: ({ row }) => <Typography>{row.original.roomTypeName || `#${row.original.roomTypeId}`}</Typography>
-      }),
-      columnHelper.accessor('price', {
-        header: 'Precio',
-        cell: ({ row }) => <Typography>{formatRoomPrice(row.original.price)}</Typography>
+      columnHelper.display({
+        id: 'prices',
+        header: 'Precios',
+        cell: ({ row }) => (
+          <Typography>
+            {row.original.prices.length
+              ? row.original.prices.map(price => `${price.roomTypeName} ${formatRoomPrice(price.price)}`).join(' · ')
+              : '—'}
+          </Typography>
+        )
       }),
       columnHelper.accessor('validFrom', {
         header: 'Vigencia',
@@ -252,10 +233,10 @@ const RateListTable = () => {
         header: 'Acciones',
         cell: ({ row }) => (
           <div className='flex items-center'>
-            <IconButton size='small' onClick={() => openDrawer('view', row.original)} title='Ver'>
+            <IconButton size='small' component={Link} href={editUrl(row.original.uuid, 'view')} title='Ver'>
               <i className='ri-eye-line text-textSecondary' />
             </IconButton>
-            <IconButton size='small' onClick={() => openDrawer('edit', row.original)} title='Editar'>
+            <IconButton size='small' component={Link} href={editUrl(row.original.uuid)} title='Editar'>
               <i className='ri-edit-box-line text-textSecondary' />
             </IconButton>
             <IconButton size='small' onClick={() => setRateToDelete(row.original)} title='Eliminar'>
@@ -291,49 +272,22 @@ const RateListTable = () => {
     <>
       <Card>
         <CardContent>
-          <Grid container spacing={6}>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <FormControl fullWidth>
-                <InputLabel id='rate-type-filter'>Tipo</InputLabel>
-                <Select
-                  label='Tipo'
-                  labelId='rate-type-filter'
-                  value={roomTypeFilter}
-                  onChange={e => {
-                    setPage(0)
-                    const next = Number(e.target.value)
-
-                    setRoomTypeFilter(Number.isFinite(next) ? next : '')
-                  }}
-                >
-                  <MenuItem value=''>Todos</MenuItem>
-                  {roomTypes.map(type => (
-                    <MenuItem key={type.uuid} value={type.id}>
-                      {type.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <FormControl fullWidth>
-                <InputLabel id='rate-active-filter'>Estado</InputLabel>
-                <Select
-                  label='Estado'
-                  labelId='rate-active-filter'
-                  value={activeFilter}
-                  onChange={e => {
-                    setPage(0)
-                    setActiveFilter(e.target.value as '' | 'true' | 'false')
-                  }}
-                >
-                  <MenuItem value=''>Todas</MenuItem>
-                  <MenuItem value='true'>Activas</MenuItem>
-                  <MenuItem value='false'>Inactivas</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
+          <FormControl fullWidth className='max-is-[280px]'>
+            <InputLabel id='rate-active-filter'>Estado</InputLabel>
+            <Select
+              label='Estado'
+              labelId='rate-active-filter'
+              value={activeFilter}
+              onChange={e => {
+                setPage(0)
+                setActiveFilter(e.target.value as '' | 'true' | 'false')
+              }}
+            >
+              <MenuItem value=''>Todas</MenuItem>
+              <MenuItem value='true'>Activas</MenuItem>
+              <MenuItem value='false'>Inactivas</MenuItem>
+            </Select>
+          </FormControl>
         </CardContent>
         <CardContent className='flex justify-between flex-wrap max-sm:flex-col sm:items-center gap-4'>
           <DebouncedInput
@@ -357,8 +311,9 @@ const RateListTable = () => {
               variant='contained'
               color='primary'
               className='max-sm:is-full'
+              component={Link}
+              href={addUrl}
               startIcon={<i className='ri-add-line' />}
-              onClick={() => openDrawer('create')}
             >
               Nueva tarifa
             </Button>
@@ -437,34 +392,15 @@ const RateListTable = () => {
         )}
       </Card>
 
-      <RateFormDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        propertyId={propertyId}
-        rate={selectedRate}
-        onClose={() => setDrawerOpen(false)}
-        onSuccess={() => {
-          fetchRates()
-        }}
+      <DeleteReasonDialog
+        open={Boolean(rateToDelete)}
+        title='Eliminar tarifa'
+        description={`¿Eliminar la tarifa ${rateToDelete ? `"${rateToDelete.name}"` : ''}? Las reservas que ya la usaron conservan su precio. Para dejar de ofrecerla temporalmente, desactívala.`}
+        placeholder='Terminó la temporada'
+        confirming={deleting}
+        onClose={() => setRateToDelete(null)}
+        onConfirm={reason => void handleConfirmDelete(reason)}
       />
-
-      <Dialog open={Boolean(rateToDelete)} onClose={() => !deleting && setRateToDelete(null)}>
-        <DialogTitle>Eliminar tarifa</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Eliminar la tarifa {rateToDelete ? `"${rateToDelete.name}"` : ''}? Las reservas que ya la usaron conservan
-            su precio. Para dejar de ofrecerla temporalmente, desactívala.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button variant='outlined' color='secondary' disabled={deleting} onClick={() => setRateToDelete(null)}>
-            Cancelar
-          </Button>
-          <Button variant='contained' color='error' disabled={deleting} onClick={handleConfirmDelete}>
-            {deleting ? <CircularProgress size={20} color='inherit' /> : 'Eliminar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </>
   )
 }
