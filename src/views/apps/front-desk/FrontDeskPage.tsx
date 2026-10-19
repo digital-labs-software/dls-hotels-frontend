@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -49,6 +49,7 @@ import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
 import { ROOM_PHOTO_DETAIL, cloudinaryTransformedUrl } from '@/libs/cloudinary'
 
 type ViewMode = 'compact' | 'photos'
+type PanelMode = 'rooms' | 'day'
 type SideTab = 'arrivals' | 'departures' | 'inHouse'
 
 const VIEW_KEY = 'frontDesk.view'
@@ -65,13 +66,14 @@ const FrontDeskPage = () => {
   const [overview, setOverview] = useState<FrontDesk | null>(null)
   const [loading, setLoading] = useState(true)
   const [floorId, setFloorId] = useState<number | 'all'>('all')
-  const [roomTypeId, setRoomTypeId] = useState<number | ''>('')
+  const [roomTypeId, setRoomTypeId] = useState<number | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<RackStatus | ''>('')
   const [arrivingToday, setArrivingToday] = useState(false)
   const [departingToday, setDepartingToday] = useState(false)
   const [withBalance, setWithBalance] = useState(false)
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ViewMode>('compact')
+  const [panel, setPanel] = useState<PanelMode>('rooms')
   const [sideTab, setSideTab] = useState<SideTab>('arrivals')
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
   const [menuRoom, setMenuRoom] = useState<RackRoom | null>(null)
@@ -82,6 +84,8 @@ const FrontDeskPage = () => {
   const [checkOutOpen, setCheckOutOpen] = useState(false)
   const [assignOpen, setAssignOpen] = useState(false)
   const [photoRoom, setPhotoRoom] = useState<RackRoom | null>(null)
+  const [arrivalBusy, setArrivalBusy] = useState<{ id: string; action: 'checkIn' | 'noShow' } | null>(null)
+  const arrivalLock = useRef(false)
 
   useEffect(() => {
     const stored = window.localStorage.getItem(VIEW_KEY)
@@ -136,7 +140,7 @@ const FrontDeskPage = () => {
       .map(floor => ({
         ...floor,
         rooms: floor.rooms.filter(room => {
-          if (roomTypeId !== '' && room.roomTypeId !== roomTypeId) return false
+          if (roomTypeId !== 'all' && room.roomTypeId !== roomTypeId) return false
           if (statusFilter && room.displayStatus !== statusFilter) return false
           if (arrivingToday && !room.arrival) return false
           if (departingToday && !room.departureDue) return false
@@ -180,6 +184,39 @@ const FrontDeskPage = () => {
     setStayOpen(true)
   }
 
+  const runArrivalAction = async (stay: Stay, action: 'checkIn' | 'noShow') => {
+    if (arrivalLock.current) {
+      return
+    }
+
+    arrivalLock.current = true
+    setArrivalBusy({ id: stay.reservationRoomUuid, action })
+
+    try {
+      if (action === 'checkIn') {
+        await frontDeskApi.checkIn(propertyId, stay.reservationUuid, stay.reservationRoomUuid)
+        toast.success(`Check-in (ingreso) · ${stay.reservationCode}`)
+      } else {
+        await frontDeskApi.patchRoomLine(propertyId, stay.reservationUuid, stay.reservationRoomUuid, {
+          status: 'NO_SHOW'
+        })
+        toast.success('Marcado como no se presentó.')
+      }
+
+      await fetchOverview()
+    } catch (error) {
+      toast.error(
+        getFrontDeskApiErrorMessage(
+          error,
+          action === 'checkIn' ? 'No se pudo registrar el ingreso (check-in).' : 'No se pudo marcar que no se presentó.'
+        )
+      )
+    } finally {
+      arrivalLock.current = false
+      setArrivalBusy(null)
+    }
+  }
+
   const sortedArrivals = useMemo(() => {
     const rows = [...(overview?.arrivals ?? [])]
 
@@ -200,44 +237,42 @@ const FrontDeskPage = () => {
 
         <Grid size={{ xs: 12 }}>
           {overview ? (
-            <SummaryBar
-              summary={overview.summary}
-              selectedStatus={statusFilter}
-              onSelectStatus={setStatusFilter}
-              onSelectArrivals={() => setSideTab('arrivals')}
-              onSelectDepartures={() => setSideTab('departures')}
-            />
+            <SummaryBar summary={overview.summary} selectedStatus={statusFilter} onSelectStatus={setStatusFilter} />
           ) : null}
         </Grid>
 
         <Grid size={{ xs: 12 }}>
           <Card>
             <CardContent className='flex flex-col gap-4'>
-              <TabContext value={floorId === 'all' ? 'all' : String(floorId)}>
-                <CustomTabList
-                  variant='scrollable'
-                  pill='true'
-                  onChange={(_event, value) => setFloorId(value === 'all' ? 'all' : Number(value))}
-                >
-                  <Tab label='Todos' value='all' />
-                  {(overview?.floors ?? []).map(floor => (
-                    <Tab key={floor.floorId} label={floor.floorName} value={String(floor.floorId)} />
-                  ))}
-                </CustomTabList>
-              </TabContext>
+              {panel === 'rooms' ? (
+                <TabContext value={floorId === 'all' ? 'all' : String(floorId)}>
+                  <CustomTabList
+                    variant='scrollable'
+                    pill='true'
+                    onChange={(_event, value) => setFloorId(value === 'all' ? 'all' : Number(value))}
+                  >
+                    <Tab label='Todos' value='all' />
+                    {(overview?.floors ?? []).map(floor => (
+                      <Tab key={floor.floorId} label={floor.floorName} value={String(floor.floorId)} />
+                    ))}
+                  </CustomTabList>
+                </TabContext>
+              ) : null}
               <div className='flex flex-wrap items-center gap-4'>
+                {panel === 'rooms' ? (
+                  <>
                 <FormControl size='small' className='min-is-[180px]'>
                   <InputLabel>Tipo</InputLabel>
                   <Select
                     label='Tipo'
                     value={roomTypeId}
                     onChange={e => {
-                      const next = Number(e.target.value)
+                      const raw = String(e.target.value)
 
-                      setRoomTypeId(Number.isFinite(next) ? next : '')
+                      setRoomTypeId(raw === 'all' ? 'all' : Number(raw))
                     }}
                   >
-                    <MenuItem value=''>Todos</MenuItem>
+                    <MenuItem value='all'>Todos</MenuItem>
                     {roomTypes.map(type => (
                       <MenuItem key={type.id} value={type.id}>
                         {type.name}
@@ -259,10 +294,10 @@ const FrontDeskPage = () => {
                 />
                 <TextField
                   size='small'
-                  placeholder='Buscar n.º o huésped'
+                  placeholder='Buscar número de habitación o huésped'
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className='min-is-[220px]'
+                  className='min-is-[360px] is-full sm:is-auto'
                 />
                 <ToggleButtonGroup
                   exclusive
@@ -276,17 +311,32 @@ const FrontDeskPage = () => {
                     setView(next)
                     window.localStorage.setItem(VIEW_KEY, next)
                   }}
-                  className='mis-auto'
                 >
                   <ToggleButton value='compact'>Compacta</ToggleButton>
                   <ToggleButton value='photos'>Con fotos</ToggleButton>
                 </ToggleButtonGroup>
+                  </>
+                ) : null}
+                <div className='flex flex-wrap items-center gap-2 mis-auto'>
+                  <ToggleButtonGroup
+                    exclusive
+                    size='small'
+                    value={panel}
+                    onChange={(_, next: PanelMode | null) => {
+                      if (next) setPanel(next)
+                    }}
+                  >
+                    <ToggleButton value='rooms'>Habitaciones</ToggleButton>
+                    <ToggleButton value='day'>Del día</ToggleButton>
+                  </ToggleButtonGroup>
+                </div>
               </div>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid size={{ xs: 12, lg: 8 }}>
+        {panel === 'rooms' ? (
+        <Grid size={{ xs: 12 }}>
           <Card>
             <CardContent>
               {loading && !overview ? (
@@ -327,8 +377,8 @@ const FrontDeskPage = () => {
             </CardContent>
           </Card>
         </Grid>
-
-        <Grid size={{ xs: 12, lg: 4 }}>
+        ) : (
+        <Grid size={{ xs: 12 }}>
           <Card>
             <TabContext value={sideTab}>
               <CustomTabList onChange={(_event, value) => setSideTab(value as SideTab)} variant='fullWidth' pill='true'>
@@ -340,16 +390,9 @@ const FrontDeskPage = () => {
                 <StayList
                   kind='arrivals'
                   stays={sortedArrivals}
+                  busy={arrivalBusy}
                   onOpenStay={openStay}
-                  onCheckIn={async stay => {
-                    try {
-                      await frontDeskApi.checkIn(propertyId, stay.reservationUuid, stay.reservationRoomUuid)
-                      toast.success(`Check-in (ingreso) · ${stay.reservationCode}`)
-                      fetchOverview()
-                    } catch (error) {
-                      toast.error(getFrontDeskApiErrorMessage(error, 'No se pudo registrar el ingreso (check-in).'))
-                    }
-                  }}
+                  onCheckIn={stay => void runArrivalAction(stay, 'checkIn')}
                   onCheckOut={stay => {
                     setSelectedStay(stay)
                     setCheckOutOpen(true)
@@ -358,17 +401,7 @@ const FrontDeskPage = () => {
                     setSelectedStay(stay)
                     setAssignOpen(true)
                   }}
-                  onNoShow={async stay => {
-                    try {
-                      await frontDeskApi.patchRoomLine(propertyId, stay.reservationUuid, stay.reservationRoomUuid, {
-                        status: 'NO_SHOW'
-                      })
-                      toast.success('Marcado como no se presentó.')
-                      fetchOverview()
-                    } catch (error) {
-                      toast.error(getFrontDeskApiErrorMessage(error, 'No se pudo marcar que no se presentó.'))
-                    }
-                  }}
+                  onNoShow={stay => void runArrivalAction(stay, 'noShow')}
                   onPay={stay => {
                     setSelectedStay(stay)
                     setPayOpen(true)
@@ -414,6 +447,7 @@ const FrontDeskPage = () => {
             </TabContext>
           </Card>
         </Grid>
+        )}
       </Grid>
 
       <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={closeMenu}>

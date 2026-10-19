@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -51,6 +51,8 @@ const InvoicingSettingsPage = () => {
   const [series, setSeries] = useState<InvoiceSeries[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingSeries, setSavingSeries] = useState(false)
+  const seriesLock = useRef(false)
   const [enabled, setEnabled] = useState(false)
   const [igvRate, setIgvRate] = useState('18')
   const [pricesIncludeIgv, setPricesIncludeIgv] = useState(true)
@@ -118,6 +120,35 @@ const InvoicingSettingsPage = () => {
       toast.error(getEinvoiceApiErrorMessage(error, 'No se pudo guardar la configuración.'))
     } finally {
       setSaving(false)
+    }
+  }
+
+  const saveSeries = async () => {
+    const seriesName = newSeries.trim()
+
+    if (!seriesName || seriesLock.current) {
+      return
+    }
+
+    seriesLock.current = true
+    setSavingSeries(true)
+
+    try {
+      await einvoiceApi.createSeries(propertyId, {
+        documentType: SERIES_PURPOSE_OPTIONS.find(option => option.id === newKind)?.documentType || 'RECEIPT',
+        series: seriesName,
+        isDefault: false
+      })
+      toast.success('Serie creada.')
+      setSeriesOpen(false)
+      setNewSeries('')
+      setNewKind('RECEIPT')
+      await load()
+    } catch (error) {
+      toast.error(getEinvoiceApiErrorMessage(error))
+    } finally {
+      seriesLock.current = false
+      setSavingSeries(false)
     }
   }
 
@@ -302,7 +333,7 @@ const InvoicingSettingsPage = () => {
         </Grid>
       )}
 
-      <Dialog open={seriesOpen} onClose={() => setSeriesOpen(false)} fullWidth maxWidth='sm'>
+      <Dialog open={seriesOpen} onClose={() => !savingSeries && setSeriesOpen(false)} fullWidth maxWidth='sm'>
         <DialogTitle>Nueva serie</DialogTitle>
         <DialogContent className='flex flex-col gap-4 pt-4'>
           <FormControl fullWidth>
@@ -311,6 +342,7 @@ const InvoicingSettingsPage = () => {
               labelId='new-series-type'
               label='A qué comprobante aplica'
               value={newKind}
+              disabled={savingSeries}
               onChange={event => setNewKind(event.target.value as typeof newKind)}
             >
               {SERIES_PURPOSE_OPTIONS.map(option => (
@@ -325,34 +357,16 @@ const InvoicingSettingsPage = () => {
             placeholder={SERIES_PURPOSE_OPTIONS.find(option => option.id === newKind)?.hint.replace('Ejemplo: ', '')}
             helperText={SERIES_PURPOSE_OPTIONS.find(option => option.id === newKind)?.hint}
             value={newSeries}
+            disabled={savingSeries}
             onChange={event => setNewSeries(event.target.value.toUpperCase())}
           />
         </DialogContent>
         <DialogActions>
-          <Button color='secondary' onClick={() => setSeriesOpen(false)}>
+          <Button color='secondary' disabled={savingSeries} onClick={() => setSeriesOpen(false)}>
             Cancelar
           </Button>
-          <Button
-            variant='contained'
-            disabled={!newSeries.trim()}
-            onClick={() =>
-              void einvoiceApi
-                .createSeries(propertyId, {
-                  documentType: SERIES_PURPOSE_OPTIONS.find(option => option.id === newKind)?.documentType || 'RECEIPT',
-                  series: newSeries.trim(),
-                  isDefault: false
-                })
-                .then(() => {
-                  toast.success('Serie creada.')
-                  setSeriesOpen(false)
-                  setNewSeries('')
-                  setNewKind('RECEIPT')
-                  load()
-                })
-                .catch(error => toast.error(getEinvoiceApiErrorMessage(error)))
-            }
-          >
-            Guardar
+          <Button variant='contained' disabled={savingSeries || !newSeries.trim()} onClick={() => void saveSeries()}>
+            {savingSeries ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
           </Button>
         </DialogActions>
       </Dialog>

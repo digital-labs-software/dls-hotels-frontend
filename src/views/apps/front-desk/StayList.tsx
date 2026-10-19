@@ -2,6 +2,7 @@
 
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
 
@@ -20,9 +21,10 @@ type Props = {
   onAssign: (stay: Stay) => void
   onNoShow: (stay: Stay) => void
   onPay: (stay: Stay) => void
+  busy?: { id: string; action: 'checkIn' | 'noShow' } | null
 }
 
-const StayList = ({ kind, stays, onOpenStay, onCheckIn, onCheckOut, onAssign, onNoShow, onPay }: Props) => {
+const StayList = ({ kind, stays, onOpenStay, onCheckIn, onCheckOut, onAssign, onNoShow, onPay, busy = null }: Props) => {
   if (stays.length === 0) {
     const empty =
       kind === 'arrivals' ? 'No hay llegadas hoy' : kind === 'departures' ? 'No hay salidas hoy' : 'No hay huéspedes en casa'
@@ -67,13 +69,21 @@ const StayList = ({ kind, stays, onOpenStay, onCheckIn, onCheckOut, onAssign, on
               </Button>
             ) : null}
             {kind === 'arrivals' ? (
-              <Button size='small' variant='contained' onClick={() => onCheckIn(stay)}>
-                Check-in (ingreso)
+              <Button size='small' variant='contained' disabled={Boolean(busy)} onClick={() => onCheckIn(stay)}>
+                {busy?.id === stay.reservationRoomUuid && busy.action === 'checkIn' ? (
+                  <CircularProgress size={16} color='inherit' />
+                ) : (
+                  'Check-in (ingreso)'
+                )}
               </Button>
             ) : null}
             {kind === 'arrivals' ? (
-              <Button size='small' color='secondary' onClick={() => onNoShow(stay)}>
-                No se presentó
+              <Button size='small' color='secondary' disabled={Boolean(busy)} onClick={() => onNoShow(stay)}>
+                {busy?.id === stay.reservationRoomUuid && busy.action === 'noShow' ? (
+                  <CircularProgress size={16} color='inherit' />
+                ) : (
+                  'No se presentó'
+                )}
               </Button>
             ) : null}
             {kind === 'departures' || kind === 'inHouse' ? (

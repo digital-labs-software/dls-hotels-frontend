@@ -70,6 +70,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
     canViewCash,
     canViewDashboard,
     canViewReception,
+    canViewSales,
     canViewReservations,
     canViewPrices,
     canViewRooms,
@@ -183,7 +184,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
         </MenuItem>
         ) : null}
 
-        {canViewReception || canViewReservations || canViewPrices ? (
+        {canViewReception || canViewSales || canViewReservations || canViewPrices ? (
         <SubMenu label={dictionary['navigation'].operation} icon={<i className='ri-dashboard-2-line' />}>
           {canViewReception ? (
           <MenuItem
@@ -193,6 +194,16 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
             icon={<i className='ri-dashboard-2-line' />}
           >
             {dictionary['navigation'].frontDesk}
+          </MenuItem>
+          ) : null}
+          {canViewSales ? (
+          <MenuItem
+            href={`/${locale}/apps/sales`}
+            exactMatch={false}
+            activeUrl='/apps/sales'
+            icon={<i className='ri-store-2-line' />}
+          >
+            {dictionary['navigation'].sales}
           </MenuItem>
           ) : null}
           {canViewReservations ? (

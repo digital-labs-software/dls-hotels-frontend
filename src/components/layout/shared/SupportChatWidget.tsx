@@ -61,6 +61,8 @@ const SupportChatWidget = () => {
   const [msg, setMsg] = useState('')
   const [messages, setMessages] = useState<SupportMessage[]>(initialMessages)
   const [replied, setReplied] = useState(false)
+  const [sending, setSending] = useState(false)
+  const sendingLock = useRef(false)
   const listRef = useRef<HTMLDivElement>(null)
   const hotelName = session?.user?.name?.split(' ')[0] || 'el hotel'
 
@@ -73,9 +75,12 @@ const SupportChatWidget = () => {
   const sendMessage = () => {
     const text = msg.trim()
 
-    if (!text) {
+    if (!text || sendingLock.current) {
       return
     }
+
+    sendingLock.current = true
+    setSending(true)
 
     const hotelMessage: SupportMessage = {
       id: Date.now(),
@@ -86,6 +91,11 @@ const SupportChatWidget = () => {
 
     setMessages(prev => [...prev, hotelMessage])
     setMsg('')
+
+    const finish = () => {
+      sendingLock.current = false
+      setSending(false)
+    }
 
     if (!replied) {
       setReplied(true)
@@ -99,8 +109,13 @@ const SupportChatWidget = () => {
             time: nowLabel()
           }
         ])
+        finish()
       }, 700)
+
+      return
     }
+
+    window.setTimeout(finish, 300)
   }
 
   return (
@@ -214,6 +229,7 @@ const SupportChatWidget = () => {
               size='small'
               placeholder='Escribe tu mensaje'
               value={msg}
+              disabled={sending}
               onChange={event => setMsg(event.target.value)}
               sx={{
                 '& .MuiOutlinedInput-root': {
@@ -224,8 +240,8 @@ const SupportChatWidget = () => {
               slotProps={{
                 input: {
                   endAdornment: (
-                    <CustomIconButton variant='contained' color='primary' type='submit' className='mis-2'>
-                      <i className='ri-send-plane-line' />
+                    <CustomIconButton variant='contained' color='primary' type='submit' className='mis-2' disabled={sending || !msg.trim()}>
+                      <i className={sending ? 'ri-loader-4-line animate-spin' : 'ri-send-plane-line'} />
                     </CustomIconButton>
                   )
                 }

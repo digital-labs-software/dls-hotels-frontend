@@ -38,6 +38,7 @@ import {
   ROLES_VIEW
 } from '@/types/apps/staffTypes'
 import { INVOICES_ISSUE, INVOICES_SETTINGS, INVOICES_VIEW, INVOICES_VOID } from '@/types/apps/einvoiceTypes'
+import { SALES_PERMISSIONS } from '@/types/apps/hotelPermissions'
 
 type SubscriptionAccessValue = {
   me: NestAuthUser | null
@@ -49,6 +50,7 @@ type SubscriptionAccessValue = {
   canViewReception: boolean
   canViewReservations: boolean
   canViewPrices: boolean
+  canViewSales: boolean
   canViewRooms: boolean
   canViewClients: boolean
   canViewReports: boolean
@@ -94,6 +96,7 @@ const SubscriptionAccessContext = createContext<SubscriptionAccessValue>({
   canViewReception: true,
   canViewReservations: true,
   canViewPrices: true,
+  canViewSales: true,
   canViewRooms: true,
   canViewClients: true,
   canViewReports: true,
@@ -224,6 +227,7 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
   const canViewReception = canAny(RECEPTION_PERMISSIONS)
   const canViewReservations = canAny(RESERVATION_PERMISSIONS)
   const canViewPrices = can(PRICES_VIEW)
+  const canViewSales = canAny(SALES_PERMISSIONS)
   const canViewAudit = can(AUDIT_VIEW)
   const canViewRooms = canAny(ROOM_MENU_PERMISSIONS)
   const canViewClients = canAny(CLIENT_MENU_PERMISSIONS)
@@ -270,6 +274,7 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
       canViewReception,
       canViewReservations,
       canViewPrices,
+      canViewSales,
       canViewAudit,
       canViewRooms,
       canViewClients,
@@ -320,6 +325,7 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
       canViewHotel,
       canViewProfile,
       canViewPrices,
+      canViewSales,
       canViewAudit,
       canViewReception,
       canViewReports,

@@ -16,6 +16,10 @@ export const RESERVATIONS_CANCEL = 'reservations.cancel'
 export const RESERVATIONS_NOTES_MANAGE = 'reservations.notes.manage'
 
 export const PRICES_VIEW = 'prices.view'
+export const SALES_VIEW = 'sales.view'
+export const SALES_CREATE = 'sales.create'
+export const SALES_VOID = 'sales.void'
+export const SALES_PRODUCTS = 'sales.products'
 export const AUDIT_VIEW = 'audit.view'
 
 export const ROOMS_VIEW = 'rooms.view'
@@ -98,6 +102,8 @@ export const REPORT_TAB_PERMISSION: Record<string, string> = {
   companies: REPORTS_COMPANIES_VIEW,
   cancellations: REPORTS_CANCELLATIONS_VIEW
 }
+
+export const SALES_PERMISSIONS = [SALES_VIEW, SALES_CREATE, SALES_VOID, SALES_PRODUCTS]
 
 export const RECEPTION_PERMISSIONS = [
   RECEPTION_DESK_VIEW,
