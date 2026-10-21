@@ -45,6 +45,7 @@
   "files.insertFinalNewline": true,
   "editor.linkedEditing": true,
   "typescript.tsdk": "node_modules/typescript/lib",
+  "workbench.iconTheme": "material-icon-theme",
   "cSpell.words": [
     "customizer",
     "iconify",
