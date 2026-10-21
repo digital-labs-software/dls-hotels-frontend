@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
@@ -129,19 +128,7 @@ const PaymentsCashTable = () => {
 
   return (
     <>
-      <div className='flex flex-col gap-6'>
-        <div className='flex flex-wrap items-center justify-between gap-4'>
-          <div>
-            <Typography variant='h4'>Caja</Typography>
-            <Typography variant='body2' color='text.secondary'>
-              Lo que ya entró o salió. Para cobrar a quien está en el hotel, use Cuentas.
-            </Typography>
-          </div>
-          <Button variant='outlined' color='secondary' startIcon={<i className='ri-refresh-line' />} onClick={fetchPage} disabled={loading}>
-            Actualizar
-          </Button>
-        </div>
-
+      <div className='flex flex-col gap-4'>
         <div className='flex flex-wrap gap-3'>
           {summary.map(item => (
             <Card key={item.label} className='min-is-[180px] flex-1'>
@@ -194,6 +181,9 @@ const PaymentsCashTable = () => {
                 ))}
               </Select>
             </FormControl>
+            <IconButton color='secondary' onClick={fetchPage} disabled={loading} title='Actualizar' aria-label='Actualizar'>
+              <i className='ri-refresh-line' />
+            </IconButton>
           </CardContent>
           {loading ? (
             <div className='flex justify-center p-10'>

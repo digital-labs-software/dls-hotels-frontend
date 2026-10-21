@@ -75,7 +75,7 @@ const RoomStatusDonut = ({ summary }: Props) => {
 
   return (
     <Card className='bs-full'>
-      <CardHeader title='Estado de habitaciones' subheader='Libre, ocupada, limpieza y mantenimiento' />
+      <CardHeader title='Estado de habitaciones' subheader='Disponible, ocupado, limpieza y mantenimiento' />
       <CardContent className='flex flex-col items-center gap-4'>
         <AppReactApexCharts type='donut' height={220} width='100%' series={series} options={options} />
         <div className='flex flex-wrap justify-center gap-4'>

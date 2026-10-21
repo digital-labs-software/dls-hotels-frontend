@@ -29,8 +29,8 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 }
 
 export const RACK_STATUS_LABELS: Record<RackStatus, string> = {
-  AVAILABLE: 'Libre',
-  OCCUPIED: 'Ocupada',
+  AVAILABLE: 'Disponible',
+  OCCUPIED: 'Ocupado',
   CLEANING: 'Limpieza',
   MAINTENANCE: 'Mantenimiento'
 }
@@ -358,13 +358,13 @@ export const formatFrontDeskHeading = (date: string) => {
   const parsed = new Date(`${date}T12:00:00`)
 
   if (Number.isNaN(parsed.getTime())) {
-    return `Recepción · ${date}`
+    return date
   }
 
   const weekday = parsed.toLocaleDateString('es-PE', { weekday: 'long' })
   const formatted = parsed.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
-  return `Recepción · ${weekday} ${formatted}`
+  return `${weekday} ${formatted}`
 }
 
 export const nightsBetween = (from: string, to: string) => {

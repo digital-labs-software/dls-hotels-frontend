@@ -108,7 +108,7 @@ const statusColor: Record<RoomStatus, ThemeColor> = {
   RESERVED: 'warning',
   OCCUPIED: 'error',
   CLEANING: 'info',
-  MAINTENANCE: 'secondary'
+  MAINTENANCE: 'warning'
 }
 
 const columnHelper = createColumnHelper<RoomWithAction>()

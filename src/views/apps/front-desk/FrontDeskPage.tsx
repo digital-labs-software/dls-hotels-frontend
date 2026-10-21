@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Checkbox from '@mui/material/Checkbox'
@@ -225,25 +226,27 @@ const FrontDeskPage = () => {
 
   return (
     <>
-      <Grid container spacing={6}>
-        <Grid size={{ xs: 12 }}>
-          <div className='flex flex-wrap items-center justify-between gap-4'>
-            <Typography variant='h4'>{overview ? formatFrontDeskHeading(overview.date) : 'Recepción'}</Typography>
-            <Button variant='outlined' color='secondary' startIcon={<i className='ri-refresh-line' />} onClick={fetchOverview} disabled={loading}>
-              Actualizar
-            </Button>
-          </div>
-        </Grid>
-
-        <Grid size={{ xs: 12 }}>
-          {overview ? (
-            <SummaryBar summary={overview.summary} selectedStatus={statusFilter} onSelectStatus={setStatusFilter} />
-          ) : null}
-        </Grid>
-
+      <Grid container spacing={4}>
         <Grid size={{ xs: 12 }}>
           <Card>
-            <CardContent className='flex flex-col gap-4'>
+            <CardContent className='flex flex-col gap-3' sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+              <div className='flex flex-wrap items-center justify-between gap-3'>
+                <Typography variant='subtitle1' className='font-medium capitalize'>
+                  {overview ? formatFrontDeskHeading(overview.date) : ''}
+                </Typography>
+                <div className='flex flex-wrap items-center gap-2'>
+                  {overview ? (
+                    <SummaryBar summary={overview.summary} selectedStatus={statusFilter} onSelectStatus={setStatusFilter} />
+                  ) : null}
+                  <Tooltip title='Actualizar'>
+                    <span>
+                      <IconButton color='secondary' onClick={fetchOverview} disabled={loading} aria-label='Actualizar'>
+                        <i className='ri-refresh-line' />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </div>
+              </div>
               {panel === 'rooms' ? (
                 <TabContext value={floorId === 'all' ? 'all' : String(floorId)}>
                   <CustomTabList
@@ -258,7 +261,7 @@ const FrontDeskPage = () => {
                   </CustomTabList>
                 </TabContext>
               ) : null}
-              <div className='flex flex-wrap items-center gap-4'>
+              <div className='flex flex-wrap items-center gap-2'>
                 {panel === 'rooms' ? (
                   <>
                 <FormControl size='small' className='min-is-[180px]'>
@@ -297,7 +300,7 @@ const FrontDeskPage = () => {
                   placeholder='Buscar número de habitación o huésped'
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className='min-is-[360px] is-full sm:is-auto'
+                  className='min-is-[220px] is-full sm:is-auto'
                 />
                 <ToggleButtonGroup
                   exclusive
@@ -352,10 +355,10 @@ const FrontDeskPage = () => {
                   No hay habitaciones para estos filtros
                 </Typography>
               ) : (
-                <div className='flex flex-col gap-6'>
+                <div className='flex flex-col gap-4'>
                   {filteredFloors.map(floor => (
-                    <div key={floor.floorId} className='flex flex-col gap-3'>
-                      <Typography variant='h6'>{floor.floorName}</Typography>
+                    <div key={floor.floorId} className='flex flex-col gap-2'>
+                      <Typography variant='subtitle2'>{floor.floorName}</Typography>
                       <div className='flex flex-wrap gap-3'>
                         {floor.rooms.map(room => (
                           <RoomCard

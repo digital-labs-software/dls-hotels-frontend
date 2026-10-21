@@ -206,8 +206,8 @@ export const BAR_COLORS: Record<StayStatus, { bg: string; text: string; dashed?:
 
 export const ROOM_STATE_COLORS = {
   AVAILABLE: { bg: '#43A047', text: '#fff' },
-  CLEANING: { bg: '#F9A825', text: '#3E2723' },
-  MAINTENANCE: { bg: '#616161', text: '#fff' }
+  CLEANING: { bg: '#16B1FF', text: '#fff' },
+  MAINTENANCE: { bg: '#FFB400', text: '#3E2723' }
 }
 
 export const stayStatusChipSx = (status: StayStatus) => {

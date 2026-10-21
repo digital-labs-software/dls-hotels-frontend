@@ -91,7 +91,7 @@ const FrontDeskCatalog = ({ defaultTab }: { defaultTab?: string }) => {
 
   return (
     <Grid container spacing={6}>
-      <Grid size={{ xs: 12 }} className='flex flex-col gap-6'>
+      <Grid size={{ xs: 12 }} className='flex flex-col gap-4'>
         <TabContext value={activeTab}>
           <CustomTabList onChange={handleChange} variant='scrollable' pill='true'>
             {allowedTabs.includes('desk') ? (

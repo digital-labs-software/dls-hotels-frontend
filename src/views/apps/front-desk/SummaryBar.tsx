@@ -19,28 +19,32 @@ const SummaryBar = ({ summary, selectedStatus, onSelectStatus }: Props) => {
     <div className='flex flex-wrap items-center gap-2'>
       <Chip
         clickable
+        size='small'
         color='success'
         variant={selectedStatus === 'AVAILABLE' ? 'filled' : 'tonal'}
-        label={`${summary.available} Libres`}
+        label={`${summary.available} Disponibles`}
         onClick={() => toggle('AVAILABLE')}
       />
       <Chip
         clickable
+        size='small'
         color='error'
         variant={selectedStatus === 'OCCUPIED' ? 'filled' : 'tonal'}
-        label={`${summary.occupied} Ocupadas`}
+        label={`${summary.occupied} Ocupados`}
         onClick={() => toggle('OCCUPIED')}
       />
       <Chip
         clickable
-        color='warning'
+        size='small'
+        color='info'
         variant={selectedStatus === 'CLEANING' ? 'filled' : 'tonal'}
         label={`${summary.cleaning} Limpieza`}
         onClick={() => toggle('CLEANING')}
       />
       <Chip
         clickable
-        color='secondary'
+        size='small'
+        color='warning'
         variant={selectedStatus === 'MAINTENANCE' ? 'filled' : 'tonal'}
         label={`${summary.maintenance} Mantenimiento`}
         onClick={() => toggle('MAINTENANCE')}

@@ -1,13 +1,9 @@
 'use client'
 
-import Chip from '@mui/material/Chip'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import { alpha, useTheme } from '@mui/material/styles'
 
 import type { RackRoom, RackStatus } from '@/types/apps/frontDeskTypes'
-import { accountTone, formatFrontDeskDate as formatDate } from '@/types/apps/frontDeskTypes'
-import { formatRoomPrice as formatPrice } from '@/types/apps/roomsTypes'
+import { RACK_STATUS_LABELS } from '@/types/apps/frontDeskTypes'
 import { ROOM_PHOTO_THUMB, cloudinaryTransformedUrl } from '@/libs/cloudinary'
 
 type ViewMode = 'compact' | 'photos'
@@ -19,136 +15,171 @@ type Props = {
   onOpenPhoto: (room: RackRoom) => void
 }
 
-const STATUS_COLORS: Record<RackStatus, { light: string; dark: string; border: string }> = {
-  AVAILABLE: { light: '#E8F5E9', dark: '#1B5E20', border: '#2E7D32' },
-  OCCUPIED: { light: '#FFEBEE', dark: '#7F1D1D', border: '#C62828' },
-  CLEANING: { light: '#FFF8E1', dark: '#7A5800', border: '#F9A825' },
-  MAINTENANCE: { light: '#EEEEEE', dark: '#424242', border: '#616161' }
+const STATUS_COLORS: Record<RackStatus, { fill: string; ink: string; line: string }> = {
+  AVAILABLE: {
+    fill: 'var(--mui-palette-success-lightOpacity)',
+    ink: 'var(--mui-palette-success-main)',
+    line: 'var(--mui-palette-success-mainOpacity)'
+  },
+  OCCUPIED: {
+    fill: 'var(--mui-palette-error-lightOpacity)',
+    ink: 'var(--mui-palette-error-main)',
+    line: 'var(--mui-palette-error-mainOpacity)'
+  },
+  CLEANING: {
+    fill: 'var(--mui-palette-info-lightOpacity)',
+    ink: 'var(--mui-palette-info-main)',
+    line: 'var(--mui-palette-info-mainOpacity)'
+  },
+  MAINTENANCE: {
+    fill: 'var(--mui-palette-warning-lightOpacity)',
+    ink: 'var(--mui-palette-warning-main)',
+    line: 'var(--mui-palette-warning-mainOpacity)'
+  }
+}
+
+function HeaderButton({
+  icon,
+  label,
+  ink,
+  round,
+  onClick
+}: {
+  icon: string
+  label: string
+  ink: string
+  round?: boolean
+  onClick: (event: React.MouseEvent<HTMLElement>) => void
+}) {
+  return (
+    <button
+      type='button'
+      aria-label={label}
+      title={label}
+      onClick={event => {
+        event.stopPropagation()
+        onClick(event)
+      }}
+      className={`inline-flex items-center justify-center bg-transparent ${round ? 'rounded-full' : 'rounded'}`}
+      style={{ width: 22, height: 22, border: `1px solid ${ink}`, color: ink }}
+    >
+      <i className={`${icon} text-sm leading-none`} />
+    </button>
+  )
 }
 
 const RoomCard = ({ room, view, onOpenMenu, onOpenPhoto }: Props) => {
-  const theme = useTheme()
   const palette = STATUS_COLORS[room.displayStatus] ?? STATUS_COLORS.AVAILABLE
-  const isDark = theme.palette.mode === 'dark'
-  const stay = room.currentStay
-  const billed = stay ?? room.arrival
   const compact = view === 'compact'
-  const tone = billed ? accountTone(billed.reservationBalance, billed.reservationPaidAmount) : null
+  const holder = room.displayStatus === 'OCCUPIED' ? room.currentStay?.guestName : null
+  const statusLabel = RACK_STATUS_LABELS[room.displayStatus]
+  const photoUrl = room.photoUrl ? cloudinaryTransformedUrl(room.photoUrl, ROOM_PHOTO_THUMB) || room.photoUrl : null
 
-  const paymentChip =
-    tone === 'due' ? (
-      <Chip size='small' label={`Debe ${formatPrice(billed?.reservationBalance)}`} sx={{ bgcolor: '#B71C1C', color: 'white' }} />
-    ) : tone === 'partial' ? (
-      <Chip size='small' label={`Falta ${formatPrice(billed?.reservationBalance)}`} sx={{ bgcolor: '#EF6C00', color: 'white' }} />
-    ) : tone === 'paid' ? (
-      <Chip size='small' label='Pagada' sx={{ bgcolor: '#2E7D32', color: 'white' }} />
-    ) : tone === 'credit' ? (
-      <Chip
-        size='small'
-        label={`A favor ${formatPrice(Math.abs(billed?.reservationBalance ?? 0))}`}
-        sx={{ bgcolor: '#01579B', color: 'white' }}
-      />
-    ) : null
-
-  const photo = (
-    <button
-      type='button'
-      className={`overflow-hidden bg-backgroundPaper flex items-center justify-center ${compact ? 'rounded-full is-11 bs-11' : 'rounded-md is-full'}`}
-      style={compact ? undefined : { height: 200 }}
-      onClick={event => {
-        event.stopPropagation()
-        onOpenPhoto(room)
-      }}
-    >
-      {room.photoUrl ? (
-        <img
-          src={cloudinaryTransformedUrl(room.photoUrl, ROOM_PHOTO_THUMB) || room.photoUrl}
-          alt={`Habitación ${room.number}`}
-          loading='lazy'
-          className='is-full bs-full object-cover'
-        />
-      ) : (
-        <div className='flex flex-col items-center justify-center gap-1 pli-2'>
-          <i className='ri-hotel-bed-line text-2xl' />
-          {!compact ? (
-            <Typography variant='caption' color='text.secondary' className='text-center'>
-              {room.roomTypeName}
-            </Typography>
-          ) : null}
-        </div>
-      )}
-    </button>
-  )
+  const openMenu = (event: React.MouseEvent<HTMLElement>) => onOpenMenu(event, room)
 
   return (
     <div
       role='button'
       tabIndex={0}
-      onClick={event => onOpenMenu(event, room)}
+      onClick={openMenu}
       onKeyDown={event => {
         if (event.key === 'Enter' || event.key === ' ') {
-          onOpenMenu(event as unknown as React.MouseEvent<HTMLElement>, room)
+          openMenu(event as unknown as React.MouseEvent<HTMLElement>)
         }
       }}
-      className='cursor-pointer rounded-md flex flex-col gap-1.5 overflow-hidden'
+      className='cursor-pointer rounded-md flex flex-col overflow-hidden'
       style={{
-        width: compact ? 136 : 280,
-        backgroundColor: isDark ? alpha(palette.border, 0.22) : palette.light,
-        border: `1px solid ${palette.border}`,
-        color: isDark ? theme.palette.text.primary : palette.border,
-        padding: compact ? 10 : 12
+        width: compact ? 148 : 220,
+        minHeight: photoUrl ? undefined : compact ? 118 : 168,
+        backgroundColor: photoUrl ? undefined : palette.fill,
+        color: photoUrl ? undefined : palette.ink,
+        border: `1px solid ${palette.ink}`
       }}
     >
-      <div className={`flex ${compact ? 'items-start gap-2' : 'flex-col gap-2'}`}>
-        {photo}
-        <div className='flex-1 min-is-0'>
-          <div className='flex items-start justify-between gap-1'>
-            <Typography variant={compact ? 'h5' : 'h4'} className='font-semibold leading-none'>
+      {photoUrl ? (
+        <button
+          type='button'
+          className='relative overflow-hidden bg-backgroundPaper'
+          style={{ height: compact ? 96 : 150 }}
+          onClick={event => {
+            event.stopPropagation()
+            onOpenPhoto(room)
+          }}
+        >
+          <img src={photoUrl} alt={`Habitación ${room.number}`} loading='lazy' className='is-full bs-full object-cover' />
+          <Typography
+            variant={compact ? 'h6' : 'h5'}
+            className='absolute font-semibold leading-none text-white'
+            style={{ top: 8, left: 8, textShadow: '0 1px 3px rgba(0,0,0,0.85)' }}
+          >
+            {room.number}
+          </Typography>
+          {holder ? (
+            <Typography
+              variant='body2'
+              className='absolute inset-0 flex items-center justify-center px-3 text-center font-medium uppercase text-white'
+              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.85)' }}
+            >
+              {holder}
+            </Typography>
+          ) : null}
+        </button>
+      ) : (
+        <div className='flex flex-1 flex-col'>
+          <div
+            className='flex items-center justify-between gap-1'
+            style={{ padding: compact ? '8px 8px' : '10px 10px' }}
+          >
+            <Typography variant={compact ? 'h6' : 'h5'} className='font-semibold leading-none'>
               {room.number}
             </Typography>
-            <Typography variant='body2' className='font-medium whitespace-nowrap'>
-              {formatPrice(room.effectivePrice)}
-            </Typography>
+            <div className='flex items-center gap-1'>
+              {room.displayStatus === 'OCCUPIED' ? (
+                <>
+                  <HeaderButton icon='ri-add-line' label='Acciones' ink={palette.ink} onClick={openMenu} />
+                  <HeaderButton icon='ri-arrow-right-s-line' label='Acciones' ink={palette.ink} onClick={openMenu} />
+                </>
+              ) : null}
+              {room.displayStatus === 'AVAILABLE' ? (
+                <HeaderButton icon='ri-add-line' label='Acciones' ink={palette.ink} round onClick={openMenu} />
+              ) : null}
+              {room.displayStatus === 'CLEANING' ? (
+                <HeaderButton icon='ri-pencil-line' label='Cambiar estado' ink={palette.ink} onClick={openMenu} />
+              ) : null}
+            </div>
           </div>
-          <Typography variant='caption' className='block truncate'>
-            {room.roomTypeName}
-          </Typography>
+          <div style={{ height: 1, backgroundColor: palette.line }} />
+          <div className='flex flex-1 items-center justify-center gap-1.5 px-2 py-2 text-center'>
+            {holder ? (
+              <>
+                <i className='ri-user-line shrink-0 text-base leading-none' />
+                <Typography variant={compact ? 'body2' : 'body1'} className='font-medium uppercase'>
+                  {holder}
+                </Typography>
+              </>
+            ) : (
+              <>
+                <i className='ri-hotel-bed-line shrink-0 text-base leading-none' />
+                <Typography variant={compact ? 'body2' : 'body1'} className='font-medium'>
+                  {room.number}
+                </Typography>
+              </>
+            )}
+          </div>
+          <div style={{ height: 1, backgroundColor: palette.line }} />
         </div>
-      </div>
-
-      {stay?.guestName ? (
-        <Typography variant='body2' className='truncate'>
-          <i className='ri-user-line text-base mie-1' />
-          {stay.guestName}
-        </Typography>
-      ) : null}
-
-      {stay ? (
-        <Typography variant='caption'>Sale: {formatDate(stay.checkOutDate)}</Typography>
-      ) : null}
-
-      {room.arrival ? (
-        <Typography variant='caption' className='truncate'>
-          Llega hoy · {room.arrival.guestName || room.arrival.reservationCode}
-        </Typography>
-      ) : null}
-
-      <div className='flex flex-wrap gap-1'>
-        {room.arrival ? <Chip size='small' label='Llega hoy' sx={{ bgcolor: '#1565C0', color: 'white' }} /> : null}
-        {room.departureDue ? <Chip size='small' label='Sale hoy' sx={{ bgcolor: '#EF6C00', color: 'white' }} /> : null}
-        {room.arrival?.arrivalOverdue ? (
-          <Chip size='small' label='Llegada atrasada' sx={{ bgcolor: '#6A1B9A', color: 'white' }} />
-        ) : null}
-        {stay?.departureOverdue ? (
-          <Chip size='small' label='Salida vencida' sx={{ bgcolor: '#6A1B9A', color: 'white' }} />
-        ) : null}
-        {paymentChip}
-        {room.notes ? (
-          <Tooltip title={room.notes}>
-            <Chip size='small' label={<i className='ri-sticky-note-line' />} variant='outlined' />
-          </Tooltip>
-        ) : null}
-      </div>
+      )}
+      <Typography
+        variant={compact ? 'caption' : 'body2'}
+        className='block text-center font-semibold uppercase'
+        style={
+          photoUrl
+            ? { backgroundColor: palette.fill, color: palette.ink, padding: compact ? '6px 8px' : '8px 10px' }
+            : { color: palette.ink, padding: compact ? '6px 8px' : '8px 10px' }
+        }
+      >
+        {statusLabel}
+      </Typography>
     </div>
   )
 }

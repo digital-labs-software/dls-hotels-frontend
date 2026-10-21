@@ -106,12 +106,6 @@ const AccountsTable = () => {
   return (
     <>
       <div className='flex flex-col gap-4'>
-        <div>
-          <Typography variant='h4'>Cuentas</Typography>
-          <Typography variant='body2' color='text.secondary'>
-            Quién está en el hotel en esta fecha. Puede cobrar toda la reserva o una habitación. La boleta se emite en Pagada.
-          </Typography>
-        </div>
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <div className='flex flex-wrap items-center gap-2'>
             {FILTERS.map(item => (
