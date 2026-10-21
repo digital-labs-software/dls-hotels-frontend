@@ -14,26 +14,45 @@ import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import Typography from '@mui/material/Typography'
 
 import { toast } from 'react-toastify'
 
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
-import type { PaymentMethod } from '@/types/apps/reservationsTypes'
+import type { PaymentMethod, ReservationFolios } from '@/types/apps/reservationsTypes'
 import { PAYMENT_LABELS, PAYMENT_METHODS } from '@/types/apps/reservationsTypes'
 import { CASH_REQUIRED_MESSAGE, useCashSessionOpen } from '@/hooks/useCashSessionOpen'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
+
+type Kind = 'charge' | 'refund'
 
 type Props = {
   open: boolean
   propertyId: number
   reservationUuid: string | null
   balance?: number
+  paidAmount?: number
+  cancelled?: boolean
   onClose: () => void
   onSuccess: () => void
 }
 
-const ReservationPaymentDialog = ({ open, propertyId, reservationUuid, balance = 0, onClose, onSuccess }: Props) => {
+const ReservationPaymentDialog = ({
+  open,
+  propertyId,
+  reservationUuid,
+  balance = 0,
+  paidAmount = 0,
+  cancelled = false,
+  onClose,
+  onSuccess
+}: Props) => {
   const cashOpen = useCashSessionOpen(propertyId, open)
+  const [kind, setKind] = useState<Kind>('charge')
+  const [target, setTarget] = useState('all')
+  const [folios, setFolios] = useState<ReservationFolios | null>(null)
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<PaymentMethod>('YAPE')
   const [reference, setReference] = useState('')
@@ -45,18 +64,63 @@ const ReservationPaymentDialog = ({ open, propertyId, reservationUuid, balance =
       return
     }
 
-    setAmount(balance > 0 ? String(balance) : '')
+    const nextKind: Kind = cancelled || balance < 0 ? 'refund' : 'charge'
+
+    setKind(nextKind)
+    setTarget('all')
+    setFolios(null)
     setMethod('YAPE')
     setReference('')
     setNotes('')
-  }, [balance, open])
+  }, [balance, cancelled, open, paidAmount])
+
+  useEffect(() => {
+    if (!open || !reservationUuid) return
+
+    let cancelledRequest = false
+
+    reservationsApi
+      .roomFolios(propertyId, reservationUuid)
+      .then(result => {
+        if (!cancelledRequest) setFolios(result)
+      })
+      .catch(() => {
+        if (!cancelledRequest) setFolios(null)
+      })
+
+    return () => {
+      cancelledRequest = true
+    }
+  }, [open, propertyId, reservationUuid])
+
+  useEffect(() => {
+    if (!open) return
+
+    const room = folios?.rooms.find(item => item.uuid === target)
+    const several = (folios?.rooms.length ?? 0) > 1
+    const whole = !several || target === 'all'
+    const next =
+      kind === 'refund'
+        ? whole
+          ? (folios?.unassignedPaid ?? paidAmount)
+          : (room?.paid ?? 0)
+        : whole
+          ? (folios?.totalDue ?? Math.max(balance, 0))
+          : (room?.balance ?? 0)
+
+    setAmount(next > 0 ? String(next) : '')
+  }, [balance, folios, kind, open, paidAmount, target])
+
+  const handleKind = (next: Kind) => {
+    setKind(next)
+  }
 
   const handleSubmit = async () => {
     if (!reservationUuid) {
       return
     }
 
-    const parsed = Number(amount)
+    const parsed = Math.abs(Number(amount))
 
     if (!Number.isFinite(parsed) || parsed === 0) {
       toast.error('El monto no puede ser 0.')
@@ -70,16 +134,19 @@ const ReservationPaymentDialog = ({ open, propertyId, reservationUuid, balance =
       return
     }
 
+    const signed = kind === 'refund' ? -parsed : parsed
+
     setSaving(true)
 
     try {
       await reservationsApi.addPayment(propertyId, reservationUuid, {
-        amount: parsed,
+        amount: signed,
         method,
         reference: reference.trim() || null,
-        notes: notes.trim() || null
+        notes: notes.trim() || null,
+        reservationRoomUuid: (folios?.rooms.length ?? 0) > 1 && target !== 'all' ? target : null
       })
-      toast.success(parsed < 0 ? 'Devolución registrada.' : 'Pago registrado.')
+      toast.success(kind === 'refund' ? 'Devolución registrada.' : 'Pago registrado.')
       onSuccess()
       onClose()
     } catch (error) {
@@ -91,14 +158,53 @@ const ReservationPaymentDialog = ({ open, propertyId, reservationUuid, balance =
 
   return (
     <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='xs'>
-      <DialogTitle>Registrar pago</DialogTitle>
+      <DialogTitle>{kind === 'refund' ? 'Registrar devolución' : 'Registrar pago'}</DialogTitle>
       <DialogContent className='flex flex-col gap-4 pt-4'>
         {cashOpen === false ? <Alert severity='warning'>{CASH_REQUIRED_MESSAGE}</Alert> : null}
+        <Typography variant='body2' color='text.secondary'>
+          Pagado {formatRoomPrice(paidAmount)} · saldo {formatRoomPrice(balance)}
+        </Typography>
+        {cancelled ? null : (
+          <ToggleButtonGroup
+            exclusive
+            fullWidth
+            size='small'
+            value={kind}
+            onChange={(_, next) => {
+              if (next) handleKind(next)
+            }}
+          >
+            <ToggleButton value='charge'>Cobro</ToggleButton>
+            <ToggleButton value='refund'>Devolución</ToggleButton>
+          </ToggleButtonGroup>
+        )}
+        {(folios?.rooms.length ?? 0) > 1 ? (
+          <FormControl fullWidth>
+            <InputLabel id='res-payment-target'>{kind === 'refund' ? 'Qué se devuelve' : 'Qué se cobra'}</InputLabel>
+            <Select
+              labelId='res-payment-target'
+              label={kind === 'refund' ? 'Qué se devuelve' : 'Qué se cobra'}
+              value={target}
+              onChange={event => setTarget(event.target.value)}
+            >
+              <MenuItem value='all'>Toda la reserva</MenuItem>
+              {folios?.rooms.map(room => (
+                <MenuItem key={room.uuid} value={room.uuid}>
+                  {`Hab. ${room.roomNumber || 's/n'}${room.holderName ? ` · ${room.holderName}` : ''} · S/ ${(kind === 'refund' ? room.paid : room.balance).toFixed(2)}`}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ) : null}
         <TextField
           label='Monto'
           value={amount}
-          onChange={e => setAmount(e.target.value)}
-          helperText={`Saldo actual: ${formatRoomPrice(balance)}. Un monto negativo es una devolución.`}
+          onChange={e => setAmount(e.target.value.replace('-', ''))}
+          helperText={
+            kind === 'refund'
+              ? `Puede devolver hasta ${formatRoomPrice(paidAmount)}.`
+              : `Saldo por cobrar: ${formatRoomPrice(Math.max(balance, 0))}.`
+          }
         />
         <FormControl fullWidth>
           <InputLabel id='res-payment-method'>Método de pago</InputLabel>

@@ -39,6 +39,7 @@ import { formatEinvoiceMoney } from './einvoiceLabels'
 type LineItem = {
   key: string
   reservationRoomUuid?: string
+  extras?: boolean
   description: string
   quantity: string
   unitPrice: string
@@ -87,6 +88,8 @@ const IssueInvoicePage = () => {
   const [manualDocument, setManualDocument] = useState('')
   const [items, setItems] = useState<LineItem[]>([emptyItem()])
   const [payments, setPayments] = useState<PaymentRow[]>([])
+  const [billAll, setBillAll] = useState(true)
+  const [pickedRoomIds, setPickedRoomIds] = useState<string[]>([])
 
   const loadBilling = useCallback(async () => {
     if (!reservationUuid) {
@@ -102,26 +105,54 @@ const IssueInvoicePage = () => {
 
       const company = next.customers.find(item => item.kind === 'company')
       const guest = next.customers.find(item => item.kind === 'guest')
+      const pendingRooms = next.rooms.filter(room => room.pending > 0 || room.extrasPending > 0)
+      const onlyHolder = pendingRooms.length === 1 ? pendingRooms[0].holder : null
 
-      if (company) {
-        setCustomerKind('company')
-        setCompanyUuid(company.uuid)
-        setCustomerEmail(company.email || '')
+      setBillAll(true)
+      setPickedRoomIds([])
+
+      if (onlyHolder) {
+        setCustomerKind('guest')
+        setGuestUuid(onlyHolder.uuid)
+        setCustomerEmail(onlyHolder.email || '')
       } else if (guest) {
         setCustomerKind('guest')
         setGuestUuid(guest.uuid)
         setCustomerEmail(guest.email || '')
+      } else if (company) {
+        setCustomerKind('company')
+        setCompanyUuid(company.uuid)
+        setCustomerEmail(company.email || '')
       }
 
       setItems(
-        next.rooms.map(room => ({
-          key: room.reservationRoomUuid,
-          reservationRoomUuid: room.reservationRoomUuid,
-          description: room.description,
-          quantity: String(room.quantity || 1),
-          unitPrice: String(room.unitPrice || room.pending || 0),
-          selected: room.pending > 0
-        }))
+        next.rooms.flatMap(room => {
+          const selected = room.pending > 0 || room.extrasPending > 0
+          const lines: LineItem[] = [
+            {
+              key: room.reservationRoomUuid,
+              reservationRoomUuid: room.reservationRoomUuid,
+              description: room.description,
+              quantity: String(room.quantity || 1),
+              unitPrice: String(room.pending || room.unitPrice || 0),
+              selected
+            }
+          ]
+
+          if (room.extrasPending > 0) {
+            lines.push({
+              key: `${room.reservationRoomUuid}-extras`,
+              reservationRoomUuid: room.reservationRoomUuid,
+              extras: true,
+              description: `Consumos hab. ${room.roomNumber || 's/n'}`,
+              quantity: '1',
+              unitPrice: String(room.extrasPending),
+              selected
+            })
+          }
+
+          return lines
+        })
       )
       setPayments(
         next.payments
@@ -156,6 +187,102 @@ const IssueInvoicePage = () => {
       loadBilling()
     }
   }, [canIssueInvoices, loadBilling, loaded, locale, reservationUuid, router, status])
+
+  const booker = billing?.customers.find(item => item.kind === 'guest') ?? null
+
+  const useBooker = () => {
+    if (!booker) return
+
+    setCustomerKind('guest')
+    setGuestUuid(booker.uuid)
+    setCustomerEmail(booker.email || '')
+  }
+
+  const useHolder = (uuid: string) => {
+    const holder = billing?.rooms.find(room => room.reservationRoomUuid === uuid)?.holder
+
+    if (!holder) {
+      useBooker()
+
+      return
+    }
+
+    setCustomerKind('guest')
+    setGuestUuid(holder.uuid)
+    setCustomerEmail(holder.email || '')
+  }
+
+  const pendingRoomIds = billing
+    ? billing.rooms.filter(room => room.pending > 0 || room.extrasPending > 0).map(room => room.reservationRoomUuid)
+    : []
+
+  const selectRooms = (ids: string[]) => {
+    if (!billing) return
+
+    const unique = ids.filter((id, index) => ids.indexOf(id) === index)
+    const all = pendingRoomIds.length > 0 && pendingRoomIds.every(id => unique.includes(id)) && unique.every(id => pendingRoomIds.includes(id))
+
+    setBillAll(all)
+    setPickedRoomIds(all ? [] : unique)
+    setItems(current =>
+      current.map(item =>
+        item.reservationRoomUuid ? { ...item, selected: all || unique.includes(item.reservationRoomUuid) } : item
+      )
+    )
+
+    if (customerKind === 'company' || customerKind === 'manual') return
+
+    if (all || unique.length === 0) useBooker()
+    else useHolder(unique[0])
+  }
+
+  const toggleRoom = (uuid: string) => {
+    if (!billing) return
+
+    if (billAll) {
+      if (!pendingRoomIds.includes(uuid)) {
+        selectRooms([...pendingRoomIds, uuid])
+
+        return
+      }
+
+      selectRooms(pendingRoomIds.filter(id => id !== uuid))
+
+      return
+    }
+
+    const next = pickedRoomIds.includes(uuid) ? pickedRoomIds.filter(id => id !== uuid) : [...pickedRoomIds, uuid]
+
+    selectRooms(next)
+  }
+
+  const guestChoices = useMemo(() => {
+    if (!billing) return []
+
+    const chosen = billAll ? billing.rooms : billing.rooms.filter(room => pickedRoomIds.includes(room.reservationRoomUuid))
+    const options: { uuid: string; label: string }[] = []
+    const seen = new Set<string>()
+    const add = (uuid: string, label: string) => {
+      if (!uuid || seen.has(uuid)) return
+
+      seen.add(uuid)
+      options.push({ uuid, label })
+    }
+
+    if (booker && (billAll || !chosen.some(room => room.holder?.uuid === booker.uuid))) {
+      add(booker.uuid, `${booker.name} · quien reservó`)
+    }
+
+    chosen.forEach(room => {
+      if (room.holder) add(room.holder.uuid, `${room.holder.name} · hab. ${room.roomNumber || 's/n'}`)
+    })
+
+    billing.rooms.forEach(room => {
+      if (room.holder) add(room.holder.uuid, `${room.holder.name} · hab. ${room.roomNumber || 's/n'}`)
+    })
+
+    return options
+  }, [billAll, billing, booker, pickedRoomIds])
 
   const selectedItems = useMemo(() => items.filter(item => item.selected && item.description.trim()), [items])
   const selectedTotal = selectedItems.reduce(
@@ -266,6 +393,40 @@ const IssueInvoicePage = () => {
             <Card className='mbe-6'>
               <CardHeader title='Cliente' />
               <CardContent className='flex flex-col gap-4'>
+                {pendingRoomIds.length > 1 ? (
+                  <div className='flex flex-col gap-2'>
+                    <Typography variant='subtitle2'>Qué se factura</Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      Toda la reserva sale a nombre de quien reservó. Si marca habitaciones, sale a nombre del titular de la
+                      primera que marque. Puede cambiarlo a otro titular, a una empresa o a otro nombre.
+                    </Typography>
+                    <div className='flex flex-wrap gap-2'>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={billAll}
+                            onChange={() => selectRooms(billAll ? [] : pendingRoomIds)}
+                          />
+                        }
+                        label='Toda la reserva'
+                      />
+                      {billing?.rooms
+                        .filter(room => pendingRoomIds.includes(room.reservationRoomUuid))
+                        .map(room => (
+                          <FormControlLabel
+                            key={room.reservationRoomUuid}
+                            control={
+                              <Checkbox
+                                checked={billAll || pickedRoomIds.includes(room.reservationRoomUuid)}
+                                onChange={() => toggleRoom(room.reservationRoomUuid)}
+                              />
+                            }
+                            label={`Hab. ${room.roomNumber || 's/n'}${room.holder?.name ? ` · ${room.holder.name}` : ''}`}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                ) : null}
                 <RadioGroup
                   row
                   value={customerKind}
@@ -306,13 +467,22 @@ const IssueInvoicePage = () => {
                         labelId='guest-uuid'
                         label='Huésped'
                         value={guestUuid}
-                        onChange={event => setGuestUuid(event.target.value)}
+                        onChange={event => {
+                          const uuid = event.target.value
+                          const match =
+                            billing.customers.find(item => item.uuid === uuid) ||
+                            billing.rooms.find(room => room.holder?.uuid === uuid)?.holder
+
+                          setGuestUuid(uuid)
+                          setCustomerEmail(match?.email || '')
+                        }}
                       >
-                        {billing.customers
-                          .filter(item => item.kind === 'guest')
-                          .map(item => (
+                        {(guestChoices.length > 0 ? guestChoices : billing.customers.filter(item => item.kind === 'guest').map(item => ({
+                          uuid: item.uuid,
+                          label: `${item.name}${item.documentNumber ? ` · ${item.documentNumber}` : ''}`
+                        }))).map(item => (
                             <MenuItem key={item.uuid} value={item.uuid}>
-                              {item.name} {item.documentNumber ? `· ${item.documentNumber}` : ''}
+                              {item.label}
                             </MenuItem>
                           ))}
                       </Select>
@@ -347,6 +517,9 @@ const IssueInvoicePage = () => {
                 }
               />
               <CardContent className='flex flex-col gap-4'>
+                {reservationUuid && items.length === 0 ? (
+                  <Alert severity='info'>Esta reserva no tiene hospedaje por facturar.</Alert>
+                ) : null}
                 {items.map((item, index) => (
                   <div key={item.key} className='flex flex-col gap-3 p-4 rounded border border-divider'>
                     <div className='flex items-center justify-between gap-3'>
@@ -354,14 +527,27 @@ const IssueInvoicePage = () => {
                         control={
                           <Checkbox
                             checked={item.selected}
-                            onChange={event =>
+                            disabled={Boolean(item.extras)}
+                            onChange={() => {
+                              if (item.reservationRoomUuid && billing) {
+                                toggleRoom(item.reservationRoomUuid)
+
+                                return
+                              }
+
                               setItems(current =>
-                                current.map(row => (row.key === item.key ? { ...row, selected: event.target.checked } : row))
+                                current.map(row => (row.key === item.key ? { ...row, selected: !row.selected } : row))
                               )
-                            }
+                            }}
                           />
                         }
-                        label={item.reservationRoomUuid ? `Habitación ${billing?.rooms[index]?.roomNumber || index + 1}` : `Ítem ${index + 1}`}
+                        label={
+                          item.extras
+                            ? 'Consumos de esa habitación'
+                            : item.reservationRoomUuid
+                              ? `Habitación ${billing?.rooms.find(room => room.reservationRoomUuid === item.reservationRoomUuid)?.roomNumber || index + 1}`
+                              : `Ítem ${index + 1}`
+                        }
                       />
                       {!reservationUuid ? (
                         <IconButton
@@ -503,10 +689,18 @@ const IssueInvoicePage = () => {
             ) : null}
 
             <div className='flex flex-col gap-3'>
-              <Button variant='outlined' disabled={saving} onClick={() => void submit(true)}>
+              <Button
+                variant='outlined'
+                disabled={saving || (Boolean(reservationUuid) && items.length === 0)}
+                onClick={() => void submit(true)}
+              >
                 Guardar borrador
               </Button>
-              <Button variant='contained' disabled={saving} onClick={() => void submit(false)}>
+              <Button
+                variant='contained'
+                disabled={saving || (Boolean(reservationUuid) && items.length === 0)}
+                onClick={() => void submit(false)}
+              >
                 {saving ? <CircularProgress size={20} color='inherit' /> : 'Emitir comprobante'}
               </Button>
             </div>

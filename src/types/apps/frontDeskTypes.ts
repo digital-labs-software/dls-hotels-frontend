@@ -309,7 +309,7 @@ export const reservationBalanceTone = (balance: number): BalanceTone => {
 
 export type AccountTone = 'due' | 'partial' | 'paid' | 'credit'
 
-/** Debe: nada pagado. Adelantó: ya pagó y falta. Pagada: saldo cero. A favor: pagó de más. */
+/** Debe: nada pagado y falta todo. Adelantó: ya pagó y falta. Pagada: saldo cero. A favor: pagó de más. En Cuentas, Debe y Adelantó van juntos en Por cobrar. */
 export const accountTone = (balance: number, paidAmount: number): AccountTone => {
   if (balance < 0) {
     return 'credit'

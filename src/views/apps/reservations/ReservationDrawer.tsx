@@ -2,9 +2,6 @@
 
 import { useEffect, useState } from 'react'
 
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
-
 import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
@@ -37,10 +34,7 @@ import AssignReservationRoomDialog from './AssignReservationRoomDialog'
 import CompanyPicker from './CompanyPicker'
 import CreateGuestDialog from './CreateGuestDialog'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
-import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
-import { getLocalizedUrl } from '@/utils/i18n'
 import DateField from '@/components/date-picker/DateField'
-import type { Locale } from '@configs/i18n'
 
 type Props = {
   open: boolean
@@ -50,7 +44,8 @@ type Props = {
   highlightAssign?: boolean
   onClose: () => void
   onChanged: () => void
-  onPay: (uuid: string, balance: number) => void
+  onPay: (uuid: string, balance: number, paidAmount: number, cancelled: boolean) => void
+  paymentsVersion?: number
 }
 
 const personLabel = (guest: { firstName: string; lastName: string }) =>
@@ -85,10 +80,9 @@ const ReservationDrawer = ({
   highlightAssign,
   onClose,
   onChanged,
-  onPay
+  onPay,
+  paymentsVersion = 0
 }: Props) => {
-  const { lang: locale } = useParams()
-  const { canIssueInvoices } = useSubscriptionAccess()
   const [reservation, setReservation] = useState<Reservation | null>(null)
   const [payments, setPayments] = useState<FrontDeskPayment[]>([])
   const [loading, setLoading] = useState(false)
@@ -150,7 +144,7 @@ const ReservationDrawer = ({
       load()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, reservationUuid])
+  }, [open, reservationUuid, paymentsVersion])
 
   const afterAction = async (message: string) => {
     toast.success(message)
@@ -554,7 +548,7 @@ const ReservationDrawer = ({
                       {reservation.balance < 0
                         ? `saldo a favor ${formatRoomPrice(Math.abs(reservation.balance))}`
                         : `saldo ${formatRoomPrice(reservation.balance)} · pagado ${formatRoomPrice(reservation.paidAmount)}`}
-                      . Lo pagado se corrige con Registrar pago.
+                      . Lo pagado se corrige con Pago o devolución.
                     </Typography>
                     <div className='flex justify-end gap-2'>
                       <Button variant='outlined' color='secondary' disabled={saving} onClick={cancelEdit}>
@@ -656,7 +650,8 @@ const ReservationDrawer = ({
                 ) : (
                   payments.map(payment => (
                     <Typography key={payment.uuid} variant='body2'>
-                      {formatRoomPrice(payment.amount)} · {PAYMENT_LABELS[payment.method]}
+                      {payment.amount < 0 ? 'Devolución · ' : ''}
+                      {formatRoomPrice(Math.abs(payment.amount))} · {PAYMENT_LABELS[payment.method]}
                       {payment.reference ? ` · ${payment.reference}` : ''}
                     </Typography>
                   ))
@@ -669,18 +664,14 @@ const ReservationDrawer = ({
                     Confirmar
                   </Button>
                 ) : null}
-                <Button variant='outlined' onClick={() => onPay(reservation.uuid, reservation.balance)}>
-                  Registrar pago
+                <Button
+                  variant='outlined'
+                  onClick={() =>
+                    onPay(reservation.uuid, reservation.balance, reservation.paidAmount, reservation.status === 'CANCELLED')
+                  }
+                >
+                  Pago o devolución
                 </Button>
-                {canIssueInvoices ? (
-                  <Button
-                    variant='outlined'
-                    component={Link}
-                    href={getLocalizedUrl(`/apps/invoicing/issue?reservation=${reservation.uuid}`, locale as Locale)}
-                  >
-                    Facturar
-                  </Button>
-                ) : null}
                 {canCancel ? (
                   <Button color='error' variant='outlined' onClick={() => setCancelOpen(true)}>
                     Cancelar reserva

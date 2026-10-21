@@ -105,6 +105,9 @@ const ReservationsPage = () => {
   const [payOpen, setPayOpen] = useState(false)
   const [payUuid, setPayUuid] = useState<string | null>(null)
   const [payBalance, setPayBalance] = useState(0)
+  const [payPaid, setPayPaid] = useState(0)
+  const [payCancelled, setPayCancelled] = useState(false)
+  const [paymentsVersion, setPaymentsVersion] = useState(0)
   const [unassignedOpen, setUnassignedOpen] = useState(false)
   const [unassigned, setUnassigned] = useState<PlanningBooking[]>([])
   const [listKey, setListKey] = useState(0)
@@ -308,9 +311,12 @@ const ReservationsPage = () => {
             setListKey(current => current + 1)
             fetchPlanning()
           }}
-          onPay={(uuid, balance) => {
+          paymentsVersion={paymentsVersion}
+          onPay={(uuid, balance, paidAmount, cancelled) => {
             setPayUuid(uuid)
             setPayBalance(balance)
+            setPayPaid(paidAmount)
+            setPayCancelled(cancelled)
             setPayOpen(true)
           }}
         />
@@ -546,8 +552,11 @@ const ReservationsPage = () => {
         propertyId={propertyId}
         reservationUuid={payUuid}
         balance={payBalance}
+        paidAmount={payPaid}
+        cancelled={payCancelled}
         onClose={() => setPayOpen(false)}
         onSuccess={() => {
+          setPaymentsVersion(current => current + 1)
           setListKey(current => current + 1)
           fetchPlanning()
         }}

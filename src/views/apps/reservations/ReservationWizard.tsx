@@ -16,7 +16,6 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
@@ -27,7 +26,6 @@ import Select from '@mui/material/Select'
 import Step from '@mui/material/Step'
 import StepLabel from '@mui/material/StepLabel'
 import Stepper from '@mui/material/Stepper'
-import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -67,6 +65,22 @@ import GuestPicker from '@views/apps/front-desk/GuestPicker'
 import CompanyPicker from './CompanyPicker'
 import CreateCompanyDialog from './CreateCompanyDialog'
 import CreateGuestDialog from './CreateGuestDialog'
+
+/** Un cero inicial no se queda pegado: escribir 5 sobre 0 da 5, no 05. */
+const cleanSolesInput = (raw: string) => {
+  const normalized = raw.replace(',', '.').replace(/[^\d.]/g, '')
+  const dot = normalized.indexOf('.')
+  const whole = (dot === -1 ? normalized : normalized.slice(0, dot)).replace(/^0+(?=\d)/, '')
+  const decimals = dot === -1 ? '' : normalized.slice(dot + 1).replace(/\./g, '').slice(0, 2)
+
+  if (dot === -1) return whole
+
+  return `${whole || '0'}.${decimals}`
+}
+
+const selectIfZero = (event: { target: { value: string; select: () => void } }) => {
+  if (Number(event.target.value) === 0) event.target.select()
+}
 import { useCashSessionOpen } from '@/hooks/useCashSessionOpen'
 import { cashApi, getCashApiErrorMessage } from '@/libs/cashApi'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
@@ -904,11 +918,11 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
           {step === 0 ? (
             <div className='flex flex-col gap-4'>
-              <Typography variant='body2' color='text.secondary'>
-                {quickBooking
-                  ? 'La habitación ya viene elegida desde el calendario. Revisa las personas y pulsa Siguiente.'
-                  : 'Pon las fechas, elige el tipo de habitación y cuántas personas van.'}
-              </Typography>
+              {quickBooking ? (
+                <Typography variant='body2' color='text.secondary'>
+                  La habitación ya viene elegida desde el calendario. Revisa las personas y pulsa Siguiente.
+                </Typography>
+              ) : null}
 
               <Section
                 title='1. Estadía'
@@ -985,9 +999,6 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
           {step === 1 ? (
             <div className='flex flex-col gap-4'>
-              <Typography variant='body2' color='text.secondary'>
-                Quién hace la reserva: una persona o una agencia. Quienes duermen en cada habitación se asignan después, al abrir la reserva.
-              </Typography>
               <GuestPicker
                 propertyId={propertyId}
                 minChars={2}
@@ -1022,16 +1033,21 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
           {step === 2 ? (
             <div className='flex flex-col gap-4'>
-              <div className='flex flex-col'>
-                <FormControlLabel
-                  control={<Switch checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />}
-                  label={confirmed ? 'Confirmada' : 'Pendiente'}
-                />
-                <Typography variant='caption' color='text.secondary'>
-                  Confirmada: van a llegar. Pendiente: todavía no está seguro.
-                </Typography>
-              </div>
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+              <div
+                className={`grid grid-cols-1 gap-4 ${EXTERNAL_CODE_SOURCES.includes(source) ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
+              >
+                <FormControl fullWidth>
+                  <InputLabel id='reservation-status'>Estado</InputLabel>
+                  <Select
+                    labelId='reservation-status'
+                    label='Estado'
+                    value={confirmed ? 'CONFIRMED' : 'PENDING'}
+                    onChange={e => setConfirmed(e.target.value === 'CONFIRMED')}
+                  >
+                    <MenuItem value='CONFIRMED'>Confirmada</MenuItem>
+                    <MenuItem value='PENDING'>Pendiente</MenuItem>
+                  </Select>
+                </FormControl>
                 <FormControl fullWidth>
                   <InputLabel id='reservation-source'>Canal</InputLabel>
                   <Select
@@ -1055,26 +1071,39 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                   />
                 ) : null}
               </div>
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 items-center'>
+              <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
+                <TextField
+                  label='Alojamiento'
+                  value={formatRoomPrice(selectedSubtotal)}
+                  slotProps={{ input: { readOnly: true } }}
+                />
                 <TextField
                   label='Descuento'
                   value={discountAmount}
-                  onChange={e => setDiscountAmount(e.target.value)}
+                  onFocus={selectIfZero}
+                  onMouseUp={event => {
+                    if (Number(discountAmount) === 0) event.preventDefault()
+                  }}
+                  onChange={e => setDiscountAmount(cleanSolesInput(e.target.value))}
                   slotProps={{ input: { startAdornment: <Typography variant='body2' className='mie-1'>S/</Typography> } }}
                 />
-                <div className='flex items-center justify-end gap-3'>
-                  <Typography color='text.secondary'>Total</Typography>
-                  <Typography fontWeight={700}>
-                    {formatRoomPrice(Math.max(selectedSubtotal - (Number(discountAmount) || 0), 0))}
-                  </Typography>
-                </div>
+                <TextField
+                  label='Total'
+                  value={formatRoomPrice(Math.max(selectedSubtotal - (Number(discountAmount) || 0), 0))}
+                  slotProps={{
+                    input: { readOnly: true, sx: { fontWeight: 700, fontSize: '1.05rem' } }
+                  }}
+                />
               </div>
               <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
                 <TextField
-                  label='Adelanto'
+                  label='Adelanto (opcional)'
                   value={payAmount}
-                  onChange={e => setPayAmount(e.target.value)}
-                  helperText='Opcional'
+                  onFocus={selectIfZero}
+                  onMouseUp={event => {
+                    if (Number(payAmount) === 0) event.preventDefault()
+                  }}
+                  onChange={e => setPayAmount(cleanSolesInput(e.target.value))}
                   slotProps={{ input: { startAdornment: <Typography variant='body2' className='mie-1'>S/</Typography> } }}
                 />
                 <FormControl fullWidth>
@@ -1105,7 +1134,6 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                 fullWidth
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                helperText='Opcional. Nota para recepción.'
               />
               {cashAdvanceBlocked ? <Alert severity='error'>{CASH_ADVANCE_MESSAGE}</Alert> : null}
             </div>

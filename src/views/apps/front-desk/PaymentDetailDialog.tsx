@@ -25,10 +25,9 @@ type Props = {
   propertyId: number
   payment: FrontDeskPayment | null
   onClose: () => void
-  onRegister: (reservationUuid: string) => void
 }
 
-const PaymentDetailDialog = ({ open, propertyId, payment, onClose, onRegister }: Props) => {
+const PaymentDetailDialog = ({ open, propertyId, payment, onClose }: Props) => {
   const [detail, setDetail] = useState<FrontDeskPayment | null>(payment)
   const [reservation, setReservation] = useState<Reservation | null>(null)
   const [history, setHistory] = useState<FrontDeskPayment[]>([])
@@ -130,17 +129,6 @@ const PaymentDetailDialog = ({ open, propertyId, payment, onClose, onRegister }:
         <Button variant='outlined' color='secondary' onClick={onClose}>
           Cerrar
         </Button>
-        {current ? (
-          <Button
-            variant='contained'
-            onClick={() => {
-              onRegister(current.reservationUuid)
-              onClose()
-            }}
-          >
-            Nuevo movimiento
-          </Button>
-        ) : null}
       </DialogActions>
     </Dialog>
   )

@@ -197,7 +197,7 @@ const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheck
                     {reservation.balance < 0 ? 'Registrar devolución' : 'Registrar pago'}
                   </Button>
                 ) : null}
-                {canIssueInvoices && stay ? (
+                {canIssueInvoices && stay?.status === 'CHECKED_IN' && reservation && reservation.balance <= 0 ? (
                   <Button
                     variant='outlined'
                     component={Link}

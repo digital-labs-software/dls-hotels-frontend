@@ -36,6 +36,7 @@ export type SaleProduct = {
   taxAffectation: 'TAXED' | 'EXONERATED' | 'UNAFFECTED' | 'EXPORT'
   unitCode: string
   isActive: boolean
+  createdAt?: string
   restored?: boolean
 }
 

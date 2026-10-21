@@ -25,7 +25,6 @@ import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import tableStyles from '@core/styles/table.module.css'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
 import DateField from '@/components/date-picker/DateField'
-import CashMovementDialog from './CashMovementDialog'
 import PaymentDetailDialog from './PaymentDetailDialog'
 
 const emptyMeta = (): PageMeta => ({ page: 1, limit: 20, total: 0, totalPages: 0 })
@@ -44,8 +43,6 @@ const PaymentsCashTable = () => {
   const [totals, setTotals] = useState({ charges: 0, refunds: 0, net: 0 })
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<FrontDeskPayment | null>(null)
-  const [movementOpen, setMovementOpen] = useState(false)
-  const [movementUuid, setMovementUuid] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === 'loading') {
@@ -134,22 +131,15 @@ const PaymentsCashTable = () => {
     <>
       <div className='flex flex-col gap-6'>
         <div className='flex flex-wrap items-center justify-between gap-4'>
-          <Typography variant='h4'>Caja</Typography>
-          <div className='flex flex-wrap gap-2'>
-            <Button variant='outlined' color='secondary' startIcon={<i className='ri-refresh-line' />} onClick={fetchPage} disabled={loading}>
-              Actualizar
-            </Button>
-            <Button
-              variant='contained'
-              startIcon={<i className='ri-add-line' />}
-              onClick={() => {
-                setMovementUuid(null)
-                setMovementOpen(true)
-              }}
-            >
-              Registrar movimiento
-            </Button>
+          <div>
+            <Typography variant='h4'>Caja</Typography>
+            <Typography variant='body2' color='text.secondary'>
+              Lo que ya entró o salió. Para cobrar a quien está en el hotel, use Cuentas.
+            </Typography>
           </div>
+          <Button variant='outlined' color='secondary' startIcon={<i className='ri-refresh-line' />} onClick={fetchPage} disabled={loading}>
+            Actualizar
+          </Button>
         </div>
 
         <div className='flex flex-wrap gap-3'>
@@ -246,16 +236,6 @@ const PaymentsCashTable = () => {
                         <IconButton size='small' title='Ver' onClick={() => setSelected(row)}>
                           <i className='ri-eye-line' />
                         </IconButton>
-                        <IconButton
-                          size='small'
-                          title='Nuevo movimiento'
-                          onClick={() => {
-                            setMovementUuid(row.reservationUuid)
-                            setMovementOpen(true)
-                          }}
-                        >
-                          <i className='ri-wallet-3-line' />
-                        </IconButton>
                       </td>
                     </tr>
                   ))}
@@ -284,24 +264,6 @@ const PaymentsCashTable = () => {
         propertyId={propertyId}
         payment={selected}
         onClose={() => setSelected(null)}
-        onRegister={uuid => {
-          setMovementUuid(uuid)
-          setMovementOpen(true)
-        }}
-      />
-      <CashMovementDialog
-        open={movementOpen}
-        propertyId={propertyId}
-        reservationUuid={movementUuid}
-        onClose={() => {
-          setMovementOpen(false)
-          setMovementUuid(null)
-        }}
-        onSuccess={() => {
-          setMovementOpen(false)
-          setMovementUuid(null)
-          fetchPage()
-        }}
       />
     </>
   )

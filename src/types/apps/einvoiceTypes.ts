@@ -250,6 +250,8 @@ export type ReservationBillingRoom = {
   unitPrice: number
   billed: number
   pending: number
+  extrasPending: number
+  holder: ReservationBillingCustomer | null
 }
 
 export type ReservationBillingPayment = {

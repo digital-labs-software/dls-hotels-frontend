@@ -121,13 +121,17 @@ const SalesPage = () => {
   }, [load, status])
 
   const activeProducts = products.filter(product => product.isActive)
-  const visibleProducts = activeProducts.filter(product => {
-    const text = query.trim().toLowerCase()
+  const visibleProducts = activeProducts
+    .filter(product => {
+      const text = query.trim().toLowerCase()
 
-    if (!text) return true
+      if (!text) return true
 
-    return product.name.toLowerCase().includes(text) || (product.note ?? '').toLowerCase().includes(text)
-  })
+      return product.name.toLowerCase().includes(text) || (product.note ?? '').toLowerCase().includes(text)
+    })
+    .sort((left, right) => (right.createdAt ?? '').localeCompare(left.createdAt ?? ''))
+  const priceNumber = Number(price)
+  const priceInvalid = price.trim() !== '' && (!Number.isFinite(priceNumber) || priceNumber < 0)
   const chosen = useMemo(
     () =>
       products
@@ -301,7 +305,8 @@ const SalesPage = () => {
                     {visibleProducts.length === 0 ? (
                       <Typography color='text.secondary'>No hay productos con ese nombre.</Typography>
                     ) : (
-                      visibleProducts.map(product => {
+                      <div className='flex max-h-[400px] flex-col gap-2 overflow-y-auto pe-1'>
+                      {visibleProducts.map(product => {
                         const quantity = quantities[product.uuid] ?? 0
                         const suffix = priceSuffix(product.chargeUnit)
 
@@ -339,7 +344,8 @@ const SalesPage = () => {
                             </div>
                           </div>
                         )
-                      })
+                      })}
+                      </div>
                     )}
                   </div>
                   <Box className='hidden lg:block lg:is-[360px] lg:sticky lg:top-6'>
@@ -406,6 +412,9 @@ const SalesPage = () => {
                       label='Precio'
                       type='number'
                       value={price}
+                      error={priceInvalid}
+                      helperText={priceInvalid ? 'El precio no puede ser negativo.' : undefined}
+                      slotProps={{ htmlInput: { min: 0, step: '0.01' } }}
                       onChange={event => setPrice(event.target.value)}
                     />
                     <TextField
@@ -432,7 +441,7 @@ const SalesPage = () => {
                     onChange={event => setNote(event.target.value)}
                   />
                   <div className='flex gap-2'>
-                    <Button variant='contained' disabled={saving || !name.trim() || price === ''} onClick={() => void saveProduct()}>
+                    <Button variant='contained' disabled={saving || !name.trim() || price === '' || priceInvalid} onClick={() => void saveProduct()}>
                       {saving ? <CircularProgress size={20} color='inherit' /> : editing ? 'Guardar cambios' : 'Guardar'}
                     </Button>
                     {editing ? (

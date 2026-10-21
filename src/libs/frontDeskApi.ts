@@ -356,6 +356,7 @@ export const frontDeskApi = {
       reference?: string | null
       notes?: string | null
       paidAt?: string | null
+      reservationRoomUuid?: string | null
     },
     token?: string
   ) => {
@@ -363,7 +364,8 @@ export const frontDeskApi = {
       amount: Number(body.amount),
       method: body.method,
       reference: emptyToNull(body.reference) ?? null,
-      notes: emptyToNull(body.notes) ?? null
+      notes: emptyToNull(body.notes) ?? null,
+      reservationRoomUuid: body.reservationRoomUuid || null
     }
 
     if (body.paidAt) {

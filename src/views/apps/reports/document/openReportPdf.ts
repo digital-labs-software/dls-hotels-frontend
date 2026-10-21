@@ -187,7 +187,7 @@ export const openReportPdf = async (report: ReportDocument) => {
       )
     })
 
-    const finalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY
+    const finalY = (doc as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY
 
     y = (finalY ?? y) + 6
   }

@@ -76,32 +76,6 @@ const LOGIN_ERROR_MESSAGES: Record<string, string> = {
   Configuration: 'El inicio de sesión no está disponible en este momento. Inténtalo más tarde.'
 }
 
-const readStoredLoginError = (): LoginError | null => {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  try {
-    const raw = sessionStorage.getItem(LOGIN_ERROR_STORAGE_KEY)
-
-    return raw ? (JSON.parse(raw) as LoginError) : null
-  } catch {
-    return null
-  }
-}
-
-const persistLoginError = (error: LoginError | null) => {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  if (error) {
-    sessionStorage.setItem(LOGIN_ERROR_STORAGE_KEY, JSON.stringify(error))
-  } else {
-    sessionStorage.removeItem(LOGIN_ERROR_STORAGE_KEY)
-  }
-}
-
 const toLoginError = (raw?: string | null): LoginError => {
   if (!raw) return { code: 'UNKNOWN', message: DEFAULT_LOGIN_ERROR }
 
@@ -148,25 +122,15 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
     }
   })
 
-  // Show Nest / NextAuth errors from the query or a previous attempt.
-  // history.replaceState avoids a remount (router.replace in production wipes this alert).
+  // El error llega una sola vez en la dirección. No se guarda: al actualizar la página ya no debe salir.
   useEffect(() => {
+    sessionStorage.removeItem(LOGIN_ERROR_STORAGE_KEY)
+
     const errorParam = searchParams.get('error')
 
-    if (!errorParam) {
-      const stored = readStoredLoginError()
+    if (!errorParam) return
 
-      if (stored) {
-        setErrorState(stored)
-      }
-
-      return
-    }
-
-    const next = toLoginError(errorParam)
-
-    setErrorState(next)
-    persistLoginError(next)
+    setErrorState(toLoginError(errorParam))
 
     const params = new URLSearchParams(window.location.search)
 
@@ -182,7 +146,6 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
   const onSubmit: SubmitHandler<FormData> = async (data: FormData) => {
     setIsSubmitting(true)
     setErrorState(null)
-    persistLoginError(null)
 
     const res = await signIn('credentials', {
       email: data.email,
@@ -193,8 +156,6 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
     setIsSubmitting(false)
 
     if (res && res.ok && res.error === null) {
-      persistLoginError(null)
-
       const redirectURL = searchParams.get('redirectTo') ?? '/'
 
       router.replace(getLocalizedUrl(redirectURL, locale as Locale))
@@ -202,7 +163,6 @@ const LoginV1 = ({ mode }: { mode: Mode }) => {
       const error = toLoginError(res?.error)
 
       setErrorState(error)
-      persistLoginError(error)
 
       if (error.code === 'INVALID_CREDENTIALS' || error.code === 'CredentialsSignin') {
         setValue('password', '')

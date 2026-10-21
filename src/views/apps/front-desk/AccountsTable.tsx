@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -10,26 +13,27 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
+import type { Locale } from '@configs/i18n'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
+import { getLocalizedUrl } from '@/utils/i18n'
 import { RECEPTION_PAYMENTS_CREATE } from '@/types/apps/hotelPermissions'
 import type { AccountTone, GuestAccount } from '@/types/apps/frontDeskTypes'
-import { accountTone, formatFrontDeskDate, limaToday } from '@/types/apps/frontDeskTypes'
+import { accountTone, formatFrontDeskDate, limaToday, normalizeSearchText } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import DateField from '@/components/date-picker/DateField'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
 import PaymentDialog from './PaymentDialog'
 
-type AccountFilter = 'all' | AccountTone
+type AccountFilter = 'collect' | 'paid'
 
 const FILTERS: { id: AccountFilter; label: string }[] = [
-  { id: 'all', label: 'Todas' },
-  { id: 'due', label: 'Debe' },
-  { id: 'partial', label: 'Adelantó' },
+  { id: 'collect', label: 'Por cobrar' },
   { id: 'paid', label: 'Pagada' }
 ]
 
@@ -50,12 +54,14 @@ const toneColor = (tone: AccountTone) => {
 }
 
 const AccountsTable = () => {
+  const { lang: locale } = useParams()
   const { data: session, status } = useSession()
-  const { can } = useSubscriptionAccess()
+  const { can, canIssueInvoices } = useSubscriptionAccess()
   const canCharge = can(RECEPTION_PAYMENTS_CREATE)
   const propertyId = session?.user?.propertyId ?? 1
   const [date, setDate] = useState(limaToday())
-  const [filter, setFilter] = useState<AccountFilter>('all')
+  const [filter, setFilter] = useState<AccountFilter>('collect')
+  const [search, setSearch] = useState('')
   const [rows, setRows] = useState<GuestAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState<GuestAccount | null>(null)
@@ -82,13 +88,19 @@ const AccountsTable = () => {
     load()
   }, [load, status])
 
+  const query = normalizeSearchText(search)
   const visible = rows.filter(row => {
     const tone = accountTone(row.balance, row.paidAmount)
+    const inTab = filter === 'paid' ? tone === 'paid' || tone === 'credit' : row.balance > 0
 
-    if (filter === 'all') return true
-    if (filter === 'paid') return tone === 'paid' || tone === 'credit'
+    if (!inTab) return false
+    if (!query) return true
 
-    return tone === filter
+    const haystack = normalizeSearchText(
+      [row.code, row.guestName, row.companyName, ...row.rooms.map(room => room.roomNumber)].filter(Boolean).join(' ')
+    )
+
+    return haystack.includes(query)
   })
 
   return (
@@ -97,21 +109,32 @@ const AccountsTable = () => {
         <div>
           <Typography variant='h4'>Cuentas</Typography>
           <Typography variant='body2' color='text.secondary'>
-            Quién está en el hotel en esta fecha. El cobro es de toda la reserva, no de cada habitación.
+            Quién está en el hotel en esta fecha. Puede cobrar toda la reserva o una habitación. La boleta se emite en Pagada.
           </Typography>
         </div>
-        <div className='flex flex-wrap items-center gap-3'>
-          <DateField label='Fecha' value={date} onChange={setDate} />
-          {FILTERS.map(item => (
-            <Chip
-              key={item.id}
-              clickable
-              color={filter === item.id ? 'primary' : 'default'}
-              variant={filter === item.id ? 'filled' : 'outlined'}
-              label={item.label}
-              onClick={() => setFilter(item.id)}
+        <div className='flex flex-wrap items-center justify-between gap-3'>
+          <div className='flex flex-wrap items-center gap-2'>
+            {FILTERS.map(item => (
+              <Chip
+                key={item.id}
+                clickable
+                color={filter === item.id ? 'primary' : 'default'}
+                variant={filter === item.id ? 'filled' : 'outlined'}
+                label={item.label}
+                onClick={() => setFilter(item.id)}
+              />
+            ))}
+          </div>
+          <div className='flex w-full flex-wrap items-center gap-3 sm:w-auto'>
+            <DateField label='Fecha' value={date} onChange={setDate} />
+            <TextField
+              size='small'
+              placeholder='Habitación, huésped o reserva'
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              className='min-is-[280px] is-full sm:is-auto'
             />
-          ))}
+          </div>
         </div>
         {loading ? (
           <div className='flex justify-center p-8'>
@@ -135,7 +158,15 @@ const AccountsTable = () => {
               {visible.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8}>
-                    <Typography color='text.secondary'>No hay cuentas en casa para esta fecha.</Typography>
+                    <Typography color='text.secondary'>
+                      {query
+                        ? filter === 'paid'
+                          ? 'Ninguna cuenta pagada coincide.'
+                          : 'Ninguna cuenta por cobrar coincide.'
+                        : filter === 'paid'
+                          ? 'No hay cuentas pagadas en esta fecha.'
+                          : 'No hay cuentas por cobrar en esta fecha.'}
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -174,6 +205,19 @@ const AccountsTable = () => {
                         {canCharge && row.balance > 0 ? (
                           <Button size='small' variant='contained' onClick={() => setPaying(row)}>
                             Cobrar
+                          </Button>
+                        ) : null}
+                        {canIssueInvoices && row.balance <= 0 ? (
+                          <Button
+                            size='small'
+                            variant='contained'
+                            component={Link}
+                            href={getLocalizedUrl(
+                              `/apps/invoicing/issue?reservation=${row.reservationUuid}`,
+                              locale as Locale
+                            )}
+                          >
+                            Facturar
                           </Button>
                         ) : null}
                       </TableCell>

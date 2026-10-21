@@ -366,6 +366,15 @@ const normalizeBilling = (payload: unknown, reservationUuid: string): Reservatio
   const customersSource = asRecord(row.customers ?? row.suggestedCustomers ?? row.clients)
   const customers: ReservationBillingCustomer[] = []
 
+  if (Array.isArray(row.customers)) {
+    row.customers.forEach(item => {
+      const kind = String(asRecord(item).kind || '').toLowerCase() === 'company' ? 'company' : 'guest'
+      const customer = normalizeBillingCustomer(item, kind)
+
+      if (customer) customers.push(customer)
+    })
+  }
+
   asList(customersSource.companies ?? row.companies).forEach(item => {
     const customer = normalizeBillingCustomer(item, 'company')
 
@@ -408,7 +417,9 @@ const normalizeBilling = (payload: unknown, reservationUuid: string): Reservatio
       quantity: toNumber(room.quantity ?? room.nights, 1),
       unitPrice: toNumber(room.unitPrice ?? room.unit_price ?? room.pending ?? room.pendingAmount),
       billed: toNumber(room.billed ?? room.invoiced ?? room.invoicedAmount),
-      pending: toNumber(room.pending ?? room.pendingAmount ?? room.balance)
+      pending: toNumber(room.pending ?? room.pendingAmount ?? room.balance),
+      extrasPending: toNumber(room.extrasPending ?? room.extras_pending),
+      holder: room.holder ? normalizeBillingCustomer(room.holder, 'guest') : null
     }
   })
 

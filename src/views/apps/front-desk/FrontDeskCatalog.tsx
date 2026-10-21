@@ -121,7 +121,7 @@ const FrontDeskCatalog = ({ defaultTab }: { defaultTab?: string }) => {
               label={
                 <div className='flex items-center gap-1.5'>
                   <i className='ri-wallet-3-line text-lg' />
-                  Pagos
+                  Caja
                 </div>
               }
               value='payments'

@@ -130,6 +130,21 @@ export interface CreatePaymentBody {
   reference?: string | null
   paidAt?: string
   notes?: string | null
+  reservationRoomUuid?: string | null
+}
+
+export interface RoomFolio {
+  uuid: string
+  roomNumber: string | null
+  holderName: string | null
+  balance: number
+  paid: number
+}
+
+export interface ReservationFolios {
+  totalDue: number
+  unassignedPaid: number
+  rooms: RoomFolio[]
 }
 
 export interface ListReservationsQuery {

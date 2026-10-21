@@ -13,6 +13,7 @@ import type {
   ListReservationsQuery,
   Planning,
   PlanningView,
+  ReservationFolios,
   ReservationNote,
   UpdateReservationBody,
   UpdateReservationRoomBody
@@ -425,6 +426,27 @@ export const reservationsApi = {
       token
     )
   },
+  roomFolios: async (propertyId: number, uuid: string, token?: string) => {
+    const payload = await request<ReservationFolios>(
+      `/properties/${propertyId}/reservations/${uuid}/room-folios`,
+      {},
+      token
+    )
+
+    return {
+      totalDue: toNumber(payload?.totalDue),
+      unassignedPaid: toNumber(payload?.unassignedPaid),
+      rooms: Array.isArray(payload?.rooms)
+        ? payload.rooms.map(room => ({
+            uuid: String(room.uuid),
+            roomNumber: room.roomNumber ?? null,
+            holderName: room.holderName ?? null,
+            balance: toNumber(room.balance),
+            paid: toNumber(room.paid)
+          }))
+        : []
+    }
+  },
   payments: async (propertyId: number, uuid: string, token?: string) => {
     const payload = await request<FrontDeskPayment[] | Paginated<FrontDeskPayment>>(
       `/properties/${propertyId}/reservations/${uuid}/payments`,
@@ -446,7 +468,8 @@ export const reservationsApi = {
             amount: Number(body.amount),
             method: body.method,
             reference: emptyToNull(body.reference) ?? null,
-            notes: emptyToNull(body.notes) ?? null
+            notes: emptyToNull(body.notes) ?? null,
+            reservationRoomUuid: body.reservationRoomUuid || null
           })
         },
         token
