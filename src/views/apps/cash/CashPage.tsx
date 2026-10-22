@@ -330,24 +330,16 @@ const CashPage = () => {
 
   return (
     <div className='flex flex-col gap-6'>
-      <div className='flex flex-wrap items-start justify-between gap-4'>
-        <div>
-          <Typography variant='h4'>Caja</Typography>
-          <Typography color='text.secondary'>
-            Solo puede haber una caja abierta. Al cerrarla se entrega el efectivo y este cierre a la administración.
-          </Typography>
+      {current ? (
+        <div className='flex flex-wrap justify-end gap-2'>
+          <Button variant='outlined' color='secondary' startIcon={<i className='ri-refresh-line' />} onClick={() => void load()}>
+            Actualizar
+          </Button>
+          <Button variant='outlined' startIcon={<i className='ri-file-pdf-2-line' />} onClick={() => void printSession(current.uuid)}>
+            Ver cierre de caja
+          </Button>
         </div>
-        {current ? (
-          <div className='flex flex-wrap gap-2'>
-            <Button variant='outlined' color='secondary' startIcon={<i className='ri-refresh-line' />} onClick={() => void load()}>
-              Actualizar
-            </Button>
-            <Button variant='outlined' startIcon={<i className='ri-file-pdf-2-line' />} onClick={() => void printSession(current.uuid)}>
-              Ver cierre de caja
-            </Button>
-          </div>
-        ) : null}
-      </div>
+      ) : null}
 
       {current ? (
         <>

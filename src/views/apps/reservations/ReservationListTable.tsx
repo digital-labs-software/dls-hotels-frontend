@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import CircularProgress from '@mui/material/CircularProgress'
 import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
@@ -122,6 +124,13 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
             setSearch(e.target.value)
           }}
         />
+        <Tooltip title='Actualizar'>
+          <span>
+            <IconButton color='secondary' onClick={() => void load()} disabled={loading} aria-label='Actualizar'>
+              <i className='ri-refresh-line' />
+            </IconButton>
+          </span>
+        </Tooltip>
       </div>
 
       {loading ? (

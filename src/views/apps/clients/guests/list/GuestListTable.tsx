@@ -261,16 +261,6 @@ const GuestListTable = () => {
           />
           <div className='flex items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
             <Button
-              color='secondary'
-              variant='outlined'
-              className='max-sm:is-full is-auto'
-              startIcon={<i className='ri-refresh-line' />}
-              onClick={fetchData}
-              disabled={loading}
-            >
-              Actualizar
-            </Button>
-            <Button
               variant='contained'
               component={Link}
               href={getLocalizedUrl('/apps/clients/guests/add', locale as Locale)}

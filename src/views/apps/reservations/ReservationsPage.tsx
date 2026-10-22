@@ -278,9 +278,8 @@ const ReservationsPage = () => {
 
   return (
     <div className='flex flex-col gap-5'>
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <Typography variant='h4'>Reservas</Typography>
-        <div className='flex w-full flex-wrap gap-2 sm:w-auto'>
+      {canManageNotes || canCreateReservation ? (
+      <div className='flex flex-wrap justify-end gap-2'>
           {canManageNotes ? (
           <Button
             variant='contained'
@@ -296,8 +295,8 @@ const ReservationsPage = () => {
             Nueva reserva
           </Button>
           ) : null}
-        </div>
       </div>
+      ) : null}
 
       {detailUuid ? (
         <ReservationDrawer

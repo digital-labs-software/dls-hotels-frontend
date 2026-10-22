@@ -14,7 +14,6 @@ import Grid from '@mui/material/Grid'
 import Tab from '@mui/material/Tab'
 import TabContext from '@mui/lab/TabContext'
 import TabPanel from '@mui/lab/TabPanel'
-import Typography from '@mui/material/Typography'
 
 import type { Locale } from '@configs/i18n'
 import CustomTabList from '@core/components/mui/TabList'
@@ -153,13 +152,6 @@ const BillingPage = () => {
   return (
     <Grid container spacing={6}>
       <Grid size={{ xs: 12 }} className='flex flex-col gap-6'>
-        <div>
-          <Typography variant='h4' className='mbe-1'>
-            Suscripción
-          </Typography>
-          <Typography>Tu plan DLS Hoteles, deudas y constancias de pago</Typography>
-        </div>
-
         {loading && !data ? (
           <div className='flex justify-center p-10'>
             <CircularProgress size={32} />

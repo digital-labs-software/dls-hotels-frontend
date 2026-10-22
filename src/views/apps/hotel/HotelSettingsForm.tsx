@@ -232,9 +232,8 @@ const HotelSettingsForm = () => {
               <Typography variant='h4' className='mbe-1'>
                 {settings.name}
               </Typography>
-              <Typography>Datos del hotel. Algunos campos solo los cambia el panel DLS.</Typography>
             </div>
-            <div className='flex flex-wrap max-sm:flex-col gap-4'>
+            <div className='flex flex-wrap justify-end gap-4'>
               <Button
                 variant='outlined'
                 color='secondary'

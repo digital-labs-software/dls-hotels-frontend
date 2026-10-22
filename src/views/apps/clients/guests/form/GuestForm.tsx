@@ -247,30 +247,7 @@ const GuestForm = ({ uuid }: Props) => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={6}>
         <Grid size={{ xs: 12 }}>
-          <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col gap-6'>
-            <div>
-              <Typography variant='h4' className='mbe-1'>
-                {title}
-              </Typography>
-              <Typography>
-                {isView
-                  ? 'Consulta los datos del huésped'
-                  : isEdit
-                    ? 'Actualiza los datos personales o las notas internas.'
-                    : 'Digita el documento: si ya está registrado te avisamos, si no, se cargan sus datos.'}
-              </Typography>
-            </div>
-            <div className='flex flex-wrap max-sm:flex-col gap-4'>
-              <Button variant='outlined' color='secondary' type='button' onClick={goBack}>
-                {isView ? 'Volver' : 'Descartar'}
-              </Button>
-              {!isView ? (
-                <Button variant='contained' type='submit' disabled={isSubmitting || Boolean(existing)}>
-                  {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Guardar huésped'}
-                </Button>
-              ) : null}
-            </div>
-          </div>
+          <Typography variant='h4'>{title}</Typography>
         </Grid>
 
         {isEmployee ? (
@@ -285,13 +262,10 @@ const GuestForm = ({ uuid }: Props) => {
           </Grid>
         ) : null}
 
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={{ xs: 12 }}>
           <div className='flex flex-col gap-6'>
             <Card>
-              <CardHeader
-                title='Documento de identidad'
-                subheader='El RUC de una empresa o de una persona natural se registra en Empresas.'
-              />
+              <CardHeader title='Documento de identidad' />
               <CardContent>
                 <Grid container spacing={5}>
                   <Grid size={{ xs: 12, sm: 4 }}>
@@ -528,33 +502,37 @@ const GuestForm = ({ uuid }: Props) => {
                       )}
                     />
                   </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Controller
+                      name='notes'
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          multiline
+                          minRows={3}
+                          label='Notas internas'
+                          placeholder='Prefiere habitación en piso alto, alergias, etc.'
+                          disabled={isView || isSubmitting}
+                        />
+                      )}
+                    />
+                  </Grid>
                 </Grid>
               </CardContent>
+              <div className='flex flex-wrap justify-end gap-4 border-bs px-6 py-5'>
+                <Button variant='outlined' color='secondary' type='button' onClick={goBack}>
+                  Volver
+                </Button>
+                {!isView ? (
+                  <Button variant='contained' type='submit' disabled={isSubmitting || Boolean(existing)}>
+                    {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Guardar huésped'}
+                  </Button>
+                ) : null}
+              </div>
             </Card>
           </div>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Card>
-            <CardHeader title='Notas internas' />
-            <CardContent>
-              <Controller
-                name='notes'
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    multiline
-                    minRows={8}
-                    label='Notas'
-                    placeholder='Prefiere habitación en piso alto, alergias, etc.'
-                    disabled={isView || isSubmitting}
-                  />
-                )}
-              />
-            </CardContent>
-          </Card>
         </Grid>
       </Grid>
     </form>

@@ -241,35 +241,11 @@ const EmployeeForm = ({ uuid }: Props) => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={6}>
         <Grid size={{ xs: 12 }}>
-          <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col gap-6'>
-            <div>
-              <Typography variant='h4' className='mbe-1'>
-                {title}
-              </Typography>
-              <Typography>
-                {isView
-                  ? 'Consulta los datos del empleado'
-                  : isEdit
-                    ? 'Actualiza el cargo, los roles o los datos personales.'
-                    : 'Digita el documento para cargar sus datos y completa el acceso y los roles.'}
-              </Typography>
-            </div>
-            <div className='flex flex-wrap max-sm:flex-col gap-4'>
-              <Button variant='outlined' color='secondary' type='button' onClick={goBack}>
-                {isView ? 'Volver' : 'Descartar'}
-              </Button>
-              {!isView ? (
-                <Button variant='contained' type='submit' disabled={isSubmitting}>
-                  {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Guardar empleado'}
-                </Button>
-              ) : null}
-            </div>
-          </div>
+          <Typography variant='h4'>{title}</Typography>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 8 }}>
-          <div className='flex flex-col gap-6'>
-            <Card>
+        <Grid size={{ xs: 12, md: 8 }} className='order-1 flex flex-col'>
+            <Card className='flex-1'>
               <CardHeader title='Documento de identidad' />
               <CardContent>
                 <Grid container spacing={5}>
@@ -373,7 +349,9 @@ const EmployeeForm = ({ uuid }: Props) => {
                 </Grid>
               </CardContent>
             </Card>
+        </Grid>
 
+        <Grid size={{ xs: 12 }} className='order-2 md:order-3'>
             <Card>
               <CardHeader title='Datos personales' />
               <CardContent>
@@ -490,11 +468,10 @@ const EmployeeForm = ({ uuid }: Props) => {
                 </Grid>
               </CardContent>
             </Card>
-          </div>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Card>
+        <Grid size={{ xs: 12, md: 4 }} className='order-3 md:order-2 flex flex-col'>
+          <Card className='flex-1'>
             <CardHeader title='Fechas laborales' />
             <CardContent className='flex flex-col gap-5'>
               <Controller
@@ -536,7 +513,7 @@ const EmployeeForm = ({ uuid }: Props) => {
           </Card>
         </Grid>
 
-        <Grid size={{ xs: 12 }}>
+        <Grid size={{ xs: 12 }} className='order-4'>
           <Card>
             <CardHeader title='Acceso y roles' />
             <CardContent>
@@ -664,6 +641,16 @@ const EmployeeForm = ({ uuid }: Props) => {
                 </Grid>
               </Grid>
             </CardContent>
+            <div className='flex flex-wrap justify-end gap-4 border-bs px-6 py-5'>
+              <Button variant='outlined' color='secondary' type='button' onClick={goBack}>
+                Volver
+              </Button>
+              {!isView ? (
+                <Button variant='contained' type='submit' disabled={isSubmitting}>
+                  {isSubmitting ? <CircularProgress size={20} color='inherit' /> : isEdit ? 'Guardar' : 'Guardar empleado'}
+                </Button>
+              ) : null}
+            </div>
           </Card>
         </Grid>
       </Grid>

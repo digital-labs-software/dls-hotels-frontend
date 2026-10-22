@@ -450,9 +450,9 @@ const RoomTypeFormDrawer = (props: Props) => {
             </Typography>
           ) : null}
 
-          <div className='flex items-center gap-4'>
+          <div className='flex flex-wrap items-center justify-end gap-4'>
             <Button variant='outlined' color='secondary' type='button' onClick={handleReset} disabled={isSubmitting}>
-              {isView ? 'Cerrar' : 'Descartar'}
+              {isView ? 'Cerrar' : 'Volver'}
             </Button>
             {!isView ? (
               <Button variant='contained' type='submit' disabled={isSubmitting || !propertyId}>

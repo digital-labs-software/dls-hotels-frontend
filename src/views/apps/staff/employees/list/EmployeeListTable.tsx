@@ -350,16 +350,6 @@ const EmployeeListTable = () => {
             className='max-sm:is-full'
           />
           <div className='flex items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
-            <Button
-              color='secondary'
-              variant='outlined'
-              className='max-sm:is-full is-auto'
-              startIcon={<i className='ri-refresh-line' />}
-              onClick={fetchData}
-              disabled={loading}
-            >
-              Actualizar
-            </Button>
             {canCreateEmployees ? (
               <Button
                 variant='contained'

@@ -236,9 +236,9 @@ const RateForm = ({ uuid }: Props) => {
   const title = isView ? 'Ver tarifa' : isEdit ? 'Editar tarifa' : 'Nueva tarifa'
 
   const actions = (
-    <div className='flex flex-wrap max-sm:flex-col gap-4'>
+    <div className='flex flex-wrap justify-end gap-4'>
       <Button variant='outlined' color='secondary' type='button' onClick={goBack} disabled={isSubmitting}>
-        {isView ? 'Volver' : 'Descartar'}
+        Volver
       </Button>
       {!isView ? (
         <Button variant='contained' type='submit' disabled={isSubmitting || !propertyId}>
@@ -260,15 +260,12 @@ const RateForm = ({ uuid }: Props) => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={6}>
         <Grid size={{ xs: 12 }}>
-          <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col gap-6'>
-            <Typography variant='h4'>{title}</Typography>
-            {actions}
-          </div>
+          <Typography variant='h4'>{title}</Typography>
         </Grid>
 
         <Grid size={{ xs: 12 }}>
           <Card>
-            <CardHeader title='Temporada' subheader='Nombre y fechas en las que rige esta tarifa.' />
+            <CardHeader title='Temporada' />
             <CardContent>
               <Grid container spacing={5}>
                 <Grid size={{ xs: 12 }}>
@@ -431,10 +428,10 @@ const RateForm = ({ uuid }: Props) => {
                 })}
               </div>
             )}
-            <CardContent className='flex flex-col gap-4 border-bs'>
+            <div className='flex flex-col gap-4 border-bs px-6 py-5'>
               {pricesError ? <Alert severity='warning'>{pricesError}</Alert> : null}
               {actions}
-            </CardContent>
+            </div>
           </Card>
         </Grid>
       </Grid>

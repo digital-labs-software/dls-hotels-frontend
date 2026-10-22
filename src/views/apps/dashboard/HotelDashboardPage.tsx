@@ -6,7 +6,6 @@ import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Grid from '@mui/material/Grid'
-import Typography from '@mui/material/Typography'
 
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
@@ -148,10 +147,6 @@ const HotelDashboardPage = () => {
 
   return (
     <Grid container spacing={6}>
-      <Grid size={{ xs: 12 }}>
-        <Typography variant='h4'>Inicio</Typography>
-      </Grid>
-
       {loading && !frontDesk ? (
         <Grid size={{ xs: 12 }} className='flex justify-center p-10'>
           <CircularProgress size={32} />

@@ -274,13 +274,9 @@ const SalesPage = () => {
 
   return (
     <div className='flex flex-col gap-4'>
-      <div>
-        <Typography variant='h4'>Ventas</Typography>
-        <Typography color='text.secondary'>Gaseosas, desayunos, calefacción, alquileres y lo demás que cobra el hotel.</Typography>
-      </div>
       <TabContext value={tab}>
         <CustomTabList pill='true' onChange={(_event, value) => setTab(value)}>
-          <Tab value='sell' label='Vender' />
+          <Tab value='sell' label='Ventas' />
           <Tab value='products' label='Productos' />
         </CustomTabList>
         <TabPanel value='sell' className='p-0'>

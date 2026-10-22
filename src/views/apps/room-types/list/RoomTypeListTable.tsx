@@ -203,16 +203,6 @@ const RoomTypeListTable = () => {
           />
           <div className='flex gap-4 max-sm:flex-col max-sm:is-full'>
             <Button
-              variant='outlined'
-              className='max-sm:is-full'
-              color='secondary'
-              startIcon={<i className='ri-refresh-line' />}
-              onClick={fetchRoomTypes}
-              disabled={loading}
-            >
-              Actualizar
-            </Button>
-            <Button
               variant='contained'
               color='primary'
               className='max-sm:is-full'

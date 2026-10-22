@@ -232,16 +232,6 @@ const FloorListTable = () => {
             <Button
               variant='outlined'
               className='max-sm:is-full'
-              color='secondary'
-              startIcon={<i className='ri-refresh-line' />}
-              onClick={fetchFloors}
-              disabled={loading}
-            >
-              Actualizar
-            </Button>
-            <Button
-              variant='outlined'
-              className='max-sm:is-full'
               startIcon={<i className='ri-stack-line' />}
               onClick={() => setSequenceOpen(true)}
               disabled={loading}

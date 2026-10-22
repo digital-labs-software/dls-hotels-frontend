@@ -265,27 +265,15 @@ const RoleForm = ({ uuid }: Props) => {
             </Typography>
             <Typography color='text.primary'>{title}</Typography>
           </Breadcrumbs>
-          <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col gap-6'>
-            <div>
-              <Typography variant='h4' className='mbe-1'>
-                {title}
-              </Typography>
+          <div>
+            <Typography variant='h4' className={uuid ? 'mbe-1' : undefined}>
+              {title}
+            </Typography>
+            {uuid ? (
               <Typography>
-                {uuid
-                  ? `${employeeCount} empleado${employeeCount === 1 ? '' : 's'} con este rol`
-                  : 'Crea un rol y marca los permisos que podrá usar'}
+                {employeeCount} empleado{employeeCount === 1 ? '' : 's'} con este rol
               </Typography>
-            </div>
-            <div className='flex flex-wrap max-sm:flex-col gap-4'>
-              <Button variant='outlined' color='secondary' type='button' onClick={goBack}>
-                Cancelar
-              </Button>
-              {!isView ? (
-                <Button variant='contained' type='submit' disabled={isSubmitting}>
-                  {isSubmitting ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
-                </Button>
-              ) : null}
-            </div>
+            ) : null}
           </div>
         </Grid>
 
@@ -350,6 +338,16 @@ const RoleForm = ({ uuid }: Props) => {
                 Clic en el permiso marca toda su fila. Sin Ver, el resto se desactiva.
               </Typography>
             </CardContent>
+            <div className='flex flex-wrap justify-end gap-4 border-bs px-6 py-5'>
+              <Button variant='outlined' color='secondary' type='button' onClick={goBack}>
+                Volver
+              </Button>
+              {!isView ? (
+                <Button variant='contained' type='submit' disabled={isSubmitting}>
+                  {isSubmitting ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
+                </Button>
+              ) : null}
+            </div>
           </Card>
         </Grid>
       </Grid>

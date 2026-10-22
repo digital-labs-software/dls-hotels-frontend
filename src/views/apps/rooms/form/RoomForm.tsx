@@ -225,9 +225,9 @@ const RoomForm = ({ uuid }: Props) => {
   const title = isView ? 'Ver habitación' : isEdit ? 'Editar habitación' : 'Nueva habitación'
 
   const actions = (
-    <div className='flex flex-wrap max-sm:flex-col gap-4'>
+    <div className='flex flex-wrap justify-end gap-4 border-bs px-6 py-5'>
       <Button variant='outlined' color='secondary' type='button' onClick={goBack}>
-        {isView ? 'Volver' : 'Descartar'}
+        Volver
       </Button>
       {!isView ? (
         <Button variant='contained' type='submit' disabled={isSubmitting}>
@@ -249,10 +249,7 @@ const RoomForm = ({ uuid }: Props) => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={6}>
         <Grid size={{ xs: 12 }}>
-          <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col gap-6'>
-            <Typography variant='h4'>{title}</Typography>
-            {actions}
-          </div>
+          <Typography variant='h4'>{title}</Typography>
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
@@ -438,11 +435,8 @@ const RoomForm = ({ uuid }: Props) => {
                 </Grid>
               </Grid>
             </CardContent>
+            {actions}
           </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12 }} className='flex justify-end'>
-          {actions}
         </Grid>
       </Grid>
     </form>

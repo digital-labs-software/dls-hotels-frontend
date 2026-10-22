@@ -369,14 +369,12 @@ const IssueInvoicePage = () => {
     <div className='flex flex-col gap-6'>
       <div className='flex flex-wrap items-start justify-between gap-4'>
         <div>
-          <Typography variant='h4' className='mbe-1'>
+          <Typography variant='h4' className={reservationUuid ? 'mbe-1' : undefined}>
             {reservationUuid ? 'Facturar reserva' : 'Nuevo comprobante'}
           </Typography>
-          <Typography color='text.secondary'>
-            {reservationUuid
-              ? `Reserva ${billing?.reservationCode || reservationUuid}`
-              : 'Emisión libre de boleta o factura'}
-          </Typography>
+          {reservationUuid ? (
+            <Typography color='text.secondary'>Reserva {billing?.reservationCode || reservationUuid}</Typography>
+          ) : null}
         </div>
         <Button variant='outlined' color='secondary' component={Link} href={getLocalizedUrl('/apps/invoicing', locale as Locale)}>
           Cancelar

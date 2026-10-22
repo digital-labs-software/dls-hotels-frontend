@@ -10,7 +10,6 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Tab from '@mui/material/Tab'
 import TabContext from '@mui/lab/TabContext'
 import TabPanel from '@mui/lab/TabPanel'
-import Typography from '@mui/material/Typography'
 
 import type { Locale } from '@configs/i18n'
 import CustomTabList from '@core/components/mui/TabList'
@@ -37,7 +36,6 @@ type ReportGroup = {
   value: string
   label: string
   icon: string
-  hint: string
   tabs: ReportTab[]
 }
 
@@ -46,7 +44,6 @@ const GROUPS: ReportGroup[] = [
     value: 'day',
     label: 'Día a día',
     icon: 'ri-sun-line',
-    hint: 'Listas para imprimir y trabajar en el turno.',
     tabs: [
       { value: 'arrivals', label: 'Llegadas del día', icon: 'ri-login-box-line', component: lazy(() => import('./daily/ArrivalsReport')) },
       { value: 'departures', label: 'Salidas del día', icon: 'ri-logout-box-r-line', component: lazy(() => import('./daily/DeparturesReport')) },
@@ -58,7 +55,6 @@ const GROUPS: ReportGroup[] = [
     value: 'admin',
     label: 'Administración',
     icon: 'ri-briefcase-4-line',
-    hint: 'Para el contador, la cobranza y los reportes del mes.',
     tabs: [
       { value: 'invoices', label: 'Comprobantes emitidos', icon: 'ri-file-list-3-line', component: lazy(() => import('./admin/SalesRegisterReport')) },
       { value: 'balances', label: 'Saldos pendientes', icon: 'ri-hand-coin-line', component: lazy(() => import('./admin/BalancesReport')) },
@@ -71,7 +67,6 @@ const GROUPS: ReportGroup[] = [
     value: 'analysis',
     label: 'Análisis',
     icon: 'ri-line-chart-line',
-    hint: 'Para decidir dónde vender más y qué ajustar.',
     tabs: [
       { value: 'sources', label: 'Ventas por origen', icon: 'ri-pie-chart-2-line', component: lazy(() => import('./analysis/SalesBySourceReport')) },
       {
@@ -159,11 +154,6 @@ const ReportsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
 
   return (
     <div className='flex flex-col gap-6'>
-      <div className='flex flex-col gap-1'>
-        <Typography variant='h4'>Reportes</Typography>
-        <Typography color='text.secondary'>{group.hint}</Typography>
-      </div>
-
       <TabContext value={group.value}>
         <CustomTabList onChange={handleGroupChange} variant='scrollable' pill='true' aria-label='Grupos de reportes'>
           {visibleGroups.map(item => (

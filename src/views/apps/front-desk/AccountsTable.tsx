@@ -7,6 +7,8 @@ import { useParams } from 'next/navigation'
 
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -128,6 +130,13 @@ const AccountsTable = () => {
               onChange={event => setSearch(event.target.value)}
               className='min-is-[280px] is-full sm:is-auto'
             />
+            <Tooltip title='Actualizar'>
+              <span>
+                <IconButton color='secondary' onClick={() => void load()} disabled={loading} aria-label='Actualizar'>
+                  <i className='ri-refresh-line' />
+                </IconButton>
+              </span>
+            </Tooltip>
           </div>
         </div>
         {loading ? (

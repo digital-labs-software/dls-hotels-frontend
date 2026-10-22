@@ -153,11 +153,6 @@ const PricesPage = () => {
 
   return (
     <div className='flex flex-col gap-4'>
-      <div>
-        <Typography variant='h4'>Precios</Typography>
-        <Typography color='text.secondary'>Precio por noche para contestarle al huésped.</Typography>
-      </div>
-
       <Card>
         <CardContent className='flex flex-col gap-4 sm:flex-row sm:items-end'>
           <DateField className='min-is-[200px] is-full sm:is-auto' fullWidth label='Llegada' value={from} onChange={changeFrom} />

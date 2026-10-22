@@ -106,25 +106,20 @@ const InvoicingListPage = () => {
 
   return (
     <div className='flex flex-col gap-6'>
-      <div className='flex flex-wrap items-start justify-between gap-4'>
-        <div>
-          <div className='flex items-center gap-1'>
-            <Typography variant='h4'>Comprobantes</Typography>
-            {canSettingsInvoices ? (
-              <Tooltip title='Series y SUNAT'>
-                <IconButton
-                  size='small'
-                  component={Link}
-                  href={getLocalizedUrl('/apps/hotel/einvoice', locale as Locale)}
-                  aria-label='Series y SUNAT'
-                >
-                  <i className='ri-settings-3-line' />
-                </IconButton>
-              </Tooltip>
-            ) : null}
-          </div>
-          <Typography color='text.secondary'>Boletas, facturas y notas electrónicas SUNAT</Typography>
-        </div>
+      {canSettingsInvoices || canIssueInvoices ? (
+      <div className='flex flex-wrap items-center justify-end gap-2'>
+        {canSettingsInvoices ? (
+          <Tooltip title='Series y SUNAT'>
+            <IconButton
+              size='small'
+              component={Link}
+              href={getLocalizedUrl('/apps/hotel/einvoice', locale as Locale)}
+              aria-label='Series y SUNAT'
+            >
+              <i className='ri-settings-3-line' />
+            </IconButton>
+          </Tooltip>
+        ) : null}
         {canIssueInvoices ? (
           <Button
             variant='contained'
@@ -136,6 +131,7 @@ const InvoicingListPage = () => {
           </Button>
         ) : null}
       </div>
+      ) : null}
 
       <Card>
         <CardContent className='flex flex-col gap-4'>
