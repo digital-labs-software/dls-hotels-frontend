@@ -106,11 +106,11 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
     <Grid container spacing={6}>
       <Grid size={{ xs: 12 }} className='flex flex-col gap-6'>
         <TabContext value={activeTab}>
-          <CustomTabList onChange={handleChange} variant='scrollable' pill='true'>
+          <CustomTabList onChange={handleChange} variant='scrollable' pill='true' wrap='true'>
             {allowedTabs.includes('rooms') ? (
             <Tab
               label={
-                <div className='flex items-center gap-1.5'>
+                <div className='flex flex-wrap items-center justify-center gap-1.5 text-center'>
                   <i className='ri-hotel-bed-line text-lg' />
                   Habitaciones
                 </div>
@@ -121,7 +121,7 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
             {allowedTabs.includes('rates') ? (
             <Tab
               label={
-                <div className='flex items-center gap-1.5'>
+                <div className='flex flex-wrap items-center justify-center gap-1.5 text-center'>
                   <i className='ri-money-dollar-circle-line text-lg' />
                   Tarifas
                 </div>
@@ -132,7 +132,7 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
             {allowedTabs.includes('room-types') ? (
             <Tab
               label={
-                <div className='flex items-center gap-1.5'>
+                <div className='flex flex-wrap items-center justify-center gap-1.5 text-center'>
                   <i className='ri-price-tag-3-line text-lg' />
                   Tipos de habitación
                 </div>
@@ -143,7 +143,7 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
             {allowedTabs.includes('floors') ? (
             <Tab
               label={
-                <div className='flex items-center gap-1.5'>
+                <div className='flex flex-wrap items-center justify-center gap-1.5 text-center'>
                   <i className='ri-building-4-line text-lg' />
                   Pisos
                 </div>

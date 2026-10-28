@@ -54,6 +54,7 @@ import type {
 import {
   addDays,
   applyFilters,
+  NOTE_COLORS,
   formatPlanningHeading,
   formatPlanningShort,
   PLANNING_VIEWS,
@@ -283,9 +284,13 @@ const ReservationsPage = () => {
           {canManageNotes ? (
           <Button
             variant='contained'
-            color='warning'
             startIcon={<i className='ri-mic-line' />}
             onClick={() => openNote()}
+            sx={{
+              bgcolor: NOTE_COLORS.button,
+              color: NOTE_COLORS.buttonText,
+              '&:hover': { bgcolor: NOTE_COLORS.buttonHover }
+            }}
           >
             Anotar
           </Button>
@@ -466,7 +471,24 @@ const ReservationsPage = () => {
                     {notes
                       .filter(note => note.stayDate === (mobileDay || planning.from))
                       .map(note => (
-                        <Alert key={note.uuid} severity='warning' sx={{ cursor: 'pointer' }} onClick={() => setTab('notes')}>
+                        <Alert
+                          key={note.uuid}
+                          icon={<i className='ri-mic-line' />}
+                          sx={{
+                            cursor: 'pointer',
+                            bgcolor: NOTE_COLORS.wash,
+                            color: NOTE_COLORS.mark,
+                            border: '1px solid',
+                            borderColor: NOTE_COLORS.button,
+                            '& .MuiAlert-icon': { color: NOTE_COLORS.mark },
+                            'html[data-dark] &': {
+                              bgcolor: NOTE_COLORS.washDark,
+                              color: NOTE_COLORS.markDark,
+                              '& .MuiAlert-icon': { color: NOTE_COLORS.markDark }
+                            }
+                          }}
+                          onClick={() => setTab('notes')}
+                        >
                           Por completar: {note.text}
                         </Alert>
                       ))}

@@ -170,35 +170,6 @@ const PricesPage = () => {
       {to <= from ? <Alert severity='warning'>La salida tiene que ser después de la llegada.</Alert> : null}
       {error ? <Alert severity='error'>{error}</Alert> : null}
 
-      {!loading && quote && quote.types.length > 0 ? (
-        <Box
-          className='flex flex-wrap items-center justify-between gap-3 p-4'
-          sx={{
-            position: 'sticky',
-            top: 8,
-            zIndex: 2,
-            bgcolor: 'background.paper',
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: 1,
-            boxShadow: 3
-          }}
-        >
-          <div>
-            <Typography fontWeight={600}>
-              {chosen.length === 0 ? 'Ponga cuántas habitaciones pide el huésped' : `Total ${formatRoomPrice(quoteTotal)}`}
-            </Typography>
-            {chosen.length > 0 ? (
-              <Typography variant='body2' color='text.secondary'>
-                {chosen.map(item => `${item.quantity} ${item.type.name}`).join(' · ')}
-              </Typography>
-            ) : null}
-          </div>
-          <Button variant='contained' className='shrink-0' disabled={chosen.length === 0} onClick={copy}>
-            Copiar cotización
-          </Button>
-        </Box>
-      ) : null}
       {loading ? (
         <div className='flex justify-center py-10'>
           <CircularProgress />
@@ -209,21 +180,29 @@ const PricesPage = () => {
         <Alert severity='info'>No hay tipos de habitación activos.</Alert>
       ) : null}
 
-      {!loading && quote
-        ? quote.types.map(type => {
+      {!loading && quote && quote.types.length > 0 ? (
+        <div className='flex flex-col gap-4 lg:flex-row lg:items-start'>
+          <div className='flex max-h-[min(22rem,52vh)] min-is-0 flex-1 flex-col gap-3 overflow-y-auto p-1 lg:max-h-[calc(100vh-220px)]'>
+            {quote.types.map(type => {
             const same = uniform(type.nights)
             const first = type.nights[0]
             const quantity = quantities[type.roomTypeId] ?? 0
 
             return (
-              <Card key={type.roomTypeId} sx={quantity > 0 ? { outline: '2px solid', outlineColor: 'primary.main' } : undefined}>
+              <Card
+                key={type.roomTypeId}
+                className='shrink-0'
+                sx={{ border: '2px solid', borderColor: quantity > 0 ? 'primary.main' : 'transparent' }}
+              >
                 <CardContent className='flex flex-col gap-3'>
                   <div className='flex flex-wrap items-start justify-between gap-3'>
-                    <div>
+                    <div className='min-is-0'>
                       <Typography variant='h5'>{type.name}</Typography>
                       {same && first ? (
                         <>
-                          <Typography variant='h3'>{formatRoomPrice(first.price)}</Typography>
+                          <Typography variant='h3' sx={{ fontSize: { xs: '1.375rem', lg: '1.75rem' }, lineHeight: 1.3 }}>
+                            {formatRoomPrice(first.price)}
+                          </Typography>
                           <Typography color='text.secondary'>por noche · {first.label}</Typography>
                         </>
                       ) : (
@@ -235,12 +214,12 @@ const PricesPage = () => {
                           ))}
                         </div>
                       )}
-                      <Typography className='mbs-2' fontWeight={600}>
+                      <Typography className='mbs-2' sx={{ overflowWrap: 'anywhere' }} fontWeight={600}>
                         {quote.nights} {quote.nights === 1 ? 'noche' : 'noches'} · {formatRoomPrice(type.total)}
                         {quantity > 1 ? ` · ${quantity} habitaciones · ${formatRoomPrice(lineTotal(type, quantity))}` : ''}
                       </Typography>
                     </div>
-                    <div className='flex items-center gap-1'>
+                    <div className='flex shrink-0 items-center gap-1'>
                       <Typography color='text.secondary'>Cantidad</Typography>
                       <IconButton aria-label={`Quitar ${type.name}`} disabled={quantity === 0} onClick={() => setQuantity(type.roomTypeId, quantity - 1)}>
                         <i className='ri-subtract-line' />
@@ -279,8 +258,38 @@ const PricesPage = () => {
                 </CardContent>
               </Card>
             )
-          })
-        : null}
+          })}
+          </div>
+          <Box className='lg:sticky lg:top-6 lg:is-[360px] lg:shrink-0'>
+            <Card sx={{ bgcolor: 'var(--mui-palette-primary-lightOpacity)', border: '1px solid', borderColor: 'primary.main' }}>
+              <CardContent className='flex flex-col gap-4'>
+                <Typography variant='h5'>Cotización</Typography>
+                <Typography color='text.secondary'>
+                  {quote.nights} {quote.nights === 1 ? 'noche' : 'noches'} · {formatEs(quote.from)} al {formatEs(quote.to)}
+                </Typography>
+                {chosen.length === 0 ? (
+                  <Typography>Elija cuántas habitaciones pide el huésped.</Typography>
+                ) : (
+                  <div className='flex flex-col gap-2'>
+                    {chosen.map(item => (
+                      <div key={item.type.roomTypeId} className='flex items-start justify-between gap-3'>
+                        <Typography>
+                          {item.quantity} {item.type.name}
+                        </Typography>
+                        <Typography className='shrink-0'>{formatRoomPrice(lineTotal(item.type, item.quantity))}</Typography>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {chosen.length > 0 ? <Typography variant='h4'>{formatRoomPrice(quoteTotal)}</Typography> : null}
+                <Button variant='contained' fullWidth disabled={chosen.length === 0} onClick={copy}>
+                  Copiar cotización
+                </Button>
+              </CardContent>
+            </Card>
+          </Box>
+        </div>
+      ) : null}
     </div>
   )
 }

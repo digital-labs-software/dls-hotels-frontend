@@ -8,7 +8,6 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CircularProgress from '@mui/material/CircularProgress'
-import Drawer from '@mui/material/Drawer'
 import MenuItem from '@mui/material/MenuItem'
 import Tab from '@mui/material/Tab'
 import TextField from '@mui/material/TextField'
@@ -85,7 +84,6 @@ const SalesPage = () => {
   const [method, setMethod] = useState<PaymentMethod>('CASH')
   const [customerName, setCustomerName] = useState('')
   const [documentNumber, setDocumentNumber] = useState('')
-  const [ticketOpen, setTicketOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const lock = useRef(false)
   const [editing, setEditing] = useState<string | null>(null)
@@ -169,7 +167,6 @@ const SalesPage = () => {
       setQuantities({})
       setCustomerName('')
       setDocumentNumber('')
-      setTicketOpen(false)
       await load()
     } catch (error) {
       toast.error(getSalesApiErrorMessage(error, 'No se pudo registrar la venta.'))
@@ -285,7 +282,7 @@ const SalesPage = () => {
               <CircularProgress />
             </div>
           ) : (
-            <div className={`flex flex-col gap-4 ${chosen.length > 0 ? 'pb-24 lg:pb-0' : ''}`}>
+            <div className='flex flex-col gap-4'>
               {activeProducts.length === 0 ? (
                 <Alert severity='info'>Todavía no hay productos. Agréguelos en Productos.</Alert>
               ) : (
@@ -301,7 +298,7 @@ const SalesPage = () => {
                     {visibleProducts.length === 0 ? (
                       <Typography color='text.secondary'>No hay productos con ese nombre.</Typography>
                     ) : (
-                      <div className='flex max-h-[400px] flex-col gap-2 overflow-y-auto pe-1'>
+                      <div className='flex max-h-[min(22rem,50vh)] flex-col gap-2 overflow-y-auto p-1 lg:max-h-[400px]'>
                       {visibleProducts.map(product => {
                         const quantity = quantities[product.uuid] ?? 0
                         const suffix = priceSuffix(product.chargeUnit)
@@ -344,31 +341,13 @@ const SalesPage = () => {
                       </div>
                     )}
                   </div>
-                  <Box className='hidden lg:block lg:is-[360px] lg:sticky lg:top-6'>
+                  <Box className='lg:sticky lg:top-6 lg:is-[360px] lg:shrink-0'>
                     <Card>
                       <CardContent>{ticket}</CardContent>
                     </Card>
                   </Box>
                 </div>
               )}
-              {chosen.length > 0 ? (
-                <div className='fixed left-0 right-0 bottom-0 z-[1100] border-bs bg-backgroundPaper p-3 lg:hidden'>
-                  <div className='flex items-center justify-between gap-3'>
-                    <div>
-                      <Typography className='font-medium'>{money(total)}</Typography>
-                      <Typography variant='body2' color='text.secondary'>
-                        {chosen.length === 1 ? '1 producto' : `${chosen.length} productos`}
-                      </Typography>
-                    </div>
-                    <Button variant='contained' onClick={() => setTicketOpen(true)}>
-                      Cobrar
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-              <Drawer anchor='bottom' open={ticketOpen} onClose={() => !saving && setTicketOpen(false)}>
-                <div className='p-4'>{ticket}</div>
-              </Drawer>
               <Card>
                 <CardContent className='flex flex-col gap-3'>
                   <Typography className='font-medium'>Ventas de hoy</Typography>

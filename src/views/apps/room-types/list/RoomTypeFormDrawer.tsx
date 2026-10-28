@@ -179,7 +179,7 @@ const RoomTypeFormDrawer = (props: Props) => {
       variant='temporary'
       onClose={handleReset}
       ModalProps={{ keepMounted: true }}
-      sx={{ '& .MuiDrawer-paper': { width: { xs: 300, sm: 440 } } }}
+      sx={{ '& .MuiDrawer-paper': { width: { xs: '100%', md: 440 } } }}
     >
       <div className='flex items-center justify-between pli-5 plb-4'>
         <Typography variant='h5'>{titles[mode]}</Typography>

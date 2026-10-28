@@ -24,13 +24,6 @@ const data: SearchData[] = [
     section: 'Operación'
   },
   {
-    id: 'sales',
-    name: 'Ventas',
-    url: '/apps/sales',
-    icon: 'ri-store-2-line',
-    section: 'Operación'
-  },
-  {
     id: 'reservations',
     name: 'Reservas',
     url: '/apps/reservations',
@@ -42,6 +35,13 @@ const data: SearchData[] = [
     name: 'Precios',
     url: '/apps/prices',
     icon: 'ri-price-tag-3-line',
+    section: 'Operación'
+  },
+  {
+    id: 'sales',
+    name: 'Ventas',
+    url: '/apps/sales',
+    icon: 'ri-store-2-line',
     section: 'Operación'
   },
   {

@@ -219,6 +219,17 @@ export const ROOM_STATE_COLORS = {
   MAINTENANCE: { bg: '#FFB400', text: '#3E2723' }
 }
 
+/** Verde azulado, aparte del ámbar de mantenimiento. El botón va relleno; la marca del calendario cambia con el fondo. */
+export const NOTE_COLORS = {
+  button: '#00796B',
+  buttonHover: '#00695C',
+  buttonText: '#fff',
+  mark: '#00695C',
+  markDark: '#80CBC4',
+  wash: 'rgb(0 121 107 / 0.16)',
+  washDark: 'rgb(128 203 196 / 0.22)'
+}
+
 export const stayStatusChipSx = (status: StayStatus) => {
   const colors = BAR_COLORS[status]
 

@@ -168,16 +168,6 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             {dictionary['navigation'].frontDesk}
           </MenuItem>
           ) : null}
-          {canViewSales ? (
-          <MenuItem
-            href={`/${locale}/apps/sales`}
-            exactMatch={false}
-            activeUrl='/apps/sales'
-            icon={<i className='ri-store-2-line' />}
-          >
-            {dictionary['navigation'].sales}
-          </MenuItem>
-          ) : null}
           {canViewReservations ? (
           <MenuItem
             href={`/${locale}/apps/reservations`}
@@ -196,6 +186,16 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             icon={<i className='ri-price-tag-3-line' />}
           >
             {dictionary['navigation'].prices}
+          </MenuItem>
+          ) : null}
+          {canViewSales ? (
+          <MenuItem
+            href={`/${locale}/apps/sales`}
+            exactMatch={false}
+            activeUrl='/apps/sales'
+            icon={<i className='ri-store-2-line' />}
+          >
+            {dictionary['navigation'].sales}
           </MenuItem>
           ) : null}
         </MenuSection>

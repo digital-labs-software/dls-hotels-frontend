@@ -1,6 +1,9 @@
+'use client'
+
 // MUI Imports
 import MuiTabList from '@mui/lab/TabList'
-import { styled } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { styled, useTheme } from '@mui/material/styles'
 import type { TabListProps } from '@mui/lab/TabList'
 
 // Type Imports
@@ -9,9 +12,13 @@ import type { ThemeColor } from '@core/types'
 export type CustomTabListProps = TabListProps & {
   color?: ThemeColor
   pill?: 'true' | 'false'
+  wrap?: 'true' | 'false'
 }
 
-const TabList = styled(MuiTabList)<CustomTabListProps>(({ color, pill, theme, orientation }) => ({
+const TabList = styled(MuiTabList, {
+  shouldForwardProp: prop =>
+    prop !== 'wrap' && prop !== 'pill' && prop !== 'color' && prop !== 'ownerState' && prop !== 'theme' && prop !== 'sx' && prop !== 'as'
+})<CustomTabListProps>(({ color, pill, wrap, theme, orientation }) => ({
   ...(pill === 'true' && {
     minHeight: 38,
     ...(orientation === 'vertical'
@@ -56,14 +63,37 @@ const TabList = styled(MuiTabList)<CustomTabListProps>(({ color, pill, theme, or
             })
       }
     }
+  }),
+  ...(wrap === 'true' && {
+    [theme.breakpoints.down('md')]: {
+      minHeight: 'unset',
+      overflow: 'visible',
+      '& .MuiTabs-scroller': {
+        overflow: 'visible !important'
+      },
+      '& .MuiTabs-flexContainer': {
+        flexWrap: 'wrap'
+      },
+      '& .MuiTab-root': {
+        flex: '1 1 calc(50% - 4px)',
+        maxWidth: 'calc(50% - 4px)',
+        minWidth: 0,
+        height: 'auto',
+        whiteSpace: 'normal',
+        paddingInline: theme.spacing(3),
+        textAlign: 'center'
+      }
+    }
   })
 }))
 
 const CustomTabList = (props: CustomTabListProps) => {
-  // Props
-  const { color = 'primary', ...rest } = props
+  const { color = 'primary', wrap, variant, ...rest } = props
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const resolvedVariant = wrap === 'true' && isMobile ? 'standard' : variant
 
-  return <TabList color={color} {...rest} />
+  return <TabList color={color} wrap={wrap} variant={resolvedVariant} {...rest} />
 }
 
 export default CustomTabList

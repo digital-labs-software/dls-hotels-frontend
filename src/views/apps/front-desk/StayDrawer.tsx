@@ -157,7 +157,7 @@ const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheck
       open={open}
       anchor='right'
       onClose={onClose}
-      sx={{ '& .MuiDrawer-paper': { width: { xs: 320, sm: 460 } } }}
+      sx={{ '& .MuiDrawer-paper': { width: { xs: '100%', md: 460 } } }}
     >
       <div className='flex items-center justify-between pli-5 plb-4'>
         <Typography variant='h5'>Estadía {reservation?.code || stay?.reservationCode || ''}</Typography>

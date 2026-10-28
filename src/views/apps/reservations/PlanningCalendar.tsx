@@ -14,6 +14,7 @@ import type { Planning, PlanningBooking, PlanningMaintenance, PlanningRoom, Rese
 import {
   applyFilters,
   BAR_COLORS,
+  NOTE_COLORS,
   ROOM_STATE_COLORS,
   barLayout,
   bookingInitials,
@@ -72,7 +73,8 @@ const reservationLegend: LegendItem[] = [
 ]
 
 const roomLegend: LegendItem[] = [
-  { label: 'Mantenimiento', color: ROOM_STATE_COLORS.MAINTENANCE.bg, text: ROOM_STATE_COLORS.MAINTENANCE.text }
+  { label: 'Mantenimiento', color: ROOM_STATE_COLORS.MAINTENANCE.bg, text: ROOM_STATE_COLORS.MAINTENANCE.text },
+  { label: 'Por completar', color: NOTE_COLORS.button, text: NOTE_COLORS.buttonText }
 ]
 
 const LegendSwatch = ({ item }: { item: LegendItem }) => (
@@ -248,7 +250,7 @@ const RoomRow = ({
       <Box
         className='cal-label cal-number flex items-center gap-1 px-2'
         data-row={room?.number}
-        sx={{ gridRow: 1, position: 'sticky', left: 0, zIndex: 3, bgcolor: 'background.paper', borderRight: '1px solid', borderColor: 'divider' }}
+        sx={{ gridColumn: 1, gridRow: 1, position: 'sticky', left: 0, zIndex: 3, bgcolor: 'background.paper', borderRight: '1px solid', borderColor: 'divider' }}
       >
         <Typography variant='body2' fontWeight={600}>
           {label}
@@ -256,20 +258,17 @@ const RoomRow = ({
         {physical === 'CLEANING' && !coversToday ? (
           <Chip size='small' label='🧹' sx={{ bgcolor: ROOM_STATE_COLORS.CLEANING.bg, color: ROOM_STATE_COLORS.CLEANING.text, height: 20 }} />
         ) : null}
-        {coversToday ? (
-          <Chip size='small' label='🔧' sx={{ bgcolor: ROOM_STATE_COLORS.MAINTENANCE.bg, color: ROOM_STATE_COLORS.MAINTENANCE.text, height: 20 }} />
-        ) : null}
       </Box>
       <Box
         className='cal-label flex items-center px-2'
         data-row={room?.number}
-        sx={{ gridRow: 1, position: 'sticky', left: 72, zIndex: 3, bgcolor: 'background.paper', borderRight: '1px solid', borderColor: 'divider' }}
+        sx={{ gridColumn: 2, gridRow: 1, position: 'sticky', left: 72, zIndex: 3, bgcolor: 'background.paper', borderRight: '1px solid', borderColor: 'divider' }}
       >
         <Typography variant='caption' color='text.secondary'>
           {typeLabel}
         </Typography>
       </Box>
-      {planning.days.map(day => {
+      {planning.days.map((day, index) => {
         const today = day === planning.today
         const block = maintenances.find(item => item.startsOn <= day && day < item.endsOn)
         const cleaningToday = today && room?.status === 'CLEANING' && !block
@@ -291,17 +290,16 @@ const RoomRow = ({
               onEmptyCell(room, day)
             }}
             sx={{
+              gridColumn: index + 3,
               gridRow: 1,
               borderRight: '1px solid',
               borderColor: 'divider',
               cursor: room && !block ? 'pointer' : 'default',
-              bgcolor: block
-                ? ROOM_STATE_COLORS.MAINTENANCE.bg
-                : cleaningToday
-                  ? ROOM_STATE_COLORS.CLEANING.bg
-                  : isWeekend(day)
-                    ? 'action.hover'
-                    : 'transparent',
+              bgcolor: cleaningToday
+                ? ROOM_STATE_COLORS.CLEANING.bg
+                : isWeekend(day)
+                  ? 'action.hover'
+                  : 'transparent',
               boxShadow: today ? 'inset 2px 0 0 #1565C0' : undefined
             }}
           />
@@ -504,7 +502,11 @@ const PlanningCalendar = ({
                 borderColor: 'divider'
               }}
             >
-              <Typography variant='caption' fontWeight={700} color='warning.main'>
+              <Typography
+                variant='caption'
+                fontWeight={700}
+                sx={{ color: NOTE_COLORS.mark, 'html[data-dark] &': { color: NOTE_COLORS.markDark } }}
+              >
                 Por completar
               </Typography>
             </Box>
@@ -533,13 +535,23 @@ const PlanningCalendar = ({
                       justifyContent: 'center',
                       gap: 0.5,
                       cursor: dayNotes.length > 0 ? 'pointer' : 'default',
-                      bgcolor: dayNotes.length > 0 ? 'var(--mui-palette-warning-lightOpacity)' : undefined,
+                      bgcolor: dayNotes.length > 0 ? NOTE_COLORS.wash : undefined,
+                      'html[data-dark] &': dayNotes.length > 0 ? { bgcolor: NOTE_COLORS.washDark } : undefined,
                       borderRight: '1px solid',
                       borderColor: 'divider'
                     }}
                   >
                     {dayNotes.length > 0 ? (
-                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'warning.main', flexShrink: 0 }} />
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          bgcolor: NOTE_COLORS.mark,
+                          flexShrink: 0,
+                          'html[data-dark] &': { bgcolor: NOTE_COLORS.markDark }
+                        }}
+                      />
                     ) : null}
                     {dayNotes.length > 1 ? (
                       <Typography variant='caption' fontWeight={700} lineHeight={1}>
