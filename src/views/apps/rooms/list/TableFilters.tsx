@@ -9,8 +9,8 @@ import Select from '@mui/material/Select'
 
 import type { Floor } from '@/types/apps/floorTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
-import type { RoomStatus } from '@/types/apps/roomsTypes'
-import { ROOM_STATUS_LABELS, ROOM_STATUSES } from '@/types/apps/roomsTypes'
+import type { RoomDisplayStatus } from '@/types/apps/roomsTypes'
+import { ROOM_DISPLAY_STATUSES, ROOM_STATUS_LABELS } from '@/types/apps/roomsTypes'
 
 const TableFilters = ({
   status,
@@ -22,12 +22,12 @@ const TableFilters = ({
   onFloorChange,
   onRoomTypeChange
 }: {
-  status: RoomStatus | ''
+  status: RoomDisplayStatus | ''
   floorId: number | ''
   roomTypeId: number | ''
   floors: Floor[]
   roomTypes: RoomType[]
-  onStatusChange: (value: RoomStatus | '') => void
+  onStatusChange: (value: RoomDisplayStatus | '') => void
   onFloorChange: (value: number | '') => void
   onRoomTypeChange: (value: number | '') => void
 }) => {
@@ -42,10 +42,10 @@ const TableFilters = ({
               label='Estado'
               labelId='room-status-filter'
               value={status}
-              onChange={e => onStatusChange(e.target.value as RoomStatus | '')}
+              onChange={e => onStatusChange(e.target.value as RoomDisplayStatus | '')}
             >
               <MenuItem value=''>Todos</MenuItem>
-              {ROOM_STATUSES.map(item => (
+              {ROOM_DISPLAY_STATUSES.map(item => (
                 <MenuItem key={item} value={item}>
                   {ROOM_STATUS_LABELS[item]}
                 </MenuItem>

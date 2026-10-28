@@ -130,9 +130,7 @@ const AssignReservationRoomDialog = ({
                 <MenuItem key={room.id} value={room.id}>
                   <span className='flex items-center gap-2'>
                     {room.number} · {room.floorName} · {formatRoomPrice(room.effectivePrice)}
-                    {room.status === 'CLEANING' || room.status === 'MAINTENANCE' ? (
-                      <Chip size='small' label={room.status === 'CLEANING' ? 'Limpieza' : 'Mantenimiento'} />
-                    ) : null}
+                    {room.status === 'CLEANING' ? <Chip size='small' label='Limpieza' /> : null}
                   </span>
                 </MenuItem>
               ))}
@@ -140,7 +138,7 @@ const AssignReservationRoomDialog = ({
           </FormControl>
         )}
         <Typography variant='caption' color='text.secondary'>
-          Limpieza o mantenimiento es el estado de hoy; no bloquea una reserva futura.
+          Limpieza es el estado de hoy; no bloquea una reserva futura.
         </Typography>
       </DialogContent>
       <DialogActions>

@@ -1,6 +1,6 @@
 export type RackStatus = 'AVAILABLE' | 'OCCUPIED' | 'CLEANING' | 'MAINTENANCE'
 
-export type RoomPhysicalStatus = 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'CLEANING' | 'MAINTENANCE'
+export type RoomPhysicalStatus = 'AVAILABLE' | 'OCCUPIED' | 'CLEANING'
 
 export type StayStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'NO_SHOW'
 
@@ -117,6 +117,8 @@ export interface RackRoom {
   notes: string | null
   status: RoomPhysicalStatus
   displayStatus: RackStatus
+  maintenanceEndsOn: string | null
+  maintenanceReason: string | null
   currentStay: Stay | null
   arrival: Stay | null
   departureDue: boolean

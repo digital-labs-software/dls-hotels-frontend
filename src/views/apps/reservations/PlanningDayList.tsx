@@ -42,17 +42,18 @@ const PlanningDayList = ({ planning, day, roomTypeId, onBookingClick, onAvailabl
       ) : null}
 
       {filtered.rooms.map(room => {
-        const status = dayStatus(room, filtered.bookings, day, planning.today)
+        const status = dayStatus(room, filtered.bookings, day, planning.today, filtered.maintenances)
         const booking = status.booking
         const leaving = departing.find(item => item.roomId === room.id)
 
         return (
           <Card key={room.id} variant='outlined'>
             <CardActionArea
+              disabled={!booking && Boolean(status.maintenance)}
               onClick={() => {
                 if (booking) {
                   onBookingClick(booking)
-                } else {
+                } else if (!status.maintenance) {
                   onAvailableRoom(room)
                 }
               }}
@@ -79,6 +80,10 @@ const PlanningDayList = ({ planning, day, roomTypeId, onBookingClick, onAvailabl
                       {arrivesToday(booking, day) ? <Chip size='small' color='info' label='Llega hoy' /> : null}
                     </div>
                   </>
+                ) : status.maintenance ? (
+                  <Typography variant='body2' color='text.secondary'>
+                    {status.maintenance.reason}. Se puede volver a reservar el {formatPlanningDate(status.maintenance.endsOn)}.
+                  </Typography>
                 ) : (
                   <div className='flex flex-wrap items-center gap-2'>
                     <Typography variant='body2' color='text.secondary'>

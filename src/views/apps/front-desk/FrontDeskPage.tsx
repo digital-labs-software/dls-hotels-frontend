@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Card from '@mui/material/Card'
@@ -26,6 +29,8 @@ import TabPanel from '@mui/lab/TabPanel'
 
 import { useSession } from 'next-auth/react'
 
+import type { Locale } from '@configs/i18n'
+
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import {
   RECEPTION_CHECK_IN,
@@ -47,6 +52,7 @@ import StayList from './StayList'
 import SummaryBar from './SummaryBar'
 import WalkInDialog from './WalkInDialog'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
+import { getLocalizedUrl } from '@/utils/i18n'
 import { ROOM_PHOTO_DETAIL, cloudinaryTransformedUrl } from '@/libs/cloudinary'
 
 type ViewMode = 'compact' | 'photos'
@@ -56,6 +62,7 @@ type SideTab = 'arrivals' | 'departures' | 'inHouse'
 const VIEW_KEY = 'frontDesk.view'
 
 const FrontDeskPage = () => {
+  const { lang: locale } = useParams()
   const { data: session, status } = useSession()
   const { can } = useSubscriptionAccess()
   const canWalkIn = can(RECEPTION_WALK_IN)
@@ -165,7 +172,7 @@ const FrontDeskPage = () => {
     setMenuRoom(null)
   }
 
-  const handleSetStatus = async (statusValue: 'AVAILABLE' | 'CLEANING' | 'MAINTENANCE') => {
+  const handleSetStatus = async (statusValue: 'AVAILABLE' | 'CLEANING') => {
     if (!menuRoom) {
       return
     }
@@ -551,11 +558,24 @@ const FrontDeskPage = () => {
             Nuevo ingreso
           </MenuItem>
         ) : null}
-        {menuRoom?.displayStatus === 'AVAILABLE' || menuRoom?.displayStatus === 'CLEANING' ? (
-          <MenuItem onClick={() => handleSetStatus('MAINTENANCE')}>Enviar a mantenimiento</MenuItem>
+        {menuRoom && (menuRoom.displayStatus === 'AVAILABLE' || menuRoom.displayStatus === 'CLEANING') ? (
+          <MenuItem
+            component={Link}
+            href={getLocalizedUrl(`/apps/rooms/edit/${menuRoom.uuid}`, locale as Locale)}
+            onClick={closeMenu}
+          >
+            Programar mantenimiento
+          </MenuItem>
         ) : null}
-        {menuRoom?.displayStatus === 'MAINTENANCE' ? <MenuItem onClick={() => handleSetStatus('AVAILABLE')}>Habilitar</MenuItem> : null}
-        {menuRoom?.displayStatus === 'MAINTENANCE' ? <MenuItem onClick={() => handleSetStatus('CLEANING')}>Marcar en limpieza</MenuItem> : null}
+        {menuRoom?.displayStatus === 'MAINTENANCE' ? (
+          <MenuItem
+            component={Link}
+            href={getLocalizedUrl(`/apps/rooms/edit/${menuRoom.uuid}`, locale as Locale)}
+            onClick={closeMenu}
+          >
+            Ver mantenimiento
+          </MenuItem>
+        ) : null}
       </Menu>
 
       <WalkInDialog

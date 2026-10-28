@@ -122,6 +122,14 @@ const RoomCard = ({ room, view, onOpenMenu, onOpenPhoto }: Props) => {
             >
               {holder}
             </Typography>
+          ) : room.displayStatus === 'MAINTENANCE' && room.maintenanceReason ? (
+            <Typography
+              variant='body2'
+              className='absolute inset-0 flex items-center justify-center px-3 text-center font-medium text-white'
+              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.85)' }}
+            >
+              {room.maintenanceReason}
+            </Typography>
           ) : null}
         </button>
       ) : (
@@ -146,6 +154,9 @@ const RoomCard = ({ room, view, onOpenMenu, onOpenPhoto }: Props) => {
               {room.displayStatus === 'CLEANING' ? (
                 <HeaderButton icon='ri-pencil-line' label='Cambiar estado' ink={palette.ink} onClick={openMenu} />
               ) : null}
+              {room.displayStatus === 'MAINTENANCE' ? (
+                <HeaderButton icon='ri-tools-line' label='Mantenimiento' ink={palette.ink} onClick={openMenu} />
+              ) : null}
             </div>
           </div>
           <div style={{ height: 1, backgroundColor: palette.line }} />
@@ -157,6 +168,10 @@ const RoomCard = ({ room, view, onOpenMenu, onOpenPhoto }: Props) => {
                   {holder}
                 </Typography>
               </>
+            ) : room.displayStatus === 'MAINTENANCE' && room.maintenanceReason ? (
+              <Typography variant={compact ? 'body2' : 'body1'} className='font-medium'>
+                {room.maintenanceReason}
+              </Typography>
             ) : (
               <>
                 <i className='ri-hotel-bed-line shrink-0 text-base leading-none' />

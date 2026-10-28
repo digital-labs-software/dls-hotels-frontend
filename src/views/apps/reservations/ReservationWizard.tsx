@@ -732,9 +732,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                 <MenuItem key={free.id} value={free.id}>
                   {free.number} · {free.floorName}
                   {free.effectivePrice !== selectedType?.basePrice ? ` · ${formatRoomPrice(free.effectivePrice)}` : ''}
-                  {free.status === 'CLEANING' || free.status === 'MAINTENANCE'
-                    ? ` · ${free.status === 'CLEANING' ? 'Limpieza' : 'Mantenimiento'}`
-                    : ''}
+                  {free.status === 'CLEANING' ? ' · Limpieza' : ''}
                 </MenuItem>
               ))}
             </Select>

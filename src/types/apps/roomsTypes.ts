@@ -1,6 +1,21 @@
-export const ROOM_STATUSES = ['AVAILABLE', 'RESERVED', 'OCCUPIED', 'CLEANING', 'MAINTENANCE'] as const
+export const ROOM_STATUSES = ['AVAILABLE', 'OCCUPIED', 'CLEANING'] as const
 
 export type RoomStatus = (typeof ROOM_STATUSES)[number]
+
+export const MANUAL_ROOM_STATUSES = ['AVAILABLE', 'CLEANING'] as const
+
+export type ManualRoomStatus = (typeof MANUAL_ROOM_STATUSES)[number]
+
+export const ROOM_DISPLAY_STATUSES = ['AVAILABLE', 'OCCUPIED', 'CLEANING', 'MAINTENANCE'] as const
+
+export type RoomDisplayStatus = (typeof ROOM_DISPLAY_STATUSES)[number]
+
+export type RoomMaintenance = {
+  uuid: string
+  startsOn: string
+  endsOn: string
+  reason: string
+}
 
 export type Room = {
   id: number
@@ -15,6 +30,8 @@ export type Room = {
   effectivePrice: number
   photoUrl: string | null
   status: RoomStatus
+  displayStatus: RoomDisplayStatus
+  maintenances: RoomMaintenance[]
   notes: string | null
   createdAt: string
   updatedAt: string
@@ -46,12 +63,11 @@ export type ListRoomsQuery = {
   limit?: number
   roomTypeId?: number
   floorId?: number
-  status?: RoomStatus
+  status?: RoomDisplayStatus
 }
 
-export const ROOM_STATUS_LABELS: Record<RoomStatus, string> = {
+export const ROOM_STATUS_LABELS: Record<RoomDisplayStatus, string> = {
   AVAILABLE: 'Disponible',
-  RESERVED: 'Reservada',
   OCCUPIED: 'Ocupada',
   CLEANING: 'Limpieza',
   MAINTENANCE: 'Mantenimiento'

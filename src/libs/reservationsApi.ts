@@ -170,7 +170,16 @@ const normalizePlanning = (payload: Planning): Planning => ({
         floorId: toNumber(room.floorId)
       }))
     : [],
-  bookings: Array.isArray(payload?.bookings) ? payload.bookings.map(normalizeBooking) : []
+  bookings: Array.isArray(payload?.bookings) ? payload.bookings.map(normalizeBooking) : [],
+  maintenances: Array.isArray(payload?.maintenances)
+    ? payload.maintenances.map(item => ({
+        uuid: item.uuid,
+        roomId: toNumber(item.roomId),
+        startsOn: String(item.startsOn || '').slice(0, 10),
+        endsOn: String(item.endsOn || '').slice(0, 10),
+        reason: item.reason || ''
+      }))
+    : []
 })
 
 const normalizeReservation = (reservation: Reservation): Reservation => ({

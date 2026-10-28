@@ -15,7 +15,15 @@ export type ReservationSource =
 
 export type PaymentMethod = 'CASH' | 'CARD' | 'YAPE' | 'PLIN' | 'TRANSFER' | 'OTHER'
 
-export type RoomStatus = 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'CLEANING' | 'MAINTENANCE'
+export type RoomStatus = 'AVAILABLE' | 'OCCUPIED' | 'CLEANING'
+
+export interface PlanningMaintenance {
+  uuid: string
+  roomId: number
+  startsOn: string
+  endsOn: string
+  reason: string
+}
 
 export interface PlanningRoom {
   id: number
@@ -64,6 +72,7 @@ export interface Planning {
   days: string[]
   rooms: PlanningRoom[]
   bookings: PlanningBooking[]
+  maintenances: PlanningMaintenance[]
 }
 
 export interface AvailabilityRoom {
@@ -324,7 +333,9 @@ export function applyFilters(p: Planning, roomTypeId?: number, floorId?: number)
     b.roomId === null ? (!roomTypeId || b.roomTypeId === roomTypeId) && !floorId : roomIds.has(b.roomId)
   )
 
-  return { rooms, bookings }
+  const maintenances = (p.maintenances ?? []).filter(item => roomIds.has(item.roomId))
+
+  return { rooms, bookings, maintenances }
 }
 
 export function groupByType(rooms: PlanningRoom[]) {
@@ -341,24 +352,55 @@ export function groupByType(rooms: PlanningRoom[]) {
   return [...map.entries()].map(([id, g]) => ({ roomTypeId: id, ...g }))
 }
 
-export function dayStatus(room: PlanningRoom, bookings: PlanningBooking[], day: string, today: string) {
+export function dayStatus(
+  room: PlanningRoom,
+  bookings: PlanningBooking[],
+  day: string,
+  today: string,
+  maintenances: PlanningMaintenance[] = []
+) {
   const b = bookings.find(x => x.roomId === room.id && x.checkInDate <= day && day < x.checkOutDate)
+  const block = maintenances.find(item => item.roomId === room.id && item.startsOn <= day && day < item.endsOn)
 
   if (b?.status && BAR_COLORS[b.status]) {
     const colors = BAR_COLORS[b.status]
 
-    return { label: BOOKING_STATUS_LABELS[b.status], color: colors.bg, text: colors.text, booking: b }
+    return {
+      label: BOOKING_STATUS_LABELS[b.status],
+      color: colors.bg,
+      text: colors.text,
+      booking: b,
+      maintenance: undefined as PlanningMaintenance | undefined
+    }
+  }
+
+  if (block) {
+    return {
+      label: 'Mantenimiento',
+      color: ROOM_STATE_COLORS.MAINTENANCE.bg,
+      text: ROOM_STATE_COLORS.MAINTENANCE.text,
+      booking: undefined,
+      maintenance: block
+    }
   }
 
   if (day === today && room.status === 'CLEANING') {
-    return { label: 'Limpieza', color: ROOM_STATE_COLORS.CLEANING.bg, text: ROOM_STATE_COLORS.CLEANING.text }
+    return {
+      label: 'Limpieza',
+      color: ROOM_STATE_COLORS.CLEANING.bg,
+      text: ROOM_STATE_COLORS.CLEANING.text,
+      booking: undefined,
+      maintenance: undefined
+    }
   }
 
-  if (day === today && room.status === 'MAINTENANCE') {
-    return { label: 'Mantenimiento', color: ROOM_STATE_COLORS.MAINTENANCE.bg, text: ROOM_STATE_COLORS.MAINTENANCE.text }
+  return {
+    label: 'Disponible',
+    color: ROOM_STATE_COLORS.AVAILABLE.bg,
+    text: ROOM_STATE_COLORS.AVAILABLE.text,
+    booking: undefined,
+    maintenance: undefined
   }
-
-  return { label: 'Disponible', color: ROOM_STATE_COLORS.AVAILABLE.bg, text: ROOM_STATE_COLORS.AVAILABLE.text }
 }
 
 export const arrivesToday = (b: PlanningBooking, day: string) => b.checkInDate === day

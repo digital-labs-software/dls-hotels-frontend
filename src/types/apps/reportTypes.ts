@@ -1,6 +1,6 @@
 import type { CompanyType, DocumentType } from '@/types/apps/clientsTypes'
 import type { EinvoiceDocumentType, EinvoiceStatus } from '@/types/apps/einvoiceTypes'
-import type { PaymentMethod, ReservationSource, RoomPhysicalStatus, StayStatus } from '@/types/apps/frontDeskTypes'
+import type { PaymentMethod, RackStatus, ReservationSource, StayStatus } from '@/types/apps/frontDeskTypes'
 
 export interface GuestSheetPerson {
   guestId: number
@@ -71,7 +71,7 @@ export interface MovementLine {
   status: StayStatus
   roomNumber: string | null
   floorName: string | null
-  roomStatus: RoomPhysicalStatus | null
+  roomStatus: RackStatus | null
   roomTypeName: string
   adults: number
   children: number
@@ -124,7 +124,7 @@ export interface HousekeepingRoom {
   roomId: number
   roomNumber: string
   roomTypeName: string
-  roomStatus: RoomPhysicalStatus
+  roomStatus: RackStatus
   task: HousekeepingTask
   guestName: string | null
   pax: number

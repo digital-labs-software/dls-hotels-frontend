@@ -10,7 +10,7 @@ import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 
-import type { Planning, PlanningBooking, PlanningRoom, ReservationNote } from '@/types/apps/reservationsTypes'
+import type { Planning, PlanningBooking, PlanningMaintenance, PlanningRoom, ReservationNote } from '@/types/apps/reservationsTypes'
 import {
   applyFilters,
   BAR_COLORS,
@@ -148,6 +148,46 @@ const BookingBar = ({
   )
 }
 
+const MaintenanceBar = ({ block, from, to }: { block: PlanningMaintenance; from: string; to: string }) => {
+  const layout = barLayout({ checkInDate: block.startsOn, checkOutDate: block.endsOn } as PlanningBooking, from, to)
+
+  return (
+    <Box sx={{ gridColumn: `${layout.column + 3} / span ${layout.span}`, gridRow: 1, minWidth: 0, zIndex: 2, alignSelf: 'center' }}>
+      <Tooltip
+        title={
+          <div>
+            <div>{block.reason}</div>
+            <div>Se puede volver a reservar el {formatPlanningDate(block.endsOn)}</div>
+          </div>
+        }
+      >
+        <Box
+          onClick={event => event.stopPropagation()}
+          sx={{
+            minHeight: 28,
+            mx: '2px',
+            px: 1,
+            display: 'flex',
+            alignItems: 'center',
+            borderRadius: 1,
+            bgcolor: ROOM_STATE_COLORS.MAINTENANCE.bg,
+            color: ROOM_STATE_COLORS.MAINTENANCE.text,
+            cursor: 'default',
+            overflow: 'hidden',
+            fontSize: 12,
+            fontWeight: 600,
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {layout.cutLeft ? '◀ ' : ''}
+          {block.reason}
+          {layout.cutRight ? ' ▶' : ''}
+        </Box>
+      </Tooltip>
+    </Box>
+  )
+}
+
 const RoomRow = ({
   label,
   typeLabel,
@@ -157,19 +197,22 @@ const RoomRow = ({
   search,
   highlightedUuid,
   onEmptyCell,
-  onBookingClick
+  onBookingClick,
+  maintenances = []
 }: {
   label: string
   typeLabel?: string
   room?: PlanningRoom
   planning: Planning
   bookings: PlanningBooking[]
+  maintenances?: PlanningMaintenance[]
   search: string
   highlightedUuid?: string | null
   onEmptyCell: (room: PlanningRoom, day: string) => void
   onBookingClick: (booking: PlanningBooking) => void
 }) => {
   const colWidth = columnWidth(planning.view)
+  const coversToday = room ? maintenances.some(block => block.startsOn <= planning.today && planning.today < block.endsOn) : false
   const physical = room && planning.days.includes(planning.today) ? room.status : null
 
   return (
@@ -192,10 +235,10 @@ const RoomRow = ({
         <Typography variant='body2' fontWeight={600}>
           {label}
         </Typography>
-        {physical === 'CLEANING' ? (
+        {physical === 'CLEANING' && !coversToday ? (
           <Chip size='small' label='🧹' sx={{ bgcolor: ROOM_STATE_COLORS.CLEANING.bg, color: ROOM_STATE_COLORS.CLEANING.text, height: 20 }} />
         ) : null}
-        {physical === 'MAINTENANCE' ? (
+        {coversToday ? (
           <Chip size='small' label='🔧' sx={{ bgcolor: ROOM_STATE_COLORS.MAINTENANCE.bg, color: ROOM_STATE_COLORS.MAINTENANCE.text, height: 20 }} />
         ) : null}
       </Box>
@@ -210,27 +253,37 @@ const RoomRow = ({
       </Box>
       {planning.days.map(day => {
         const today = day === planning.today
-        const blockedToday = today && room && (room.status === 'CLEANING' || room.status === 'MAINTENANCE')
+        const block = maintenances.find(item => item.startsOn <= day && day < item.endsOn)
+        const cleaningToday = today && room?.status === 'CLEANING' && !block
 
         return (
           <Box
             key={`${label}-${day}`}
             data-day={day}
             data-row={room?.number}
-            title={room ? cellHint(room.number, day) : undefined}
-            onClick={() => room && onEmptyCell(room, day)}
+            title={
+              block
+                ? `${block.reason}. Se puede volver a reservar el ${formatPlanningDate(block.endsOn)}`
+                : room
+                  ? cellHint(room.number, day)
+                  : undefined
+            }
+            onClick={() => {
+              if (!room || block) return
+              onEmptyCell(room, day)
+            }}
             sx={{
               gridRow: 1,
               borderRight: '1px solid',
               borderColor: 'divider',
-              cursor: room ? 'pointer' : 'default',
-              bgcolor: blockedToday
-                ? room?.status === 'CLEANING'
+              cursor: room && !block ? 'pointer' : 'default',
+              bgcolor: block
+                ? ROOM_STATE_COLORS.MAINTENANCE.bg
+                : cleaningToday
                   ? ROOM_STATE_COLORS.CLEANING.bg
-                  : ROOM_STATE_COLORS.MAINTENANCE.bg
-                : isWeekend(day)
-                  ? 'action.hover'
-                  : 'transparent',
+                  : isWeekend(day)
+                    ? 'action.hover'
+                    : 'transparent',
               boxShadow: today ? 'inset 2px 0 0 #1565C0' : undefined
             }}
           />
@@ -247,6 +300,9 @@ const RoomRow = ({
           highlighted={highlightedUuid === booking.reservationUuid}
           onClick={() => onBookingClick(booking)}
         />
+      ))}
+      {maintenances.map(block => (
+        <MaintenanceBar key={block.uuid} block={block} from={planning.from} to={planning.to} />
       ))}
     </Box>
   )
@@ -534,6 +590,7 @@ const PlanningCalendar = ({
                       room={room}
                       planning={planning}
                       bookings={filtered.bookings.filter(booking => booking.roomId === room.id)}
+                      maintenances={filtered.maintenances.filter(block => block.roomId === room.id)}
                       search={search}
                       highlightedUuid={highlightedUuid}
                       onEmptyCell={onEmptyCell}

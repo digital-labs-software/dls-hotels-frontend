@@ -25,13 +25,14 @@ import { toast } from 'react-toastify'
 import type { Locale } from '@configs/i18n'
 import type { Floor } from '@/types/apps/floorTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
-import type { RoomStatus } from '@/types/apps/roomsTypes'
-import { formatRoomPrice, ROOM_STATUS_LABELS, ROOM_STATUSES } from '@/types/apps/roomsTypes'
+import type { RoomDisplayStatus, RoomMaintenance, RoomStatus } from '@/types/apps/roomsTypes'
+import { formatRoomPrice, MANUAL_ROOM_STATUSES, ROOM_STATUS_LABELS } from '@/types/apps/roomsTypes'
 import { listFloors } from '@/libs/floorsApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
 import { createRoom, getRoom, getRoomsApiErrorMessage, updateRoom } from '@/libs/roomsApi'
 import { getUploadsApiErrorMessage, uploadRoomPhoto } from '@/libs/uploadsApi'
 import { getLocalizedUrl } from '@/utils/i18n'
+import RoomMaintenanceCard from './RoomMaintenanceCard'
 import RoomPhotoField from './RoomPhotoField'
 
 type FormValues = {
@@ -69,6 +70,8 @@ const RoomForm = ({ uuid }: Props) => {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [pendingPhoto, setPendingPhoto] = useState<File | null>(null)
   const [removePhoto, setRemovePhoto] = useState(false)
+  const [displayStatus, setDisplayStatus] = useState<RoomDisplayStatus>('AVAILABLE')
+  const [maintenances, setMaintenances] = useState<RoomMaintenance[]>([])
 
   const {
     control,
@@ -87,7 +90,10 @@ const RoomForm = ({ uuid }: Props) => {
   })
 
   const roomTypeId = useWatch({ control, name: 'roomTypeId' })
+  const status = useWatch({ control, name: 'status' })
   const selectedType = roomTypes.find(type => type.id === Number(roomTypeId))
+  const statusOptions: RoomStatus[] = status === 'OCCUPIED' ? ['OCCUPIED'] : [...MANUAL_ROOM_STATUSES]
+  const statusLocked = isView || status === 'OCCUPIED' || displayStatus === 'MAINTENANCE'
   const selectableTypes = roomTypes.filter(type => type.isActive || type.id === Number(roomTypeId))
 
   useEffect(() => {
@@ -115,6 +121,8 @@ const RoomForm = ({ uuid }: Props) => {
         setPhotoUrl(room.photoUrl ?? null)
         setPendingPhoto(null)
         setRemovePhoto(false)
+        setDisplayStatus(room.displayStatus)
+        setMaintenances(room.maintenances)
         reset({
           number: room.number,
           floorId: room.floorId,
@@ -136,6 +144,17 @@ const RoomForm = ({ uuid }: Props) => {
 
   const goBack = () => {
     router.push(getLocalizedUrl('/apps/rooms', locale as Locale))
+  }
+
+  const refreshMaintenance = async () => {
+    if (!uuid) {
+      return
+    }
+
+    const room = await getRoom(propertyId, uuid)
+
+    setDisplayStatus(room.displayStatus)
+    setMaintenances(room.maintenances)
   }
 
   const onSubmit = async (data: FormValues) => {
@@ -313,8 +332,8 @@ const RoomForm = ({ uuid }: Props) => {
                   control={control}
                   rules={{ required: true }}
                   render={({ field }) => (
-                    <Select {...field} label='Estado' labelId='room-status' disabled={isView || isSubmitting}>
-                      {ROOM_STATUSES.map(item => (
+                    <Select {...field} label='Estado' labelId='room-status' disabled={statusLocked || isSubmitting}>
+                      {statusOptions.map(item => (
                         <MenuItem key={item} value={item}>
                           {ROOM_STATUS_LABELS[item]}
                         </MenuItem>
@@ -322,6 +341,14 @@ const RoomForm = ({ uuid }: Props) => {
                     </Select>
                   )}
                 />
+                {displayStatus === 'MAINTENANCE' ? (
+                  <FormHelperText>
+                    Mientras el mantenimiento cubra esta noche, el estado que se ve es Mantenimiento. Para dejarla
+                    disponible, adelante la fecha de fin o quite el mantenimiento.
+                  </FormHelperText>
+                ) : status === 'OCCUPIED' ? (
+                  <FormHelperText>Ocupada la asigna el ingreso del huésped.</FormHelperText>
+                ) : null}
               </FormControl>
             </CardContent>
           </Card>
@@ -390,6 +417,16 @@ const RoomForm = ({ uuid }: Props) => {
               ) : null}
             </CardContent>
           </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12 }}>
+          <RoomMaintenanceCard
+            propertyId={propertyId}
+            roomUuid={uuid}
+            maintenances={maintenances}
+            readOnly={isView}
+            onChanged={refreshMaintenance}
+          />
         </Grid>
 
         <Grid size={{ xs: 12 }}>

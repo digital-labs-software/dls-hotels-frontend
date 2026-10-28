@@ -130,6 +130,8 @@ const normalizeRoom = (room: FrontDesk['floors'][number]['rooms'][number]) => ({
   effectivePrice: toNumber(room.effectivePrice),
   photoUrl: room.photoUrl ?? null,
   notes: room.notes ?? null,
+  maintenanceEndsOn: room.maintenanceEndsOn ?? null,
+  maintenanceReason: room.maintenanceReason ?? null,
   currentStay: room.currentStay ? normalizeStay(room.currentStay) : null,
   arrival: room.arrival ? normalizeStay(room.arrival) : null,
   departureDue: Boolean(room.departureDue)
@@ -451,7 +453,7 @@ export const frontDeskApi = {
   setRoomStatus: async (
     propertyId: number,
     roomUuid: string,
-    status: Extract<RackStatus, 'AVAILABLE' | 'CLEANING' | 'MAINTENANCE'>,
+    status: Extract<RackStatus, 'AVAILABLE' | 'CLEANING'>,
     notes?: string | null,
     token?: string
   ) => {

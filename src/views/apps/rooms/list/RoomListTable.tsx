@@ -44,7 +44,7 @@ import type { ThemeColor } from '@core/types'
 import type { Locale } from '@configs/i18n'
 import type { Floor } from '@/types/apps/floorTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
-import type { Room, RoomStatus } from '@/types/apps/roomsTypes'
+import type { Room, RoomDisplayStatus } from '@/types/apps/roomsTypes'
 import { formatRoomPrice, ROOM_STATUS_LABELS } from '@/types/apps/roomsTypes'
 import TableFilters from './TableFilters'
 import { listFloors } from '@/libs/floorsApi'
@@ -103,9 +103,8 @@ const DebouncedInput = ({
   return <TextField {...props} value={value} onChange={e => setValue(e.target.value)} size='small' />
 }
 
-const statusColor: Record<RoomStatus, ThemeColor> = {
+const statusColor: Record<RoomDisplayStatus, ThemeColor> = {
   AVAILABLE: 'success',
-  RESERVED: 'warning',
   OCCUPIED: 'error',
   CLEANING: 'info',
   MAINTENANCE: 'warning'
@@ -132,7 +131,7 @@ const RoomListTable = () => {
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(20)
   const [total, setTotal] = useState(0)
-  const [statusFilter, setStatusFilter] = useState<RoomStatus | ''>('')
+  const [statusFilter, setStatusFilter] = useState<RoomDisplayStatus | ''>('')
   const [floorFilter, setFloorFilter] = useState<number | ''>('')
   const [roomTypeFilter, setRoomTypeFilter] = useState<number | ''>('')
 
@@ -250,9 +249,9 @@ const RoomListTable = () => {
         cell: ({ row }) => (
           <Chip
             variant='tonal'
-            label={ROOM_STATUS_LABELS[row.original.status]}
+            label={ROOM_STATUS_LABELS[row.original.displayStatus]}
             size='small'
-            color={statusColor[row.original.status]}
+            color={statusColor[row.original.displayStatus]}
           />
         )
       }),

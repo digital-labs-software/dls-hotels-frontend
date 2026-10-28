@@ -2,8 +2,16 @@ import { getSession } from 'next-auth/react'
 
 import type { ApiError } from '@/types/apps/clientsTypes'
 import type { PageMeta, Paginated } from '@/types/apps/pagination'
-import type { CreateRoomDto, ListRoomsQuery, Room, RoomStatus, UpdateRoomDto } from '@/types/apps/roomsTypes'
-import { ROOM_STATUSES } from '@/types/apps/roomsTypes'
+import type {
+  CreateRoomDto,
+  ListRoomsQuery,
+  Room,
+  RoomDisplayStatus,
+  RoomMaintenance,
+  RoomStatus,
+  UpdateRoomDto
+} from '@/types/apps/roomsTypes'
+import { ROOM_DISPLAY_STATUSES, ROOM_STATUSES } from '@/types/apps/roomsTypes'
 
 const getApiBase = () => {
   if (typeof window === 'undefined') {
@@ -55,6 +63,19 @@ const normalizeStatus = (status: unknown): RoomStatus => {
   return (ROOM_STATUSES as readonly string[]).includes(value) ? (value as RoomStatus) : 'AVAILABLE'
 }
 
+const normalizeDisplayStatus = (status: unknown, fallback: unknown): RoomDisplayStatus => {
+  const value = String(status || fallback || 'AVAILABLE').toUpperCase()
+
+  return (ROOM_DISPLAY_STATUSES as readonly string[]).includes(value) ? (value as RoomDisplayStatus) : 'AVAILABLE'
+}
+
+const normalizeMaintenance = (item: RoomMaintenance): RoomMaintenance => ({
+  uuid: item.uuid,
+  startsOn: String(item.startsOn || '').slice(0, 10),
+  endsOn: String(item.endsOn || '').slice(0, 10),
+  reason: item.reason || ''
+})
+
 const normalizeRoom = (room: Room): Room => ({
   ...room,
   id: toNumber(room.id),
@@ -67,7 +88,9 @@ const normalizeRoom = (room: Room): Room => ({
   notes: room.notes ?? null,
   priceOverride: toNullableNumber(room.priceOverride),
   effectivePrice: toNumber(room.effectivePrice),
-  status: normalizeStatus(room.status)
+  status: normalizeStatus(room.status),
+  displayStatus: normalizeDisplayStatus(room.displayStatus, room.status),
+  maintenances: Array.isArray(room.maintenances) ? room.maintenances.map(normalizeMaintenance) : []
 })
 
 const emptyMeta = (total = 0): PageMeta => ({
@@ -194,6 +217,48 @@ export async function updateRoom(propertyId: number, uuid: string, body: UpdateR
       { method: 'PATCH', body: JSON.stringify(payload) },
       token
     )
+  )
+}
+
+export async function createRoomMaintenance(
+  propertyId: number,
+  uuid: string,
+  body: { startsOn: string; endsOn: string; reason: string },
+  token?: string
+) {
+  return normalizeMaintenance(
+    await request<RoomMaintenance>(
+      `/properties/${propertyId}/rooms/${uuid}/maintenances`,
+      { method: 'POST', body: JSON.stringify({ ...body, reason: body.reason.trim() }) },
+      token
+    )
+  )
+}
+
+export async function updateRoomMaintenance(
+  propertyId: number,
+  uuid: string,
+  maintenanceUuid: string,
+  body: { startsOn?: string; endsOn?: string; reason?: string },
+  token?: string
+) {
+  return normalizeMaintenance(
+    await request<RoomMaintenance>(
+      `/properties/${propertyId}/rooms/${uuid}/maintenances/${maintenanceUuid}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ ...body, reason: body.reason?.trim() })
+      },
+      token
+    )
+  )
+}
+
+export async function deleteRoomMaintenance(propertyId: number, uuid: string, maintenanceUuid: string, token?: string) {
+  await request<null>(
+    `/properties/${propertyId}/rooms/${uuid}/maintenances/${maintenanceUuid}`,
+    { method: 'DELETE' },
+    token
   )
 }
 
