@@ -203,14 +203,14 @@ export const PLANNING_VIEWS: { value: PlanningView; label: string }[] = [
   { value: 'MONTH', label: '1 mes' }
 ]
 
-/** Mismos tonos que recepción: ocupado rojo, reservado celeste, pendiente warning, finalizada plomo. */
+/** Ocupado rojo, reservado azul, pendiente ámbar, finalizada plomo, no se presentó púrpura. El texto va oscuro sobre fondos claros. */
 export const BAR_COLORS: Record<StayStatus, { bg: string; text: string; dashed?: boolean }> = {
-  CHECKED_IN: { bg: '#E53935', text: '#fff' },
-  CONFIRMED: { bg: '#039BE5', text: '#fff' },
-  PENDING: { bg: '#FFF8E1', text: '#E65100', dashed: true },
-  CHECKED_OUT: { bg: '#78909C', text: '#fff' },
+  CHECKED_IN: { bg: '#C62828', text: '#fff' },
+  CONFIRMED: { bg: '#0D47A1', text: '#fff' },
+  PENDING: { bg: '#FFF8E1', text: '#BF360C', dashed: true },
+  CHECKED_OUT: { bg: '#455A64', text: '#fff' },
   NO_SHOW: { bg: '#6A1B9A', text: '#fff' },
-  CANCELLED: { bg: '#ECEFF1', text: '#546E7A', dashed: true }
+  CANCELLED: { bg: '#ECEFF1', text: '#263238', dashed: true }
 }
 
 export const ROOM_STATE_COLORS = {

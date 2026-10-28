@@ -176,7 +176,25 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
                     <TableCell>{formatPlanningDate(row.checkOutDate)}</TableCell>
                     <TableCell>{row.nights}</TableCell>
                     <TableCell>
-                      {row.rooms.map(room => room.roomNumber || 'Sin asignar').join(', ') || '—'}
+                      {row.rooms.length === 0
+                        ? '—'
+                        : row.rooms.map((room, index) => (
+                            <span key={room.uuid}>
+                              {index > 0 ? ', ' : null}
+                              {room.roomNumber ? (
+                                room.roomNumber
+                              ) : (
+                                <Typography
+                                  component='span'
+                                  variant='body2'
+                                  fontWeight={700}
+                                  sx={{ color: theme => (theme.palette.mode === 'dark' ? '#FFB400' : '#BF360C') }}
+                                >
+                                  Sin asignar
+                                </Typography>
+                              )}
+                            </span>
+                          ))}
                     </TableCell>
                     <TableCell>{formatRoomPrice(row.totalAmount)}</TableCell>
                     <TableCell>{formatRoomPrice(row.balance)}</TableCell>

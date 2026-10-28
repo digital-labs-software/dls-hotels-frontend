@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -20,7 +20,6 @@ import type { DocumentType, Guest } from '@/types/apps/clientsTypes'
 import { DOCUMENT_TYPE_LABELS, guestDocumentOptions } from '@/types/apps/clientsTypes'
 import { guestsApi } from '@/libs/clientsApi'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
-import { splitGuestName } from '@/types/apps/reservationsTypes'
 import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup'
 import { useExistingRecord } from '@/hooks/useExistingRecord'
 import { DocumentLookupAdornment, DocumentLookupHelper } from '@/components/document-lookup/DocumentLookupHelper'
@@ -31,7 +30,7 @@ type Props = {
   propertyId: number
   onClose: () => void
 
-  /** Nombre o DNI que ya se escribió en el buscador, para no tipearlos otra vez. */
+  /** Si el buscador tenía un DNI de 8 dígitos, se usa para consultar RENIEC. Un nombre no se copia. */
   initialQuery?: string
 
   /** Recibe el huésped creado o, si el documento ya existía, el huésped existente. */
@@ -46,6 +45,7 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [saving, setSaving] = useState(false)
+  const documentInputRef = useRef<HTMLInputElement>(null)
 
   const dniLookup = useDocumentLookup('DNI', data => {
     if (data.firstName) setFirstName(data.firstName)
@@ -56,8 +56,8 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
     guestsApi.findByDocument(propertyId, query.type, query.number)
   )
 
-  const { reset: resetLookup } = dniLookup
-  const { clear: clearExisting } = existingGuest
+  const { reset: resetLookup, lookup: lookupDni } = dniLookup
+  const { clear: clearExisting, check: checkExisting } = existingGuest
 
   useEffect(() => {
     if (!open) {
@@ -66,31 +66,28 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
 
     const query = initialQuery.trim()
     const digits = query.replace(/\D/g, '')
+    const isDniQuery = digits.length === 8 && digits === query
 
-    if (digits.length === 8 && digits === query) {
-      setDocumentType('DNI')
-      setDocumentNumber(digits)
-      setFirstName('')
-      setLastName('')
-    } else if (query) {
-      const name = splitGuestName(query)
-
-      setDocumentType('')
-      setDocumentNumber('')
-      setFirstName(name.firstName)
-      setLastName(name.lastName === '—' ? '' : name.lastName)
-    } else {
-      setDocumentType('DNI')
-      setDocumentNumber('')
-      setFirstName('')
-      setLastName('')
-    }
-
+    setDocumentType('DNI')
     setPhone('')
     setEmail('')
-    resetLookup()
     clearExisting()
-  }, [initialQuery, open, resetLookup, clearExisting])
+    resetLookup()
+
+    setDocumentNumber(isDniQuery ? digits : '')
+    setFirstName('')
+    setLastName('')
+
+    if (isDniQuery) {
+      void (async () => {
+        const found = await checkExisting({ type: 'DNI', number: digits })
+
+        if (found === undefined) return
+        if (found) resetLookup()
+        else void lookupDni(digits)
+      })()
+    }
+  }, [initialQuery, open, resetLookup, clearExisting, checkExisting, lookupDni])
 
   const isDni = documentType === 'DNI'
   const existing = existingGuest.record
@@ -179,7 +176,14 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
   }
 
   return (
-    <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='sm'>
+    <Dialog
+      open={open}
+      onClose={() => !saving && onClose()}
+      fullWidth
+      maxWidth='sm'
+      disableAutoFocus
+      TransitionProps={{ onEntered: () => documentInputRef.current?.focus() }}
+    >
       <DialogTitle>Nuevo huésped</DialogTitle>
       <DialogContent className='flex flex-col gap-4 pt-4'>
         <div className='flex gap-4 max-sm:flex-col'>
@@ -208,7 +212,7 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
           </FormControl>
           <TextField
             fullWidth
-            autoFocus
+            inputRef={documentInputRef}
             label='N.º documento'
             placeholder={isDni ? '45678912' : undefined}
             value={documentNumber}

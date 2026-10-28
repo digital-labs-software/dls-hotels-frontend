@@ -205,17 +205,21 @@ const RoomMaintenanceCard = ({ propertyId, roomUuid, maintenances, readOnly, onC
             )}
             {readOnly ? null : (
               <div className='flex flex-col gap-4 border-bs pt-4'>
-                <Typography variant='body2' color='text.secondary'>
-                  No se vende desde la primera fecha. El día de la segunda fecha ya se puede reservar.
-                </Typography>
-                <DateField label='Desde' value={startsOn} minDate={today} disabled={busy} onChange={setStartsOn} />
-                <DateField
-                  label='Se puede volver a reservar el'
-                  value={endsOn}
-                  minDate={laterDate(nextDay(startsOn), nextDay(today))}
-                  disabled={busy}
-                  onChange={setEndsOn}
-                />
+                <div className='flex flex-col gap-4 sm:flex-row'>
+                  <div className='is-full sm:min-is-0 sm:flex-1'>
+                    <DateField fullWidth label='Desde' value={startsOn} minDate={today} disabled={busy} onChange={setStartsOn} />
+                  </div>
+                  <div className='is-full sm:min-is-0 sm:flex-1'>
+                    <DateField
+                      fullWidth
+                      label='Se puede volver a reservar el'
+                      value={endsOn}
+                      minDate={laterDate(nextDay(startsOn), nextDay(today))}
+                      disabled={busy}
+                      onChange={setEndsOn}
+                    />
+                  </div>
+                </div>
                 <TextField
                   fullWidth
                   label='Motivo'

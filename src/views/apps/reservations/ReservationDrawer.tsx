@@ -15,10 +15,12 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
+import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 
 import { toast } from 'react-toastify'
@@ -50,6 +52,15 @@ type Props = {
 
 const personLabel = (guest: { firstName: string; lastName: string }) =>
   !guest.lastName || guest.lastName === '—' ? guest.firstName : `${guest.firstName} ${guest.lastName}`
+
+const STATUS_INK: Record<Reservation['status'], { light: string; dark: string }> = {
+  PENDING: { light: '#BF360C', dark: '#FFB74D' },
+  CONFIRMED: { light: '#0D47A1', dark: '#64B5F6' },
+  CHECKED_IN: { light: '#C62828', dark: '#EF5350' },
+  CHECKED_OUT: { light: '#455A64', dark: '#B0BEC5' },
+  CANCELLED: { light: '#263238', dark: '#B0BEC5' },
+  NO_SHOW: { light: '#6A1B9A', dark: '#CE93D8' }
+}
 
 type SlotDraft = {
   guestId: number | null
@@ -441,13 +452,6 @@ const ReservationDrawer = ({
               </Button>
               <Typography variant='h5'>{reservation?.code ?? 'Reserva'}</Typography>
             </div>
-            {reservation ? (
-              <div className='flex flex-wrap gap-2'>
-                <Chip size='small' label={STAY_STATUS_LABELS[reservation.status]} sx={stayStatusChipSx(reservation.status)} />
-                <Chip size='small' variant='outlined' label={SOURCE_LABELS[reservation.source]} />
-                {reservation.externalCode ? <Chip size='small' label={reservation.externalCode} /> : null}
-              </div>
-            ) : null}
           </div>
 
           {loading || !reservation ? (
@@ -567,9 +571,25 @@ const ReservationDrawer = ({
                         <Typography>{booker}</Typography>
                       </div>
                       <div>
+                        <Typography variant='caption' color='text.secondary'>Canal</Typography>
+                        <Typography>
+                          {SOURCE_LABELS[reservation.source]}
+                          {reservation.externalCode?.trim() ? ` · ${reservation.externalCode.trim()}` : ''}
+                        </Typography>
+                      </div>
+                      <div>
                         <Typography variant='caption' color='text.secondary'>Estadía</Typography>
                         <Typography>
                           {stayIn && stayOut ? `${formatPlanningDate(stayIn)} – ${formatPlanningDate(stayOut)}` : '—'}
+                        </Typography>
+                      </div>
+                      <div>
+                        <Typography variant='caption' color='text.secondary'>Estado</Typography>
+                        <Typography
+                          fontWeight={600}
+                          sx={{ color: theme => STATUS_INK[reservation.status][theme.palette.mode] }}
+                        >
+                          {STAY_STATUS_LABELS[reservation.status]}
                         </Typography>
                       </div>
                       <div>
@@ -773,7 +793,7 @@ const PersonSlot = ({
       try {
         const page = await reservationsApi.searchGuests(propertyId, query, 8)
 
-        setOptions(page.data.filter(guest => !takenIds.includes(guest.id)))
+        setOptions(page.data)
       } catch {
         setOptions([])
       } finally {
@@ -782,10 +802,7 @@ const PersonSlot = ({
     }, 300)
 
     return () => clearTimeout(timeout)
-
-    // takenIds se lee en cada búsqueda; la clave evita repetir la consulta en cada render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disabled, filled, inputValue, propertyId, takenIds.join(',')])
+  }, [disabled, filled, inputValue, propertyId])
 
   if (filled) {
     return (
@@ -803,57 +820,75 @@ const PersonSlot = ({
   }
 
   const typed = inputValue.trim()
-  const notFound = typed.length >= 2 && !loading && options.length === 0
+  const notFound = typed.length >= 2 && !loading && options.length === 0 && !disabled
+  const isAssigned = (guest: Guest) => takenIds.some(id => Number(id) === Number(guest.id))
 
   return (
-    <div className='flex flex-col gap-1'>
-      <div className='flex items-start gap-2'>
-        <Autocomplete
-          className='min-is-0 flex-1'
-          size='small'
-          options={options}
-          loading={loading}
-          disabled={disabled}
-          filterOptions={items => items}
-          getOptionLabel={guest => guestFullName(guest.person.firstName, guest.person.lastName)}
-          inputValue={inputValue}
-          onInputChange={(_, next, reason) => {
-            if (reason === 'input' || reason === 'clear') setInputValue(next)
-          }}
-          onChange={(_, guest) => {
-            if (!guest) return
+    <>
+      <Autocomplete
+        fullWidth
+        size='small'
+        options={options}
+        loading={loading}
+        disabled={disabled}
+        filterOptions={items => items}
+        getOptionLabel={guest => guestFullName(guest.person.firstName, guest.person.lastName)}
+        getOptionDisabled={isAssigned}
+        inputValue={inputValue}
+        onInputChange={(_, next, reason) => {
+          if (reason === 'input' || reason === 'clear') setInputValue(next)
+        }}
+        onChange={(_, guest) => {
+          if (!guest || isAssigned(guest)) return
 
-            placeGuest(guest)
-          }}
-          noOptionsText={typed.length < 2 ? 'Escribe el nombre o el DNI' : 'No está registrado'}
-          renderInput={params => (
-            <TextField
-              {...params}
-              label={role}
-              placeholder='Nombre o DNI'
-              slotProps={{
-                input: {
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {loading ? <CircularProgress color='inherit' size={16} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  )
-                }
-              }}
-            />
-          )}
-        />
-        <Button size='small' variant='outlined' className='shrink-0 mbs-1' disabled={disabled} onClick={() => setCreateOpen(true)}>
-          Registrar
-        </Button>
-      </div>
-      {notFound ? (
-        <Typography variant='caption' color='text.secondary'>
-          No está registrado.
-        </Typography>
-      ) : null}
+          placeGuest(guest)
+        }}
+        noOptionsText={typed.length < 2 ? 'Escribe el nombre o el DNI' : 'No está registrado'}
+        renderOption={(props, guest) => (
+          <li {...props} key={guest.uuid}>
+            <div className='flex flex-col'>
+              <Typography>{guestFullName(guest.person.firstName, guest.person.lastName)}</Typography>
+              <Typography variant='caption' color='text.secondary'>
+                {isAssigned(guest) ? 'Ya está en esta habitación' : guest.person.documentNumber || 'Sin documento'}
+              </Typography>
+            </div>
+          </li>
+        )}
+        renderInput={params => (
+          <TextField
+            {...params}
+            label={role}
+            placeholder='Nombre o DNI'
+            slotProps={{
+              input: {
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {loading ? <CircularProgress color='inherit' size={16} /> : null}
+                    {notFound ? (
+                      <Tooltip title='Registrar huésped'>
+                        <IconButton
+                          size='small'
+                          edge='end'
+                          aria-label='Registrar huésped'
+                          onMouseDown={event => event.preventDefault()}
+                          onClick={event => {
+                            event.stopPropagation()
+                            setCreateOpen(true)
+                          }}
+                        >
+                          <i className='ri-add-line' />
+                        </IconButton>
+                      </Tooltip>
+                    ) : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                )
+              }
+            }}
+          />
+        )}
+      />
       <CreateGuestDialog
         open={createOpen}
         propertyId={propertyId}
@@ -861,7 +896,7 @@ const PersonSlot = ({
         onClose={() => setCreateOpen(false)}
         onCreated={placeGuest}
       />
-    </div>
+    </>
   )
 }
 

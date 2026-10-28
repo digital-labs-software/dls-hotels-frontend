@@ -61,16 +61,34 @@ const toUtcDate = (day: string) => new Date(`${day}T00:00:00Z`)
 
 const cellHint = (roomNumber: string, day: string) => `Hab. ${roomNumber} · ${longDay.format(toUtcDate(day))} · Clic para reservar`
 
-const legend = [
-  { label: 'Ocupado', color: BAR_COLORS.CHECKED_IN.bg, text: BAR_COLORS.CHECKED_IN.text },
-  { label: 'Reservado', color: BAR_COLORS.CONFIRMED.bg, text: BAR_COLORS.CONFIRMED.text },
+type LegendItem = { label: string; color: string; text?: string; dashed?: boolean }
+
+const reservationLegend: LegendItem[] = [
   { label: 'Pendiente', color: BAR_COLORS.PENDING.bg, text: BAR_COLORS.PENDING.text, dashed: true },
+  { label: 'Reservado', color: BAR_COLORS.CONFIRMED.bg, text: BAR_COLORS.CONFIRMED.text },
+  { label: 'Ocupado', color: BAR_COLORS.CHECKED_IN.bg, text: BAR_COLORS.CHECKED_IN.text },
   { label: 'Finalizada', color: BAR_COLORS.CHECKED_OUT.bg, text: BAR_COLORS.CHECKED_OUT.text },
-  { label: 'No se presentó', color: BAR_COLORS.NO_SHOW.bg, text: BAR_COLORS.NO_SHOW.text },
-  { label: 'Disponible', color: ROOM_STATE_COLORS.AVAILABLE.bg },
-  { label: 'Limpieza', color: ROOM_STATE_COLORS.CLEANING.bg },
-  { label: 'Mant.', color: ROOM_STATE_COLORS.MAINTENANCE.bg }
+  { label: 'No se presentó', color: BAR_COLORS.NO_SHOW.bg, text: BAR_COLORS.NO_SHOW.text }
 ]
+
+const roomLegend: LegendItem[] = [
+  { label: 'Mantenimiento', color: ROOM_STATE_COLORS.MAINTENANCE.bg, text: ROOM_STATE_COLORS.MAINTENANCE.text }
+]
+
+const LegendSwatch = ({ item }: { item: LegendItem }) => (
+  <div className='flex items-center gap-2'>
+    <Box
+      sx={{
+        width: 14,
+        height: 14,
+        borderRadius: 0.5,
+        bgcolor: item.color,
+        border: item.dashed ? `1px dashed ${item.text ?? '#E65100'}` : 'none'
+      }}
+    />
+            <Typography variant='caption' color='text.primary'>{item.label}</Typography>
+  </div>
+)
 
 const BookingBar = ({
   booking,
@@ -604,20 +622,13 @@ const PlanningCalendar = ({
         })}
       </Box>
 
-      <div className='flex flex-wrap gap-3 mt-4'>
-        {legend.map(item => (
-          <div key={item.label} className='flex items-center gap-2'>
-            <Box
-              sx={{
-                width: 14,
-                height: 14,
-                borderRadius: 0.5,
-                bgcolor: item.color,
-                border: item.dashed ? `1px dashed ${item.text ?? '#E65100'}` : 'none'
-              }}
-            />
-            <Typography variant='caption'>{item.label}</Typography>
-          </div>
+      <div className='flex flex-wrap items-center gap-x-3 gap-y-2 mt-4'>
+        {reservationLegend.map(item => (
+          <LegendSwatch key={item.label} item={item} />
+        ))}
+        <Box aria-hidden sx={{ width: '1px', height: 14, flexShrink: 0, bgcolor: 'divider', mx: 1.5 }} />
+        {roomLegend.map(item => (
+          <LegendSwatch key={item.label} item={item} />
         ))}
       </div>
     </div>

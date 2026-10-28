@@ -11,6 +11,7 @@ import ThemeProvider from '@components/theme'
 import ReduxProvider from '@/redux-store/ReduxProvider'
 
 // Styled Component Imports
+import SessionExpiredGuard from '@components/SessionExpiredGuard'
 import AppReactToastify from '@/libs/styles/AppReactToastify'
 
 // Util Imports
@@ -37,6 +38,7 @@ const Providers = async (props: Props) => {
             <SettingsProvider settingsCookie={settingsCookie} mode={mode}>
               <ThemeProvider direction={direction} systemMode={systemMode}>
                 <ReduxProvider>{children}</ReduxProvider>
+                <SessionExpiredGuard />
                 <AppReactToastify direction={direction} hideProgressBar />
               </ThemeProvider>
             </SettingsProvider>
