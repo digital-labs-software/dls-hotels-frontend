@@ -160,7 +160,6 @@ const BookingBar = ({
           {layout.cutLeft ? '◀ ' : ''}
           {label}
           {layout.cutRight ? ' ▶' : ''}
-          {booking.reservationBalance > 0 ? ' Debe' : ''}
           {booking.arrivalOverdue || booking.departureOverdue ? ' ⚠️' : ''}
         </Box>
       </Tooltip>
@@ -271,7 +270,6 @@ const RoomRow = ({
       {planning.days.map((day, index) => {
         const today = day === planning.today
         const block = maintenances.find(item => item.startsOn <= day && day < item.endsOn)
-        const cleaningToday = today && room?.status === 'CLEANING' && !block
 
         return (
           <Box
@@ -295,11 +293,7 @@ const RoomRow = ({
               borderRight: '1px solid',
               borderColor: 'divider',
               cursor: room && !block ? 'pointer' : 'default',
-              bgcolor: cleaningToday
-                ? ROOM_STATE_COLORS.CLEANING.bg
-                : isWeekend(day)
-                  ? 'action.hover'
-                  : 'transparent',
+              bgcolor: isWeekend(day) ? 'action.hover' : 'transparent',
               boxShadow: today ? 'inset 2px 0 0 #1565C0' : undefined
             }}
           />

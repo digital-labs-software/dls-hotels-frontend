@@ -2,6 +2,8 @@ export type RackStatus = 'AVAILABLE' | 'OCCUPIED' | 'CLEANING' | 'MAINTENANCE'
 
 export type RoomPhysicalStatus = 'AVAILABLE' | 'OCCUPIED' | 'CLEANING'
 
+export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED'
+
 export type StayStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'NO_SHOW'
 
 export type ReservationSource =
@@ -236,7 +238,7 @@ export interface Reservation {
   company: { id: number; uuid: string; businessName: string; taxNumber: string | null } | null
   source: ReservationSource
   externalCode: string | null
-  status: StayStatus
+  status: ReservationStatus
   checkInDate: string
   checkOutDate: string
   nights: number

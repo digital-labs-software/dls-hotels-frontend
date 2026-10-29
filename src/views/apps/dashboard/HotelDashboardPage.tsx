@@ -10,7 +10,7 @@ import Grid from '@mui/material/Grid'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
-import type { FrontDesk, StayStatus } from '@/types/apps/frontDeskTypes'
+import type { FrontDesk, ReservationStatus } from '@/types/apps/frontDeskTypes'
 import { limaToday } from '@/types/apps/frontDeskTypes'
 import type { Planning, PlanningBooking } from '@/types/apps/reservationsTypes'
 import { addDays, formatPlanningShort } from '@/types/apps/reservationsTypes'
@@ -23,13 +23,10 @@ import ReservationStatusChart from './ReservationStatusChart'
 import RoomStatusDonut from './RoomStatusDonut'
 import TodayBoard from './TodayBoard'
 
-const EMPTY_STATUS: Record<StayStatus, number> = {
+const EMPTY_STATUS: Record<ReservationStatus, number> = {
   PENDING: 0,
   CONFIRMED: 0,
-  CHECKED_IN: 0,
-  CHECKED_OUT: 0,
-  CANCELLED: 0,
-  NO_SHOW: 0
+  CANCELLED: 0
 }
 
 const occupiesDay = (booking: PlanningBooking, day: string) => {
@@ -131,7 +128,7 @@ const HotelDashboardPage = () => {
     reservations.forEach(reservation => {
       counts[reservation.status] = (counts[reservation.status] || 0) + 1
 
-      if (reservation.status === 'CANCELLED' || reservation.status === 'NO_SHOW') {
+      if (reservation.status === 'CANCELLED') {
         return
       }
 

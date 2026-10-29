@@ -84,6 +84,13 @@ export interface AvailabilityRoom {
   effectivePrice: number
 }
 
+export interface UnassignedHold {
+  code: string
+  status: StayStatus
+  checkInDate: string
+  checkOutDate: string
+}
+
 export interface AvailabilityRoomType {
   roomTypeId: number
   roomTypeName: string
@@ -95,6 +102,7 @@ export interface AvailabilityRoomType {
   totalRooms: number
   availableCount: number
   freeRooms: AvailabilityRoom[]
+  unassignedHolds?: UnassignedHold[]
 }
 
 export interface Availability {
@@ -203,12 +211,12 @@ export const PLANNING_VIEWS: { value: PlanningView; label: string }[] = [
   { value: 'MONTH', label: '1 mes' }
 ]
 
-/** Ocupado rojo, reservado azul, pendiente ámbar, finalizada plomo, no se presentó púrpura. El texto va oscuro sobre fondos claros. */
+/** Ocupado rojo, reservado azul, pendiente ámbar, finalizada gris, no se presentó púrpura. El texto va oscuro sobre fondos claros. */
 export const BAR_COLORS: Record<StayStatus, { bg: string; text: string; dashed?: boolean }> = {
   CHECKED_IN: { bg: '#C62828', text: '#fff' },
   CONFIRMED: { bg: '#0D47A1', text: '#fff' },
   PENDING: { bg: '#FFF8E1', text: '#BF360C', dashed: true },
-  CHECKED_OUT: { bg: '#455A64', text: '#fff' },
+  CHECKED_OUT: { bg: '#616161', text: '#fff' },
   NO_SHOW: { bg: '#6A1B9A', text: '#fff' },
   CANCELLED: { bg: '#ECEFF1', text: '#263238', dashed: true }
 }

@@ -8,14 +8,14 @@ import CardHeader from '@mui/material/CardHeader'
 import { useTheme } from '@mui/material/styles'
 import type { ApexOptions } from 'apexcharts'
 
-import { STAY_STATUS_LABELS, type StayStatus } from '@/types/apps/frontDeskTypes'
+import { STAY_STATUS_LABELS, type ReservationStatus } from '@/types/apps/frontDeskTypes'
 
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-const STATUSES: StayStatus[] = ['PENDING', 'CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT', 'CANCELLED', 'NO_SHOW']
+const STATUSES: ReservationStatus[] = ['PENDING', 'CONFIRMED', 'CANCELLED']
 
 type Props = {
-  counts: Record<StayStatus, number>
+  counts: Record<ReservationStatus, number>
   paid: number
   unpaid: number
 }
@@ -47,10 +47,7 @@ const ReservationStatusChart = ({ counts, paid, unpaid }: Props) => {
     colors: [
       'var(--mui-palette-warning-main)',
       'var(--mui-palette-info-main)',
-      'var(--mui-palette-success-main)',
-      'var(--mui-palette-secondary-main)',
-      'var(--mui-palette-error-main)',
-      'var(--mui-palette-text-disabled)'
+      'var(--mui-palette-error-main)'
     ],
     xaxis: {
       categories: labels,

@@ -32,6 +32,7 @@ import type { ReservationSource } from '@/types/apps/reservationsTypes'
 import { addDays, EXTERNAL_CODE_SOURCES, formatPlanningDate, PAYMENT_LABELS, SOURCE_LABELS, SOURCE_OPTIONS, stayStatusChipSx } from '@/types/apps/reservationsTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import GuestPicker from '@views/apps/front-desk/GuestPicker'
+import AddReservationRoomDialog from './AddReservationRoomDialog'
 import AssignReservationRoomDialog from './AssignReservationRoomDialog'
 import CompanyPicker from './CompanyPicker'
 import CreateGuestDialog from './CreateGuestDialog'
@@ -56,10 +57,7 @@ const personLabel = (guest: { firstName: string; lastName: string }) =>
 const STATUS_INK: Record<Reservation['status'], { light: string; dark: string }> = {
   PENDING: { light: '#BF360C', dark: '#FFB74D' },
   CONFIRMED: { light: '#0D47A1', dark: '#64B5F6' },
-  CHECKED_IN: { light: '#C62828', dark: '#EF5350' },
-  CHECKED_OUT: { light: '#455A64', dark: '#B0BEC5' },
-  CANCELLED: { light: '#263238', dark: '#B0BEC5' },
-  NO_SHOW: { light: '#6A1B9A', dark: '#CE93D8' }
+  CANCELLED: { light: '#263238', dark: '#B0BEC5' }
 }
 
 type SlotDraft = {
@@ -112,6 +110,7 @@ const ReservationDrawer = ({
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [assignLine, setAssignLine] = useState<ReservationRoom | null>(null)
+  const [addRoomOpen, setAddRoomOpen] = useState(false)
 
   const load = async (silent = false) => {
     if (!reservationUuid) {
@@ -151,7 +150,13 @@ const ReservationDrawer = ({
   }
 
   useEffect(() => {
-    if (open && reservationUuid) {
+    if (!open) {
+      setAddRoomOpen(false)
+
+      return
+    }
+
+    if (reservationUuid) {
       load()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -396,9 +401,16 @@ const ReservationDrawer = ({
   }
 
   const status = reservation?.status
-  const canEdit = status === 'PENDING' || status === 'CONFIRMED'
-  const canCancel = status === 'PENDING' || status === 'CONFIRMED'
-  const readOnly = status === 'CHECKED_OUT' || status === 'CANCELLED' || status === 'NO_SHOW'
+  const rooms = reservation?.rooms ?? []
+  const stayOpen = rooms.some(
+    line => line.status === 'PENDING' || line.status === 'CONFIRMED' || line.status === 'CHECKED_IN'
+  )
+  const stayFinished = rooms.length > 0 && !stayOpen
+  const canEdit = (status === 'PENDING' || status === 'CONFIRMED') && !stayFinished
+  const canCancel =
+    (status === 'PENDING' || status === 'CONFIRMED') &&
+    !rooms.some(line => line.status === 'CHECKED_IN' || line.status === 'CHECKED_OUT')
+  const readOnly = status === 'CANCELLED' || stayFinished
 
   const activeRooms = (reservation?.rooms ?? []).filter(
     line => line.status !== 'CANCELLED' && line.status !== 'NO_SHOW' && line.status !== 'CHECKED_OUT'
@@ -637,7 +649,14 @@ const ReservationDrawer = ({
               ) : null}
 
               <div className='flex flex-col gap-3'>
-                <Typography fontWeight={600}>Habitaciones</Typography>
+                <div className='flex items-center justify-between gap-2'>
+                  <Typography fontWeight={600}>Habitaciones</Typography>
+                  {!readOnly ? (
+                    <Button size='small' startIcon={<i className='ri-add-line' />} onClick={() => setAddRoomOpen(true)}>
+                      Agregar habitación
+                    </Button>
+                  ) : null}
+                </div>
                 {reservation.rooms.map(line => (
                   <RoomRow
                     key={line.uuid}
@@ -707,6 +726,20 @@ const ReservationDrawer = ({
           )}
         </CardContent>
       </Card>
+
+      <AddReservationRoomDialog
+        open={addRoomOpen}
+        propertyId={propertyId}
+        reservationUuid={reservation?.uuid ?? null}
+        checkInDate={stayIn || reservation?.checkInDate || ''}
+        checkOutDate={stayOut || reservation?.checkOutDate || ''}
+        onClose={() => setAddRoomOpen(false)}
+        onSuccess={() => {
+          setAddRoomOpen(false)
+          load()
+          onChanged()
+        }}
+      />
 
       <AssignReservationRoomDialog
         open={Boolean(assignLine)}
@@ -934,11 +967,13 @@ const RoomRow = ({
   const [checkOutDate, setCheckOutDate] = useState(line.checkOutDate)
   const [slots, setSlots] = useState<SlotDraft[]>(() => slotsFromLine(line))
   const [more, setMore] = useState(false)
-  const canEditPeople = status === 'PENDING' || status === 'CONFIRMED' || status === 'CHECKED_IN'
+  const lineOpen = line.status === 'PENDING' || line.status === 'CONFIRMED'
+  const canEditPeople = lineOpen || line.status === 'CHECKED_IN'
   const hasPrimary = line.guests.some(guest => guest.isPrimary)
-  const canCheckIn = (status === 'CONFIRMED' || status === 'PENDING') && line.checkInDate <= today && Boolean(line.roomId)
+  const canCheckIn =
+    (status === 'CONFIRMED' || status === 'PENDING') && lineOpen && line.checkInDate <= today && Boolean(line.roomId)
   const canCheckOut = line.status === 'CHECKED_IN'
-  const canMutate = line.status !== 'CHECKED_IN' && line.status !== 'CHECKED_OUT'
+  const canMutate = lineOpen
 
   useEffect(() => {
     setCheckOutDate(line.checkOutDate)
@@ -967,12 +1002,12 @@ const RoomRow = ({
           {line.adults} adultos{line.children ? ` · ${line.children} niños` : ''}
         </Typography>
         <div className='flex flex-wrap gap-2'>
-          {(status === 'CONFIRMED' || status === 'PENDING') && !line.roomId ? (
+          {lineOpen && !line.roomId ? (
             <Button size='small' variant='contained' color='warning' onClick={onAssign}>
               Asignar habitación
             </Button>
           ) : null}
-          {status === 'CONFIRMED' && line.roomId ? (
+          {lineOpen && line.roomId ? (
             <Button size='small' variant='outlined' onClick={onAssign}>
               Cambiar habitación
             </Button>
@@ -1031,7 +1066,7 @@ const RoomRow = ({
               {more ? 'Ocultar' : 'Cambiar salida'}
             </Button>
           ) : null}
-          {status === 'CONFIRMED' ? (
+          {line.status === 'CONFIRMED' || line.status === 'PENDING' ? (
             <Button size='small' color='secondary' disabled={saving} onClick={onNoShow}>
               No se presentó
             </Button>

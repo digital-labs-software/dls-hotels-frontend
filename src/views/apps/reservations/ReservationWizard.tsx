@@ -119,6 +119,13 @@ const stayDay = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: 'numer
 
 const formatStayDay = (day: string) => (day ? stayDay.format(new Date(`${day}T00:00:00Z`)) : '—')
 
+const holdStatusLabel = (status: string) => {
+  if (status === 'CONFIRMED') return 'confirmada'
+  if (status === 'CHECKED_IN') return 'en casa'
+
+  return 'pendiente'
+}
+
 const emptyRoom = (today: string, prefill?: NewReservationPrefill | null): RoomDraft => ({
   key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   roomTypeId: prefill?.roomTypeId ?? '',
@@ -258,11 +265,12 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
       if (prefill?.roomId) {
         const type = result.roomTypes.find(item => item.roomTypeId === prefill.roomTypeId)
-        const stillFree = type?.freeRooms.some(room => room.id === prefill.roomId)
+        const physical = type?.freeRooms.find(room => room.id === prefill.roomId)
+        const canSell = (type?.availableCount ?? 0) > 0
 
-        setRoomWarning(stillFree ? '' : 'La habitación elegida ya no está libre en esas fechas. Elige otra.')
+        setRoomWarning(physical ? '' : 'La habitación elegida ya no está libre en esas fechas. Elige otra.')
 
-        if (!stillFree) {
+        if (!physical || !canSell) {
           setRooms(current =>
             current.map((item, index) => (index === 0 && item.roomId === prefill.roomId ? { ...item, roomId: 'later' } : item))
           )
@@ -449,6 +457,14 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
   const freeRoomsFor = (room: RoomDraft, type: AvailabilityRoomType) => {
     const taken = takenRoomIds(room.key)
+    const soldInDraft = rooms.filter(
+      item => item.key !== room.key && Number(item.roomTypeId) === type.roomTypeId
+    ).length
+
+    // Una reserva sin número ya descuenta el cupo del tipo, aunque la habitación se vea vacía.
+    if (type.availableCount - soldInDraft < 1) {
+      return []
+    }
 
     return type.freeRooms.filter(free => !taken.has(free.id))
   }
@@ -524,7 +540,15 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
       return type ? !fitsGuests(type, adults, children) : false
     })
 
-    if (missingType || badDates || missingAdult || crowded) {
+    const noInventory = rooms.some(room => {
+      if (!room.roomTypeId) return false
+
+      const type = availability.find(item => item.roomTypeId === Number(room.roomTypeId))
+
+      return type ? freeRoomsFor(room, type).length === 0 : false
+    })
+
+    if (missingType || badDates || missingAdult || crowded || noInventory) {
       setRoomAttempted(true)
 
       return false
@@ -624,7 +648,9 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
         return
       }
 
-      toast.error(message)
+      if (!message.toLowerCase().includes('sin número de habitación')) {
+        toast.error(message)
+      }
 
       if (
         String((error as { statusCode?: number })?.statusCode) === '409' ||
@@ -689,9 +715,13 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
               const remaining = freeRoomsFor(room, type).length
               const fits = fitsGuests(type, adults, children)
 
+              const heldWithoutNumber = type.availableCount < 1 && type.freeRooms.length > 0
+
               const detail =
                 remaining === 0
-                  ? 'Sin disponibilidad'
+                  ? heldWithoutNumber
+                    ? 'Reservada sin número'
+                    : 'Sin disponibilidad'
                   : !fits
                     ? `No caben (hasta ${formatPeople(roomCapacity(type))})`
                     : `${formatRoomPrice(type.basePrice)} · ${remaining} libres`
@@ -891,6 +921,12 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     )
   }
 
+  const unassignedBlocks = availability.flatMap(type =>
+    type.availableCount < 1
+      ? (type.unassignedHolds ?? []).map(hold => ({ ...hold, roomTypeName: type.roomTypeName }))
+      : []
+  )
+
   return (
     <>
       <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='md' fullScreen={isMobile}>
@@ -975,6 +1011,20 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                   </div>
                 }
               >
+                {unassignedBlocks.length > 0 ? (
+                  <Alert severity='warning'>
+                    {unassignedBlocks.map(hold => (
+                      <Typography
+                        key={`${hold.roomTypeName}-${hold.code}-${hold.checkInDate}`}
+                        variant='body2'
+                      >
+                        Hay una reserva {holdStatusLabel(hold.status)} de {hold.roomTypeName} del{' '}
+                        {formatStayDay(hold.checkInDate)} al {formatStayDay(hold.checkOutDate)} ({hold.code}) y todavía
+                        no tiene número de habitación. Por eso no se puede vender otra en esas fechas.
+                      </Typography>
+                    ))}
+                  </Alert>
+                ) : null}
                 {rooms.map(renderRoomRow)}
                 <div>
                   <Button

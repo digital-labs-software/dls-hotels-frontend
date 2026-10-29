@@ -22,8 +22,9 @@ import Typography from '@mui/material/Typography'
 
 import { toast } from 'react-toastify'
 
-import type { Reservation, StayStatus } from '@/types/apps/frontDeskTypes'
-import { BOOKING_STATUS_LABELS, SOURCE_LABELS, formatPlanningDate, stayStatusChipSx } from '@/types/apps/reservationsTypes'
+import type { Reservation, ReservationStatus } from '@/types/apps/frontDeskTypes'
+import { SOURCE_LABELS, formatPlanningDate, stayStatusChipSx } from '@/types/apps/reservationsTypes'
+import { STAY_STATUS_LABELS } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
 import DateField from '@/components/date-picker/DateField'
@@ -34,14 +35,14 @@ type Props = {
   onOpen: (reservationUuid: string) => void
 }
 
-const STATUS_OPTIONS: StayStatus[] = ['PENDING', 'CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT', 'CANCELLED', 'NO_SHOW']
+const STATUS_OPTIONS: ReservationStatus[] = ['PENDING', 'CONFIRMED', 'CANCELLED']
 
 const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
   const [rows, setRows] = useState<Reservation[]>([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
-  const [status, setStatus] = useState<StayStatus | ''>('')
+  const [status, setStatus] = useState<ReservationStatus | ''>('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [search, setSearch] = useState('')
@@ -85,13 +86,13 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
             value={status}
             onChange={e => {
               setPage(1)
-              setStatus(e.target.value as StayStatus | '')
+              setStatus(e.target.value as ReservationStatus | '')
             }}
           >
             <MenuItem value=''>Todos</MenuItem>
             {STATUS_OPTIONS.map(item => (
               <MenuItem key={item} value={item}>
-                {BOOKING_STATUS_LABELS[item]}
+                {STAY_STATUS_LABELS[item]}
               </MenuItem>
             ))}
           </Select>
@@ -199,7 +200,7 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
                     <TableCell>{formatRoomPrice(row.totalAmount)}</TableCell>
                     <TableCell>{formatRoomPrice(row.balance)}</TableCell>
                     <TableCell>
-                      <Chip size='small' label={BOOKING_STATUS_LABELS[row.status]} sx={stayStatusChipSx(row.status)} />
+                      <Chip size='small' label={STAY_STATUS_LABELS[row.status]} sx={stayStatusChipSx(row.status)} />
                     </TableCell>
                     <TableCell>{SOURCE_LABELS[row.source]}</TableCell>
                   </TableRow>
