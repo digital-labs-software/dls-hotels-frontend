@@ -37,6 +37,8 @@ type Props = {
   reservationUuid?: string | null
   reservationCode?: string
   balance?: number
+  refundAmount?: number | null
+  refundHint?: string | null
   onClose: () => void
   onSuccess: () => void
 }
@@ -48,6 +50,8 @@ const PaymentDialog = ({
   reservationUuid,
   reservationCode,
   balance,
+  refundAmount = null,
+  refundHint = null,
   onClose,
   onSuccess
 }: Props) => {
@@ -69,13 +73,13 @@ const PaymentDialog = ({
       return
     }
 
-    setKind(currentBalance >= 0 ? 'charge' : 'refund')
+    setKind(refundAmount && refundAmount > 0 ? 'refund' : currentBalance >= 0 ? 'charge' : 'refund')
     setTarget('all')
     setFolios(null)
     setMethod('YAPE')
     setReference('')
     setNotes('')
-  }, [currentBalance, open])
+  }, [currentBalance, open, refundAmount])
 
   useEffect(() => {
     if (!open || !uuid) return
@@ -85,7 +89,15 @@ const PaymentDialog = ({
     reservationsApi
       .roomFolios(propertyId, uuid)
       .then(result => {
-        if (!cancelled) setFolios(result)
+        if (cancelled) return
+
+        setFolios(result)
+
+        if (refundAmount && refundAmount > 0) {
+          const room = result.rooms.find(item => item.uuid === stay?.reservationRoomUuid)
+
+          setTarget(room && room.paid > 0 ? room.uuid : 'all')
+        }
       })
       .catch(() => {
         if (!cancelled) setFolios(null)
@@ -94,10 +106,16 @@ const PaymentDialog = ({
     return () => {
       cancelled = true
     }
-  }, [open, propertyId, uuid])
+  }, [open, propertyId, refundAmount, stay?.reservationRoomUuid, uuid])
 
   useEffect(() => {
     if (!open) return
+
+    if (kind === 'refund' && refundAmount && refundAmount > 0) {
+      setAmount(String(Math.round(refundAmount * 100) / 100))
+
+      return
+    }
 
     const room = folios?.rooms.find(item => item.uuid === target)
     const several = (folios?.rooms.length ?? 0) > 1
@@ -112,7 +130,7 @@ const PaymentDialog = ({
           : (room?.balance ?? 0)
 
     setAmount(next > 0 ? String(next) : '')
-  }, [currentBalance, folios, kind, open, target])
+  }, [currentBalance, folios, kind, open, refundAmount, target])
 
   const handleSubmit = async () => {
     if (!uuid) {
@@ -143,7 +161,7 @@ const PaymentDialog = ({
         method,
         reference: reference.trim() || null,
         notes: notes.trim() || null,
-        reservationRoomUuid: (folios?.rooms.length ?? 0) > 1 && target !== 'all' ? target : null
+        reservationRoomUuid: target !== 'all' ? target : null
       })
       toast.success(kind === 'refund' ? 'Devolución registrada.' : 'Pago registrado.')
       onSuccess()
@@ -162,9 +180,13 @@ const PaymentDialog = ({
         {cashOpen === false ? <Alert severity='warning'>{CASH_REQUIRED_MESSAGE}</Alert> : null}
         {code ? (
           <Typography variant='body2' color='text.secondary'>
-            Reserva {code} · saldo {formatRoomPrice(currentBalance)}
+            Reserva {code}
+            {refundAmount && refundAmount > 0
+              ? ` · a favor ${formatRoomPrice(refundAmount)}`
+              : ` · saldo ${formatRoomPrice(currentBalance)}`}
           </Typography>
         ) : null}
+        {refundHint ? <Alert severity='info'>{refundHint}</Alert> : null}
         <ToggleButtonGroup
           exclusive
           fullWidth

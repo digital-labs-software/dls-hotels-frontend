@@ -40,7 +40,7 @@ const CheckOutDialog = ({ open, propertyId, stay, onClose, onSuccess, onPay }: P
 
     try {
       await frontDeskApi.checkOut(propertyId, stay.reservationUuid, stay.reservationRoomUuid)
-      toast.success(`Check-out (salida) registrado · ${stay.reservationCode}`)
+      toast.success(`Check-out (ya se fue) · ${stay.reservationCode}`)
       onSuccess()
       onClose()
     } catch (error) {
@@ -52,7 +52,7 @@ const CheckOutDialog = ({ open, propertyId, stay, onClose, onSuccess, onPay }: P
 
   return (
     <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='xs'>
-      <DialogTitle>Check-out (salida)</DialogTitle>
+      <DialogTitle>Check-out (ya se fue)</DialogTitle>
       <DialogContent className='flex flex-col gap-3 pt-3'>
         {stay ? (
           <>
@@ -76,7 +76,7 @@ const CheckOutDialog = ({ open, propertyId, stay, onClose, onSuccess, onPay }: P
                   </Button>
                 }
               >
-                Saldo pendiente {formatRoomPrice(stay.reservationBalance)}. El check-out (salida) no está bloqueado.
+                Saldo pendiente {formatRoomPrice(stay.reservationBalance)}. La salida no está bloqueada.
               </Alert>
             ) : null}
             <Typography variant='body2' color='text.secondary'>
@@ -90,7 +90,7 @@ const CheckOutDialog = ({ open, propertyId, stay, onClose, onSuccess, onPay }: P
           Cancelar
         </Button>
         <Button variant='contained' color='warning' disabled={saving || !stay} onClick={handleConfirm}>
-          {saving ? <CircularProgress size={20} color='inherit' /> : 'Confirmar check-out (salida)'}
+          {saving ? <CircularProgress size={20} color='inherit' /> : 'Check-out (ya se fue)'}
         </Button>
       </DialogActions>
     </Dialog>

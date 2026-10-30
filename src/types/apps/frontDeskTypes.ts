@@ -46,6 +46,18 @@ export const STAY_STATUS_LABELS: Record<StayStatus, string> = {
   NO_SHOW: 'No se presentó'
 }
 
+/** Si todas las habitaciones no se presentaron, la reserva se lee así aunque el expediente siga confirmado. */
+export const headlineStayStatus = (reservation: {
+  status: ReservationStatus
+  rooms: { status: StayStatus }[]
+}): StayStatus => {
+  if (reservation.rooms.length > 0 && reservation.rooms.every(room => room.status === 'NO_SHOW')) {
+    return 'NO_SHOW'
+  }
+
+  return reservation.status
+}
+
 export const RESERVATION_SOURCE_LABELS: Record<ReservationSource, string> = {
   WALK_IN: 'Walk-in',
   PHONE: 'Teléfono',
@@ -77,6 +89,8 @@ export interface Stay {
   children: number
   pricePerNight: number
   guestName: string | null
+  bookerName: string | null
+  occupantNames: string[]
   companyName: string | null
   reservationBalance: number
   reservationPaidAmount: number
@@ -392,6 +406,26 @@ export const normalizeSearchText = (value: string) => {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim()
+}
+
+export const stayMatchesQuery = (stay: Stay, query: string) => {
+  if (!query) return true
+
+  const haystack = normalizeSearchText(
+    [
+      stay.guestName,
+      stay.bookerName,
+      ...(stay.occupantNames ?? []),
+      stay.companyName,
+      stay.reservationCode,
+      stay.roomNumber,
+      stay.roomTypeName
+    ]
+      .filter(Boolean)
+      .join(' ')
+  )
+
+  return haystack.includes(query)
 }
 
 export const guestFullName = (firstName?: string | null, lastName?: string | null) => {

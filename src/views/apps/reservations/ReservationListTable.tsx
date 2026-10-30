@@ -24,7 +24,7 @@ import { toast } from 'react-toastify'
 
 import type { Reservation, ReservationStatus } from '@/types/apps/frontDeskTypes'
 import { SOURCE_LABELS, formatPlanningDate, stayStatusChipSx } from '@/types/apps/reservationsTypes'
-import { STAY_STATUS_LABELS } from '@/types/apps/frontDeskTypes'
+import { STAY_STATUS_LABELS, headlineStayStatus } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
 import DateField from '@/components/date-picker/DateField'
@@ -200,7 +200,11 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
                     <TableCell>{formatRoomPrice(row.totalAmount)}</TableCell>
                     <TableCell>{formatRoomPrice(row.balance)}</TableCell>
                     <TableCell>
-                      <Chip size='small' label={STAY_STATUS_LABELS[row.status]} sx={stayStatusChipSx(row.status)} />
+                      <Chip
+                        size='small'
+                        label={STAY_STATUS_LABELS[headlineStayStatus(row)]}
+                        sx={stayStatusChipSx(headlineStayStatus(row))}
+                      />
                     </TableCell>
                     <TableCell>{SOURCE_LABELS[row.source]}</TableCell>
                   </TableRow>

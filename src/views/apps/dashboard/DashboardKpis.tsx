@@ -49,7 +49,7 @@ const DashboardKpis = ({ date, summary, occupancy, collectedToday, pendingBalanc
     },
     {
       title: 'En casa',
-      stats: String(summary.inHouse),
+      stats: String(Math.max(0, summary.inHouse - summary.departures)),
       icon: 'ri-hotel-bed-line',
       color: 'info'
     }

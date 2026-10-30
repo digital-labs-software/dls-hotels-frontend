@@ -32,19 +32,15 @@ import { useSession } from 'next-auth/react'
 import type { Locale } from '@configs/i18n'
 
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
-import {
-  RECEPTION_CHECK_IN,
-  RECEPTION_CHECK_OUT,
-  RECEPTION_PAYMENTS_CREATE,
-  RECEPTION_WALK_IN
-} from '@/types/apps/hotelPermissions'
+import { RECEPTION_PAYMENTS_CREATE, RECEPTION_WALK_IN } from '@/types/apps/hotelPermissions'
 import { toast } from 'react-toastify'
 
 import CustomTabList from '@core/components/mui/TabList'
 import type { FrontDesk, RackRoom, RackStatus, Stay } from '@/types/apps/frontDeskTypes'
-import { formatFrontDeskHeading, normalizeSearchText } from '@/types/apps/frontDeskTypes'
+import { formatFrontDeskHeading, normalizeSearchText, stayMatchesQuery } from '@/types/apps/frontDeskTypes'
 import AssignRoomDialog from './AssignRoomDialog'
 import CheckOutDialog from './CheckOutDialog'
+import { EarlyDepartureDialog, UndoCheckInDialog } from './InHouseDepartureDialogs'
 import PaymentDialog from './PaymentDialog'
 import RoomCard from './RoomCard'
 import StayDrawer from './StayDrawer'
@@ -66,8 +62,6 @@ const FrontDeskPage = () => {
   const { data: session, status } = useSession()
   const { can } = useSubscriptionAccess()
   const canWalkIn = can(RECEPTION_WALK_IN)
-  const canCheckIn = can(RECEPTION_CHECK_IN)
-  const canCheckOut = can(RECEPTION_CHECK_OUT)
   const canRegisterPayment = can(RECEPTION_PAYMENTS_CREATE)
   const propertyId = session?.user?.propertyId ?? 1
 
@@ -90,6 +84,9 @@ const FrontDeskPage = () => {
   const [stayOpen, setStayOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [checkOutOpen, setCheckOutOpen] = useState(false)
+  const [earlyOpen, setEarlyOpen] = useState(false)
+  const [undoOpen, setUndoOpen] = useState(false)
+  const [refundPreset, setRefundPreset] = useState<{ amount: number; hint: string } | null>(null)
   const [assignOpen, setAssignOpen] = useState(false)
   const [photoRoom, setPhotoRoom] = useState<RackRoom | null>(null)
   const [arrivalBusy, setArrivalBusy] = useState<{ id: string; action: 'checkIn' | 'noShow' } | null>(null)
@@ -154,8 +151,12 @@ const FrontDeskPage = () => {
           if (departingToday && !room.departureDue) return false
           if (withBalance && !((room.currentStay?.reservationBalance ?? 0) > 0)) return false
           if (query) {
+            const people = (stay: Stay | null) =>
+              stay
+                ? [stay.guestName, stay.bookerName, stay.companyName, stay.reservationCode, ...(stay.occupantNames ?? [])]
+                : []
             const haystack = normalizeSearchText(
-              [room.number, room.currentStay?.guestName, room.arrival?.guestName].filter(Boolean).join(' ')
+              [room.number, ...people(room.currentStay), ...people(room.arrival)].filter(Boolean).join(' ')
             )
 
             if (!haystack.includes(query)) return false
@@ -225,11 +226,46 @@ const FrontDeskPage = () => {
     }
   }
 
+  const [listSearch, setListSearch] = useState('')
+  const listQuery = normalizeSearchText(listSearch)
+  const filterStays = useCallback(
+    (rows: Stay[]) => rows.filter(stay => stayMatchesQuery(stay, listQuery)),
+    [listQuery]
+  )
   const sortedArrivals = useMemo(() => {
-    const rows = [...(overview?.arrivals ?? [])]
+    const rows = filterStays(overview?.arrivals ?? [])
 
-    return rows.sort((a, b) => Number(b.arrivalOverdue) - Number(a.arrivalOverdue) || a.checkInDate.localeCompare(b.checkInDate))
+    return rows.sort(
+      (a, b) =>
+        Number(b.arrivalOverdue) - Number(a.arrivalOverdue) ||
+        a.reservationCode.localeCompare(b.reservationCode, 'es') ||
+        (a.roomNumber || '').localeCompare(b.roomNumber || '', 'es', { numeric: true })
+    )
+  }, [filterStays, overview])
+  const sortedDepartures = useMemo(() => {
+    const rows = filterStays(overview?.departures ?? [])
+
+    return rows.sort(
+      (a, b) =>
+        Number(b.departureOverdue) - Number(a.departureOverdue) ||
+        a.reservationCode.localeCompare(b.reservationCode, 'es') ||
+        (a.roomNumber || '').localeCompare(b.roomNumber || '', 'es', { numeric: true })
+    )
+  }, [filterStays, overview])
+  const stayingTonight = useMemo(() => {
+    if (!overview) return []
+
+    return overview.inHouse.filter(stay => stay.checkOutDate > overview.date)
   }, [overview])
+  const sortedInHouse = useMemo(() => {
+    const rows = filterStays(stayingTonight)
+
+    return rows.sort(
+      (a, b) =>
+        a.reservationCode.localeCompare(b.reservationCode, 'es') ||
+        (a.roomNumber || '').localeCompare(b.roomNumber || '', 'es', { numeric: true })
+    )
+  }, [filterStays, stayingTonight])
 
   return (
     <>
@@ -391,67 +427,76 @@ const FrontDeskPage = () => {
         <Grid size={{ xs: 12 }}>
           <Card>
             <TabContext value={sideTab}>
-              <CustomTabList onChange={(_event, value) => setSideTab(value as SideTab)} variant='fullWidth' pill='true'>
-                <Tab label={`Llegadas (${overview?.summary.arrivals ?? 0})`} value='arrivals' />
-                <Tab label={`Salidas (${overview?.summary.departures ?? 0})`} value='departures' />
-                <Tab label={`En casa (${overview?.summary.inHouse ?? 0})`} value='inHouse' />
-              </CustomTabList>
+              <div className='flex flex-col gap-6 px-4 pb-2 pt-4'>
+                <TextField
+                  fullWidth
+                  size='small'
+                  placeholder='Buscar agencia, titular, reserva o habitación'
+                  value={listSearch}
+                  onChange={event => setListSearch(event.target.value)}
+                />
+                <CustomTabList onChange={(_event, value) => setSideTab(value as SideTab)} variant='fullWidth' pill='true'>
+                  <Tab label={`Llegadas (${overview?.summary.arrivals ?? 0})`} value='arrivals' />
+                  <Tab label={`En casa (${stayingTonight.length})`} value='inHouse' />
+                  <Tab label={`Salidas (${overview?.summary.departures ?? 0})`} value='departures' />
+                </CustomTabList>
+              </div>
               <TabPanel value='arrivals' className='p-0'>
                 <StayList
                   kind='arrivals'
                   stays={sortedArrivals}
+                  emptyMessage={listQuery && (overview?.arrivals.length ?? 0) > 0 ? 'Nadie coincide con la búsqueda.' : undefined}
                   busy={arrivalBusy}
                   onOpenStay={openStay}
+                  today={overview?.date || ''}
                   onCheckIn={stay => void runArrivalAction(stay, 'checkIn')}
-                  onCheckOut={stay => {
-                    setSelectedStay(stay)
-                    setCheckOutOpen(true)
-                  }}
+                  onCheckOut={() => undefined}
+                  onEarlyDeparture={() => undefined}
+                  onUndoCheckIn={() => undefined}
                   onAssign={stay => {
                     setSelectedStay(stay)
                     setAssignOpen(true)
                   }}
                   onNoShow={stay => void runArrivalAction(stay, 'noShow')}
-                  onPay={stay => {
-                    setSelectedStay(stay)
-                    setPayOpen(true)
-                  }}
-                />
-              </TabPanel>
-              <TabPanel value='departures' className='p-0'>
-                <StayList
-                  kind='departures'
-                  stays={overview?.departures ?? []}
-                  onOpenStay={openStay}
-                  onCheckIn={() => undefined}
-                  onCheckOut={stay => {
-                    setSelectedStay(stay)
-                    setCheckOutOpen(true)
-                  }}
-                  onAssign={() => undefined}
-                  onNoShow={() => undefined}
-                  onPay={stay => {
-                    setSelectedStay(stay)
-                    setPayOpen(true)
-                  }}
                 />
               </TabPanel>
               <TabPanel value='inHouse' className='p-0'>
                 <StayList
                   kind='inHouse'
-                  stays={overview?.inHouse ?? []}
+                  stays={sortedInHouse}
+                  emptyMessage={listQuery && stayingTonight.length > 0 ? 'Nadie coincide con la búsqueda.' : undefined}
+                  today={overview?.date || ''}
+                  onOpenStay={openStay}
+                  onCheckIn={() => undefined}
+                  onCheckOut={() => undefined}
+                  onEarlyDeparture={stay => {
+                    setSelectedStay(stay)
+                    setEarlyOpen(true)
+                  }}
+                  onUndoCheckIn={stay => {
+                    setSelectedStay(stay)
+                    setUndoOpen(true)
+                  }}
+                  onAssign={() => undefined}
+                  onNoShow={() => undefined}
+                />
+              </TabPanel>
+              <TabPanel value='departures' className='p-0'>
+                <StayList
+                  kind='departures'
+                  stays={sortedDepartures}
+                  emptyMessage={listQuery && (overview?.departures.length ?? 0) > 0 ? 'Nadie coincide con la búsqueda.' : undefined}
+                  today={overview?.date || ''}
                   onOpenStay={openStay}
                   onCheckIn={() => undefined}
                   onCheckOut={stay => {
                     setSelectedStay(stay)
                     setCheckOutOpen(true)
                   }}
+                  onEarlyDeparture={() => undefined}
+                  onUndoCheckIn={() => undefined}
                   onAssign={() => undefined}
                   onNoShow={() => undefined}
-                  onPay={stay => {
-                    setSelectedStay(stay)
-                    setPayOpen(true)
-                  }}
                 />
               </TabPanel>
             </TabContext>
@@ -469,24 +514,6 @@ const FrontDeskPage = () => {
             }}
           >
             Nuevo ingreso
-          </MenuItem>
-        ) : null}
-        {canCheckIn && menuRoom?.displayStatus === 'AVAILABLE' && menuRoom.arrival ? (
-          <MenuItem
-            onClick={async () => {
-              if (!menuRoom.arrival) return
-
-              try {
-                await frontDeskApi.checkIn(propertyId, menuRoom.arrival.reservationUuid, menuRoom.arrival.reservationRoomUuid)
-                toast.success(`Check-in (ingreso) · ${menuRoom.arrival.reservationCode}`)
-                closeMenu()
-                fetchOverview()
-              } catch (error) {
-                toast.error(getFrontDeskApiErrorMessage(error, 'No se pudo registrar el ingreso (check-in).'))
-              }
-            }}
-          >
-            Check-in (ingreso) de la llegada
           </MenuItem>
         ) : null}
         {menuRoom?.arrival ? (
@@ -509,23 +536,13 @@ const FrontDeskPage = () => {
             Ver estadía
           </MenuItem>
         ) : null}
-        {canCheckOut && menuRoom?.displayStatus === 'OCCUPIED' && menuRoom.currentStay ? (
-          <MenuItem
-            onClick={() => {
-              setSelectedStay(menuRoom.currentStay)
-              setCheckOutOpen(true)
-              closeMenu()
-            }}
-          >
-            Check-out (salida)
-          </MenuItem>
-        ) : null}
         {canRegisterPayment &&
         menuRoom?.displayStatus === 'OCCUPIED' &&
         menuRoom.currentStay &&
         menuRoom.currentStay.reservationBalance !== 0 ? (
           <MenuItem
             onClick={() => {
+              setRefundPreset(null)
               setSelectedStay(menuRoom.currentStay)
               setPayOpen(true)
               closeMenu()
@@ -593,19 +610,21 @@ const FrontDeskPage = () => {
         onClose={() => setStayOpen(false)}
         onSuccess={fetchOverview}
         onPay={stay => {
+          setRefundPreset(null)
           setSelectedStay(stay)
           setPayOpen(true)
-        }}
-        onCheckOut={stay => {
-          setSelectedStay(stay)
-          setCheckOutOpen(true)
         }}
       />
       <PaymentDialog
         open={payOpen}
         propertyId={propertyId}
         stay={selectedStay}
-        onClose={() => setPayOpen(false)}
+        refundAmount={refundPreset?.amount}
+        refundHint={refundPreset?.hint}
+        onClose={() => {
+          setPayOpen(false)
+          setRefundPreset(null)
+        }}
         onSuccess={fetchOverview}
       />
       <CheckOutDialog
@@ -615,7 +634,31 @@ const FrontDeskPage = () => {
         onClose={() => setCheckOutOpen(false)}
         onSuccess={fetchOverview}
         onPay={stay => {
+          setRefundPreset(null)
           setSelectedStay(stay)
+          setPayOpen(true)
+        }}
+      />
+      <EarlyDepartureDialog
+        open={earlyOpen}
+        propertyId={propertyId}
+        stay={selectedStay}
+        today={overview?.date || ''}
+        onClose={() => setEarlyOpen(false)}
+        onSuccess={fetchOverview}
+        onRefund={(amount, hint) => {
+          setRefundPreset({ amount, hint })
+          setPayOpen(true)
+        }}
+      />
+      <UndoCheckInDialog
+        open={undoOpen}
+        propertyId={propertyId}
+        stay={selectedStay}
+        onClose={() => setUndoOpen(false)}
+        onSuccess={fetchOverview}
+        onRefund={(amount, hint) => {
+          setRefundPreset({ amount, hint })
           setPayOpen(true)
         }}
       />

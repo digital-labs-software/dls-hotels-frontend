@@ -34,10 +34,9 @@ type Props = {
   onClose: () => void
   onSuccess: () => void
   onPay: (stay: Stay) => void
-  onCheckOut: (stay: Stay) => void
 }
 
-const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheckOut }: Props) => {
+const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay }: Props) => {
   const { lang: locale } = useParams()
   const { canIssueInvoices } = useSubscriptionAccess()
   const [reservation, setReservation] = useState<Reservation | null>(null)
@@ -206,11 +205,6 @@ const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheck
                     Facturar
                   </Button>
                 ) : null}
-                {stay?.status === 'CHECKED_IN' ? (
-                  <Button color='warning' variant='outlined' onClick={() => stay && onCheckOut(stay)}>
-                    Check-out (salida)
-                  </Button>
-                ) : null}
               </div>
               <Divider />
               <Typography className='font-medium'>Huéspedes</Typography>
@@ -239,7 +233,7 @@ const StayDrawer = ({ open, propertyId, stay, onClose, onSuccess, onPay, onCheck
               <GuestPicker key={line?.guests.length ?? 0} propertyId={propertyId} label='Agregar acompañante' onSelect={handleAddGuest} />
               <Divider />
               <Typography className='font-medium'>Ajustar estadía</Typography>
-              <DateField label='Check-out (salida)' value={checkOutDate} onChange={setCheckOutDate} fullWidth />
+              <DateField label='Salida' value={checkOutDate} onChange={setCheckOutDate} fullWidth />
               <div className='flex gap-3'>
                 <TextField label='Adultos' value={adults} onChange={e => setAdults(e.target.value)} />
                 <TextField label='Niños' value={children} onChange={e => setChildren(e.target.value)} />

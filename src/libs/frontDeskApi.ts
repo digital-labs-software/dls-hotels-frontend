@@ -115,6 +115,8 @@ const normalizeStay = (stay: Stay): Stay => ({
   children: toNumber(stay.children),
   pricePerNight: toNumber(stay.pricePerNight),
   guestName: stay.guestName ?? null,
+  bookerName: stay.bookerName ?? null,
+  occupantNames: Array.isArray(stay.occupantNames) ? stay.occupantNames : [],
   companyName: stay.companyName ?? null,
   reservationBalance: toNumber(stay.reservationBalance),
   reservationPaidAmount: toNumber(stay.reservationPaidAmount),
@@ -392,6 +394,20 @@ export const frontDeskApi = {
   checkOut: async (propertyId: number, reservationUuid: string, lineUuid: string, token?: string) => {
     return request<ReservationRoom>(
       `/properties/${propertyId}/reservations/${reservationUuid}/rooms/${lineUuid}/check-out`,
+      { method: 'POST', body: JSON.stringify({}) },
+      token
+    )
+  },
+  earlyCheckOut: async (propertyId: number, reservationUuid: string, lineUuid: string, token?: string) => {
+    return request<ReservationRoom>(
+      `/properties/${propertyId}/reservations/${reservationUuid}/rooms/${lineUuid}/early-check-out`,
+      { method: 'POST', body: JSON.stringify({}) },
+      token
+    )
+  },
+  undoCheckIn: async (propertyId: number, reservationUuid: string, lineUuid: string, token?: string) => {
+    return request<ReservationRoom>(
+      `/properties/${propertyId}/reservations/${reservationUuid}/rooms/${lineUuid}/undo-check-in`,
       { method: 'POST', body: JSON.stringify({}) },
       token
     )

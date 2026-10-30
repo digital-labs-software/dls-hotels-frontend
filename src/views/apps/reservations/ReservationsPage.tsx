@@ -308,7 +308,6 @@ const ReservationsPage = () => {
           open
           propertyId={propertyId}
           reservationUuid={detailUuid}
-          today={today}
           highlightAssign={highlightAssign}
           onClose={() => setDetailUuid(null)}
           onChanged={() => {

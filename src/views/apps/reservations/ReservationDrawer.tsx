@@ -27,7 +27,7 @@ import { toast } from 'react-toastify'
 
 import type { Company, Guest } from '@/types/apps/clientsTypes'
 import type { FrontDeskPayment, Reservation, ReservationRoom } from '@/types/apps/frontDeskTypes'
-import { STAY_STATUS_LABELS, guestFullName } from '@/types/apps/frontDeskTypes'
+import { STAY_STATUS_LABELS, guestFullName, headlineStayStatus } from '@/types/apps/frontDeskTypes'
 import type { ReservationSource } from '@/types/apps/reservationsTypes'
 import { addDays, EXTERNAL_CODE_SOURCES, formatPlanningDate, PAYMENT_LABELS, SOURCE_LABELS, SOURCE_OPTIONS, stayStatusChipSx } from '@/types/apps/reservationsTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
@@ -43,7 +43,6 @@ type Props = {
   open: boolean
   propertyId: number
   reservationUuid: string | null
-  today: string
   highlightAssign?: boolean
   onClose: () => void
   onChanged: () => void
@@ -85,7 +84,6 @@ const ReservationDrawer = ({
   open,
   propertyId,
   reservationUuid,
-  today,
   highlightAssign,
   onClose,
   onChanged,
@@ -292,36 +290,6 @@ const ReservationDrawer = ({
       await afterAction('Reserva cancelada.')
     } catch (error) {
       toast.error(getReservationsApiErrorMessage(error, 'No se pudo cancelar.'))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleCheckIn = async (line: ReservationRoom) => {
-    if (!reservation) return
-
-    setSaving(true)
-
-    try {
-      await reservationsApi.checkIn(propertyId, reservation.uuid, line.uuid)
-      await afterAction('Check-in (ingreso) registrado.')
-    } catch (error) {
-      toast.error(getReservationsApiErrorMessage(error, 'No se pudo registrar el ingreso (check-in).'))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleCheckOut = async (line: ReservationRoom) => {
-    if (!reservation) return
-
-    setSaving(true)
-
-    try {
-      await reservationsApi.checkOut(propertyId, reservation.uuid, line.uuid)
-      await afterAction('Check-out (salida) registrado.')
-    } catch (error) {
-      toast.error(getReservationsApiErrorMessage(error, 'No se pudo registrar la salida (check-out).'))
     } finally {
       setSaving(false)
     }
@@ -599,9 +567,16 @@ const ReservationDrawer = ({
                         <Typography variant='caption' color='text.secondary'>Estado</Typography>
                         <Typography
                           fontWeight={600}
-                          sx={{ color: theme => STATUS_INK[reservation.status][theme.palette.mode] }}
+                          sx={{
+                            color: theme =>
+                              headlineStayStatus(reservation) === 'NO_SHOW'
+                                ? theme.palette.mode === 'dark'
+                                  ? '#CE93D8'
+                                  : '#6A1B9A'
+                                : STATUS_INK[reservation.status][theme.palette.mode]
+                          }}
                         >
-                          {STAY_STATUS_LABELS[reservation.status]}
+                          {STAY_STATUS_LABELS[headlineStayStatus(reservation)]}
                         </Typography>
                       </div>
                       <div>
@@ -661,14 +636,10 @@ const ReservationDrawer = ({
                   <RoomRow
                     key={line.uuid}
                     line={line}
-                    today={today}
-                    status={reservation.status}
                     highlightAssign={Boolean(highlightAssign && !line.roomId)}
                     saving={saving}
                     propertyId={propertyId}
                     onAssign={() => setAssignLine(line)}
-                    onCheckIn={() => handleCheckIn(line)}
-                    onCheckOut={() => handleCheckOut(line)}
                     onNoShow={() => handleNoShow(line)}
                     onRemove={() => handleRemoveRoom(line)}
                     onSave={patch => handleSaveLine(line, patch)}
@@ -747,6 +718,8 @@ const ReservationDrawer = ({
         reservationUuid={reservation?.uuid ?? null}
         lineUuid={assignLine?.uuid ?? null}
         roomTypeId={assignLine?.roomTypeId ?? null}
+        pricePerNight={assignLine?.pricePerNight ?? 0}
+        hasRoom={Boolean(assignLine?.roomId)}
         checkInDate={assignLine?.checkInDate ?? ''}
         checkOutDate={assignLine?.checkOutDate ?? ''}
         adults={assignLine?.adults}
@@ -935,14 +908,10 @@ const PersonSlot = ({
 
 const RoomRow = ({
   line,
-  today,
-  status,
   highlightAssign,
   saving,
   propertyId,
   onAssign,
-  onCheckIn,
-  onCheckOut,
   onNoShow,
   onRemove,
   onSave,
@@ -950,14 +919,10 @@ const RoomRow = ({
   onClearGuest
 }: {
   line: ReservationRoom
-  today: string
-  status: Reservation['status']
   highlightAssign: boolean
   saving: boolean
   propertyId: number
   onAssign: () => void
-  onCheckIn: () => void
-  onCheckOut: () => void
   onNoShow: () => void
   onRemove: () => void
   onSave: (patch: { checkOutDate: string }) => void
@@ -969,10 +934,6 @@ const RoomRow = ({
   const [more, setMore] = useState(false)
   const lineOpen = line.status === 'PENDING' || line.status === 'CONFIRMED'
   const canEditPeople = lineOpen || line.status === 'CHECKED_IN'
-  const hasPrimary = line.guests.some(guest => guest.isPrimary)
-  const canCheckIn =
-    (status === 'CONFIRMED' || status === 'PENDING') && lineOpen && line.checkInDate <= today && Boolean(line.roomId)
-  const canCheckOut = line.status === 'CHECKED_IN'
   const canMutate = lineOpen
 
   useEffect(() => {
@@ -983,55 +944,28 @@ const RoomRow = ({
   const takenIds = slots.map(slot => slot.guestId).filter((id): id is number => id !== null)
 
   return (
-    <div className='rounded border p-4 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4'>
-      <div className='flex flex-col gap-2'>
-        <div className='flex items-center justify-between gap-2'>
-          <Typography fontWeight={600}>
-            {line.roomNumber || 'Sin número'} · {line.roomTypeName}
+    <div className='flex flex-col gap-4 rounded border p-4'>
+      <div className='grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]'>
+        <div className='flex flex-col gap-2'>
+          <div className='flex items-center justify-between gap-2'>
+            <Typography fontWeight={600}>
+              {line.roomNumber || 'Sin número'} · {line.roomTypeName}
+            </Typography>
+            <Chip size='small' label={STAY_STATUS_LABELS[line.status]} sx={stayStatusChipSx(line.status)} />
+          </div>
+          {highlightAssign ? <Alert severity='warning'>Esta habitación no tiene número.</Alert> : null}
+          <Typography variant='body2'>
+            {formatPlanningDate(line.checkInDate)} – {formatPlanningDate(line.checkOutDate)} · {line.nights} noches
           </Typography>
-          <Chip size='small' label={STAY_STATUS_LABELS[line.status]} sx={stayStatusChipSx(line.status)} />
-        </div>
-        {highlightAssign ? <Alert severity='warning'>Esta habitación no tiene número.</Alert> : null}
-        <Typography variant='body2'>
-          {formatPlanningDate(line.checkInDate)} – {formatPlanningDate(line.checkOutDate)} · {line.nights} noches
-        </Typography>
-        <Typography variant='body2'>
-          {formatRoomPrice(line.pricePerNight)} / noche · {formatRoomPrice(line.subtotal)}
-        </Typography>
-        <Typography variant='caption' color='text.secondary'>
-          {line.adults} adultos{line.children ? ` · ${line.children} niños` : ''}
-        </Typography>
-        <div className='flex flex-wrap gap-2'>
-          {lineOpen && !line.roomId ? (
-            <Button size='small' variant='contained' color='warning' onClick={onAssign}>
-              Asignar habitación
-            </Button>
-          ) : null}
-          {lineOpen && line.roomId ? (
-            <Button size='small' variant='outlined' onClick={onAssign}>
-              Cambiar habitación
-            </Button>
-          ) : null}
-          {canCheckIn && hasPrimary ? (
-            <Button size='small' variant='contained' disabled={saving} onClick={onCheckIn}>
-              Check-in (ingreso)
-            </Button>
-          ) : null}
-          {canCheckOut ? (
-            <Button size='small' variant='contained' disabled={saving} onClick={onCheckOut}>
-              Check-out (salida)
-            </Button>
-          ) : null}
-        </div>
-        {canCheckIn && !hasPrimary ? (
+          <Typography variant='body2'>
+            {formatRoomPrice(line.pricePerNight)} / noche · {formatRoomPrice(line.subtotal)}
+          </Typography>
           <Typography variant='caption' color='text.secondary'>
-            Asigna al titular para poder registrar el ingreso.
+            {line.adults} adultos{line.children ? ` · ${line.children} niños` : ''}
           </Typography>
-        ) : null}
-      </div>
+        </div>
 
-      <div className='flex flex-col gap-3'>
-        <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
+        <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3'>
           {slots.map((slot, index) => (
             <PersonSlot
               key={`${line.uuid}-${index}`}
@@ -1060,7 +994,20 @@ const RoomRow = ({
             />
           ))}
         </div>
+      </div>
+
+      <div className='flex flex-col gap-3 border-bs pt-4'>
         <div className='flex flex-wrap gap-2'>
+          {lineOpen && !line.roomId ? (
+            <Button size='small' variant='contained' color='warning' onClick={onAssign}>
+              Asignar habitación
+            </Button>
+          ) : null}
+          {lineOpen && line.roomId ? (
+            <Button size='small' variant='outlined' onClick={onAssign}>
+              Cambiar habitación
+            </Button>
+          ) : null}
           {canMutate ? (
             <Button size='small' onClick={() => setMore(current => !current)}>
               {more ? 'Ocultar' : 'Cambiar salida'}
