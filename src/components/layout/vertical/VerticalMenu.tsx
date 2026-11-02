@@ -67,7 +67,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
     canViewReception,
     canViewSales,
     canViewReservations,
-    canViewPrices,
+    canViewQuotes,
     canViewRooms,
     canViewClients,
     canViewReports,
@@ -156,7 +156,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             {dictionary['navigation'].dashboards}
           </MenuItem>
         ) : null}
-        {canViewReception || canViewSales || canViewReservations || canViewPrices ? (
+        {canViewReception || canViewSales || canViewReservations || canViewQuotes ? (
         <MenuSection label={dictionary['navigation'].operation}>
           {canViewReception ? (
           <MenuItem
@@ -178,12 +178,12 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             {dictionary['navigation'].reservations}
           </MenuItem>
           ) : null}
-          {canViewPrices ? (
+          {canViewQuotes ? (
           <MenuItem
             href={`/${locale}/apps/prices`}
             exactMatch={false}
             activeUrl='/apps/prices'
-            icon={<i className='ri-price-tag-3-line' />}
+            icon={<i className='ri-calculator-line' />}
           >
             {dictionary['navigation'].prices}
           </MenuItem>

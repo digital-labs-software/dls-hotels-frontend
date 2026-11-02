@@ -5,7 +5,6 @@ export type RoomType = {
   name: string
   code: string
   description: string | null
-  basePrice: number
   maxAdults: number
   maxChildren: number
   maxOccupancy: number | null
@@ -24,7 +23,6 @@ export type CreateRoomTypeDto = {
   /** Vacía = el servidor la genera desde el nombre. */
   code?: string
   description?: string | null
-  basePrice: number
   maxAdults: number
   maxChildren?: number
   maxOccupancy?: number | null
@@ -134,7 +132,6 @@ export type UpdateRoomTypeDto = {
   name?: string
   code?: string
   description?: string | null
-  basePrice?: number
   maxAdults?: number
   maxChildren?: number
   maxOccupancy?: number | null

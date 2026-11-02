@@ -37,6 +37,7 @@ import {
 } from '@/libs/staffApi'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
+import { scrollToFirstInvalid } from '@/utils/scrollToFirstInvalid'
 import PermissionMatrix from '@views/apps/staff/roles/form/PermissionMatrix'
 
 type FormValues = {
@@ -243,7 +244,13 @@ const RoleForm = ({ uuid }: Props) => {
   const title = isEdit || isView ? roleName.trim() || 'Rol' : 'Nuevo rol'
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form
+      onSubmit={event => {
+        const form = event.currentTarget
+
+        void handleSubmit(onSubmit, () => scrollToFirstInvalid(form))(event)
+      }}
+    >
       <Grid container spacing={6}>
         <Grid size={{ xs: 12 }}>
           <Breadcrumbs className='mbe-3'>
@@ -293,6 +300,7 @@ const RoleForm = ({ uuid }: Props) => {
                       <TextField
                         {...field}
                         fullWidth
+                        autoFocus={!uuid && !isView}
                         label='Nombre del rol'
                         placeholder='Recepcionista'
                         disabled={isView || isSubmitting}

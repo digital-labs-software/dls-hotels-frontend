@@ -15,9 +15,9 @@ const hotelHeaderShortcuts: ShortcutsType[] = [
   },
   {
     url: '/apps/prices',
-    icon: 'ri-price-tag-3-line',
-    title: 'Precios',
-    subtitle: 'Cuánto cobrar'
+    icon: 'ri-calculator-line',
+    title: 'Cotizar',
+    subtitle: 'Cuánto sale'
   },
   {
     url: '/apps/clients',

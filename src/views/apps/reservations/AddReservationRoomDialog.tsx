@@ -21,7 +21,8 @@ import { toast } from 'react-toastify'
 
 import DateField from '@/components/date-picker/DateField'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
-import { pickRateForDate } from '@/types/apps/rateTypes'
+import { formatRateDate, pickRateForDate } from '@/types/apps/rateTypes'
+import type { Rate } from '@/types/apps/rateTypes'
 import type { AvailabilityRoomType } from '@/types/apps/reservationsTypes'
 import { addDays, formatPlanningDate, nightsBetween } from '@/types/apps/reservationsTypes'
 import { formatPeople, roomCapacity } from '@/types/apps/roomTypeTypes'
@@ -67,6 +68,7 @@ const AddReservationRoomDialog = ({
   const [children, setChildren] = useState('0')
   const [rateId, setRateId] = useState<number | null>(null)
   const [ratePrice, setRatePrice] = useState<number | null>(null)
+  const [staleRates, setStaleRates] = useState<Rate[]>([])
 
   useEffect(() => {
     if (!open) return
@@ -79,6 +81,7 @@ const AddReservationRoomDialog = ({
     setChildren('0')
     setRateId(null)
     setRatePrice(null)
+    setStaleRates([])
     setAvailability([])
   }, [open, checkInDate, checkOutDate])
 
@@ -129,9 +132,10 @@ const AddReservationRoomDialog = ({
   )
 
   useEffect(() => {
-    if (!open || !selectedType) {
+    if (!open || typeof roomId !== 'number') {
       setRateId(null)
       setRatePrice(null)
+      setStaleRates([])
 
       return
     }
@@ -139,7 +143,7 @@ const AddReservationRoomDialog = ({
     let cancelled = false
 
     reservationsApi
-      .rates(propertyId, selectedType.roomTypeId)
+      .rates(propertyId, roomId)
       .then(page => {
         if (cancelled) return
 
@@ -147,18 +151,20 @@ const AddReservationRoomDialog = ({
 
         setRateId(best?.id ?? null)
         setRatePrice(best ? best.price : null)
+        setStaleRates(page.data.filter(rate => rate.expired))
       })
       .catch(() => {
         if (!cancelled) {
           setRateId(null)
           setRatePrice(null)
+          setStaleRates([])
         }
       })
 
     return () => {
       cancelled = true
     }
-  }, [open, propertyId, selectedType, checkIn])
+  }, [open, propertyId, roomId, checkIn])
 
   const handleSelectType = (type: AvailabilityRoomType) => {
     const people = Math.max(1, Math.min(2, Number(type.maxAdults) || 1))
@@ -195,7 +201,7 @@ const AddReservationRoomDialog = ({
   }
 
   const nights = datesOk ? nightsBetween(checkIn, checkOut) : 0
-  const price = ratePrice ?? selectedRoom?.effectivePrice ?? selectedType?.basePrice
+  const price = roomId === 'later' ? null : (ratePrice ?? selectedRoom?.effectivePrice ?? null)
 
   return (
     <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='sm'>
@@ -264,7 +270,7 @@ const AddReservationRoomDialog = ({
                   : 'Sin disponibilidad'
                 : !fits
                   ? `No caben (hasta ${formatPeople(roomCapacity(type))})`
-                  : `${formatRoomPrice(type.basePrice)} · ${remaining} libres`
+                  : `${remaining} libres`
 
             return (
               <li key={key} {...optionProps}>
@@ -327,11 +333,22 @@ const AddReservationRoomDialog = ({
             En {selectedType.roomTypeName} entran hasta {formatPeople(roomCapacity(selectedType))}.
           </Typography>
         ) : null}
+        {selectedType && roomId === 'later' ? (
+          <Typography variant='body2' color='text.secondary'>
+            El precio se define al asignar la habitación.
+          </Typography>
+        ) : null}
         {selectedType && price != null ? (
           <Typography variant='body2' color='text.secondary'>
             {formatRoomPrice(price)} por noche
             {nights > 0 ? ` · ${formatRoomPrice(price * nights)}` : ''}
           </Typography>
+        ) : null}
+        {staleRates.length > 0 ? (
+          <Alert severity='warning'>
+            {staleRates.map(rate => `«${rate.name}» venció el ${formatRateDate(rate.validTo)}`).join('. ')}. Actualice
+            las fechas de esa tarifa si esta reserva debería usarla. Si no, se cobra el precio normal.
+          </Alert>
         ) : null}
       </DialogContent>
       <DialogActions>

@@ -55,7 +55,6 @@ const normalizeRoomType = (item: RoomType): RoomType => ({
   displayOrder: toNumber(item.displayOrder),
   code: item.code ?? '',
   description: item.description ?? null,
-  basePrice: toNumber(item.basePrice),
   maxAdults: toNumber(item.maxAdults, 1),
   maxChildren: toNumber(item.maxChildren),
   maxOccupancy: toNullableNumber(item.maxOccupancy),
@@ -99,7 +98,6 @@ const toPayload = (body: CreateRoomTypeDto | UpdateRoomTypeDto) => {
   if (body.name !== undefined) payload.name = body.name.trim()
   if (body.code !== undefined) payload.code = body.code.trim().toUpperCase()
   if (body.description !== undefined) payload.description = body.description?.trim() ? body.description.trim() : null
-  if (body.basePrice !== undefined) payload.basePrice = Number(body.basePrice)
   if (body.maxAdults !== undefined) payload.maxAdults = Number(body.maxAdults)
   if (body.maxChildren !== undefined) payload.maxChildren = Number(body.maxChildren)
   if (body.maxOccupancy !== undefined) payload.maxOccupancy = body.maxOccupancy === null ? null : Number(body.maxOccupancy)

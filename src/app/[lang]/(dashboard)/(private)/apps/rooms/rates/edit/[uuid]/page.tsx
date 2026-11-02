@@ -1,20 +1,19 @@
-import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
-import RateFormClient from '@views/apps/rates/form/RateFormClient'
-
-export const metadata: Metadata = {
-  title: 'Editar tarifa',
-  description: 'Editar o ver una tarifa por temporada'
-}
+import type { Locale } from '@configs/i18n'
+import { getLocalizedUrl } from '@/utils/i18n'
 
 type Props = {
-  params: Promise<{ uuid: string }>
+  params: Promise<{ lang: Locale; uuid: string }>
+  searchParams: Promise<{ mode?: string }>
 }
 
-const RatesEditPage = async ({ params }: Props) => {
-  const { uuid } = await params
+const RatesEditPage = async ({ params, searchParams }: Props) => {
+  const { lang, uuid } = await params
+  const { mode } = await searchParams
+  const view = mode === 'view' ? '&ver=1' : ''
 
-  return <RateFormClient uuid={uuid} />
+  redirect(getLocalizedUrl(`/apps/rooms?tab=rates&tarifa=${uuid}${view}`, lang))
 }
 
 export default RatesEditPage

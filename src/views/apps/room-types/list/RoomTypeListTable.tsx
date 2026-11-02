@@ -21,7 +21,6 @@ import { toast } from 'react-toastify'
 
 import type { RoomType } from '@/types/apps/roomTypeTypes'
 import { capacityLabel } from '@/types/apps/roomTypeTypes'
-import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import RoomTypeFormDrawer from './RoomTypeFormDrawer'
 import type { RoomTypeDrawerMode } from './RoomTypeFormDrawer'
 import { MoveButtons, ReorderHint, RowPosition } from '@/components/reorder/ReorderControls'
@@ -229,7 +228,6 @@ const RoomTypeListTable = () => {
                 <th className='is-[110px]'>#</th>
                 <th>Tipo</th>
                 <th>Abreviatura</th>
-                <th>Precio</th>
                 <th>Capacidad</th>
                 <th>Estado</th>
                 <th className='is-[110px]'>Mover</th>
@@ -257,9 +255,6 @@ const RoomTypeListTable = () => {
                   </td>
                   <td>
                     <Chip variant='tonal' size='small' color='primary' label={roomType.code} />
-                  </td>
-                  <td>
-                    <Typography>{formatRoomPrice(roomType.basePrice)}</Typography>
                   </td>
                   <td>
                     <Typography>{capacityLabel(roomType)}</Typography>
@@ -299,7 +294,7 @@ const RoomTypeListTable = () => {
               ))}
               {visibleCount === 0 ? (
                 <tr>
-                  <td colSpan={8} className='text-center'>
+                  <td colSpan={7} className='text-center'>
                     {data.length > 0
                       ? 'Ningún tipo coincide con la búsqueda.'
                       : 'No hay tipos de habitación registrados.'}

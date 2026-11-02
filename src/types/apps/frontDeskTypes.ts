@@ -87,7 +87,7 @@ export interface Stay {
   nights: number
   adults: number
   children: number
-  pricePerNight: number
+  pricePerNight: number | null
   guestName: string | null
   bookerName: string | null
   occupantNames: string[]
@@ -222,8 +222,8 @@ export interface ReservationRoom {
   checkInDate: string
   checkOutDate: string
   nights: number
-  pricePerNight: number
-  subtotal: number
+  pricePerNight: number | null
+  subtotal: number | null
   adults: number
   children: number
   actualCheckInAt: string | null

@@ -718,7 +718,7 @@ const ReservationDrawer = ({
         reservationUuid={reservation?.uuid ?? null}
         lineUuid={assignLine?.uuid ?? null}
         roomTypeId={assignLine?.roomTypeId ?? null}
-        pricePerNight={assignLine?.pricePerNight ?? 0}
+        pricePerNight={assignLine?.pricePerNight ?? null}
         hasRoom={Boolean(assignLine?.roomId)}
         checkInDate={assignLine?.checkInDate ?? ''}
         checkOutDate={assignLine?.checkOutDate ?? ''}
@@ -958,7 +958,9 @@ const RoomRow = ({
             {formatPlanningDate(line.checkInDate)} – {formatPlanningDate(line.checkOutDate)} · {line.nights} noches
           </Typography>
           <Typography variant='body2'>
-            {formatRoomPrice(line.pricePerNight)} / noche · {formatRoomPrice(line.subtotal)}
+            {line.pricePerNight == null
+              ? 'Sin precio hasta asignar la habitación'
+              : `${formatRoomPrice(line.pricePerNight)} / noche · ${formatRoomPrice(line.subtotal)}`}
           </Typography>
           <Typography variant='caption' color='text.secondary'>
             {line.adults} adultos{line.children ? ` · ${line.children} niños` : ''}

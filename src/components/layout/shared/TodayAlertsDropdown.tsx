@@ -28,6 +28,9 @@ import CustomAvatar from '@core/components/mui/Avatar'
 import themeConfig from '@configs/themeConfig'
 import { useSettings } from '@core/hooks/useSettings'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
+import { listExpiredRates } from '@/libs/ratesApi'
+import type { HotelRate } from '@/types/apps/rateTypes'
+import { formatRateDate } from '@/types/apps/rateTypes'
 import { reservationsApi, subscribeReservationNotes } from '@/libs/reservationsApi'
 import type { Stay } from '@/types/apps/frontDeskTypes'
 import type { ReservationNote } from '@/types/apps/reservationsTypes'
@@ -68,6 +71,7 @@ const TodayAlertsDropdown = () => {
   const [arrivals, setArrivals] = useState<Stay[]>([])
   const [departures, setDepartures] = useState<Stay[]>([])
   const [pendingNotes, setPendingNotes] = useState<ReservationNote[]>([])
+  const [expiredRates, setExpiredRates] = useState<HotelRate[]>([])
   const [dismissed, setDismissed] = useState<string[]>([])
 
   const anchorRef = useRef<HTMLButtonElement>(null)
@@ -107,6 +111,12 @@ const TodayAlertsDropdown = () => {
       setPendingNotes(await reservationsApi.notes(propertyId))
     } catch {
       setPendingNotes([])
+    }
+
+    try {
+      setExpiredRates(await listExpiredRates(propertyId))
+    } catch {
+      setExpiredRates([])
     } finally {
       setLoading(false)
     }
@@ -141,11 +151,16 @@ const TodayAlertsDropdown = () => {
   )
 
   const pendingArrivals = visibleArrivals.filter(stay => stay.status !== 'CHECKED_IN').length
-  const badgeCount = (pendingArrivals || visibleDepartures.length) + pendingNotes.length
+  const badgeCount = (pendingArrivals || visibleDepartures.length) + pendingNotes.length + expiredRates.length
 
   const goToNotes = () => {
     setOpen(false)
     router.push(getLocalizedUrl('/apps/reservations?por-completar=1', locale as Locale))
+  }
+
+  const goToRate = (uuid: string) => {
+    setOpen(false)
+    router.push(getLocalizedUrl(`/apps/rooms?tab=rates&tarifa=${uuid}`, locale as Locale))
   }
 
   const goToFrontDesk = () => {
@@ -241,6 +256,35 @@ const TodayAlertsDropdown = () => {
                       <Chip size='small' variant='tonal' color='primary' label={`${pendingArrivals} llegadas`} />
                     ) : null}
                   </div>
+                  {expiredRates.length > 0 ? (
+                    <>
+                      <Divider />
+                      <div className='pli-4 plb-3 flex flex-col gap-2'>
+                        <Typography variant='caption' className='uppercase' color='text.disabled'>
+                          Tarifas vencidas ({expiredRates.length})
+                        </Typography>
+                        {expiredRates.map(rate => (
+                          <div
+                            key={rate.uuid}
+                            className='flex gap-3 cursor-pointer'
+                            onClick={() => goToRate(rate.uuid)}
+                          >
+                            <CustomAvatar color='warning' skin='light-static' size={34}>
+                              <i className='ri-price-tag-3-line' />
+                            </CustomAvatar>
+                            <div className='flex flex-col flex-auto min-is-0'>
+                              <Typography className='font-medium' color='text.primary'>
+                                {rate.name}
+                              </Typography>
+                              <Typography variant='caption' color='text.secondary'>
+                                Venció el {formatRateDate(rate.validTo)}. Actualice las fechas.
+                              </Typography>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
                   <Divider />
                   <div className='flex-1 min-bs-0 overflow-hidden'>
                   <ScrollWrapper hidden={hidden}>

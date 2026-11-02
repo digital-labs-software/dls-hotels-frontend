@@ -37,7 +37,7 @@ export const EarlyDepartureDialog = ({ open, propertyId, stay, today, onClose, o
   const [saving, setSaving] = useState(false)
   const keptNights = stay && today ? nightsBetween(stay.checkInDate, today) : 0
   const removedNights = stay ? Math.max(0, stay.nights - keptNights) : 0
-  const removedAmount = stay ? roundMoney(stay.pricePerNight * removedNights) : 0
+  const removedAmount = stay ? roundMoney((stay.pricePerNight ?? 0) * removedNights) : 0
   const credit = stay ? creditAfter(stay, removedAmount) : 0
 
   const handleConfirm = async () => {
@@ -100,7 +100,7 @@ export const EarlyDepartureDialog = ({ open, propertyId, stay, today, onClose, o
 
 export const UndoCheckInDialog = ({ open, propertyId, stay, onClose, onSuccess, onRefund }: Omit<Props, 'today'>) => {
   const [saving, setSaving] = useState(false)
-  const removedAmount = stay ? roundMoney(stay.pricePerNight * stay.nights) : 0
+  const removedAmount = stay ? roundMoney((stay.pricePerNight ?? 0) * stay.nights) : 0
   const credit = stay ? creditAfter(stay, removedAmount) : 0
 
   const handleConfirm = async () => {

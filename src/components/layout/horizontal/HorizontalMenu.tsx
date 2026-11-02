@@ -72,7 +72,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
     canViewReception,
     canViewSales,
     canViewReservations,
-    canViewPrices,
+    canViewQuotes,
     canViewRooms,
     canViewClients,
     canViewReports,
@@ -184,7 +184,7 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
         </MenuItem>
         ) : null}
 
-        {canViewReception || canViewSales || canViewReservations || canViewPrices ? (
+        {canViewReception || canViewSales || canViewReservations || canViewQuotes ? (
         <SubMenu label={dictionary['navigation'].operation} icon={<i className='ri-dashboard-2-line' />}>
           {canViewReception ? (
           <MenuItem
@@ -206,12 +206,12 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
             {dictionary['navigation'].reservations}
           </MenuItem>
           ) : null}
-          {canViewPrices ? (
+          {canViewQuotes ? (
           <MenuItem
             href={`/${locale}/apps/prices`}
             exactMatch={false}
             activeUrl='/apps/prices'
-            icon={<i className='ri-price-tag-3-line' />}
+            icon={<i className='ri-calculator-line' />}
           >
             {dictionary['navigation'].prices}
           </MenuItem>

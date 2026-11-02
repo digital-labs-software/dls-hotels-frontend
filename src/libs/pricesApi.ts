@@ -34,7 +34,7 @@ export type PriceNight = {
   date: string
   price: number
   label: string
-  source: 'rate' | 'room' | 'base'
+  source: 'rate' | 'room'
   rateId: number | null
 }
 
@@ -48,8 +48,9 @@ export type PriceRoomQuote = {
 export type PriceTypeQuote = {
   roomTypeId: number
   name: string
-  nights: PriceNight[]
-  total: number
+  roomCount: number
+  availableCount: number
+  fromTotal: number | null
   rooms: PriceRoomQuote[]
 }
 

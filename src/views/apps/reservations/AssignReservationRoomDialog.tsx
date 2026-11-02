@@ -19,6 +19,8 @@ import { toast } from 'react-toastify'
 
 import type { AvailabilityRoom, AvailabilityRoomType } from '@/types/apps/reservationsTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
+import { formatRateDate, pickRateForDate } from '@/types/apps/rateTypes'
+import type { Rate } from '@/types/apps/rateTypes'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
 
 type Props = {
@@ -27,7 +29,7 @@ type Props = {
   reservationUuid: string | null
   lineUuid: string | null
   roomTypeId: number | null
-  pricePerNight: number
+  pricePerNight: number | null
   hasRoom: boolean
   checkInDate: string
   checkOutDate: string
@@ -57,6 +59,8 @@ const AssignReservationRoomDialog = ({
   const [roomId, setRoomId] = useState<number | ''>('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [roomRates, setRoomRates] = useState<Rate[]>([])
+  const [ratesLoading, setRatesLoading] = useState(false)
 
   useEffect(() => {
     if (!open || !checkInDate || !checkOutDate) {
@@ -100,6 +104,37 @@ const AssignReservationRoomDialog = ({
   const selectedRoom = rooms.find(room => room.id === roomId)
   const typeChanged = selectedTypeId !== '' && selectedTypeId !== roomTypeId
   const tooSmall = selectedType?.fitsRequestedGuests === false
+  const bestRate = typeof roomId === 'number' ? pickRateForDate(roomRates, checkInDate) : undefined
+  const staleRates = roomRates.filter(rate => rate.expired)
+  const nextPrice = bestRate?.price ?? selectedRoom?.effectivePrice
+
+  useEffect(() => {
+    if (!open || typeof roomId !== 'number') {
+      setRoomRates([])
+      setRatesLoading(false)
+
+      return
+    }
+
+    let cancelled = false
+
+    setRatesLoading(true)
+    reservationsApi
+      .rates(propertyId, roomId)
+      .then(page => {
+        if (!cancelled) setRoomRates(page.data)
+      })
+      .catch(() => {
+        if (!cancelled) setRoomRates([])
+      })
+      .finally(() => {
+        if (!cancelled) setRatesLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, propertyId, roomId])
 
   const handleAssign = async () => {
     if (!reservationUuid || !lineUuid || roomId === '' || selectedTypeId === '') {
@@ -111,12 +146,12 @@ const AssignReservationRoomDialog = ({
     setSaving(true)
 
     try {
-      await reservationsApi.updateRoom(
-        propertyId,
-        reservationUuid,
-        lineUuid,
-        typeChanged ? { roomTypeId: selectedTypeId, roomId, rateId: null } : { roomId }
-      )
+      await reservationsApi.updateRoom(propertyId, reservationUuid, lineUuid, {
+        ...(typeChanged ? { roomTypeId: selectedTypeId } : {}),
+        roomId,
+        rateId: bestRate?.id ?? null,
+        pricePerNight: null
+      })
       toast.success(typeChanged ? 'Habitación cambiada. El precio de la reserva se actualizó.' : 'Habitación asignada.')
       onSuccess()
       onClose()
@@ -187,13 +222,19 @@ const AssignReservationRoomDialog = ({
             {tooSmall ? (
               <Typography color='text.secondary'>Este tipo no alcanza para las personas de la reserva.</Typography>
             ) : null}
-            {typeChanged && selectedRoom && !tooSmall ? (
+            {selectedRoom && nextPrice != null && !tooSmall ? (
               <Typography>
-                Pasa de {formatRoomPrice(pricePerNight)} a {formatRoomPrice(selectedRoom.effectivePrice)} por noche.
+                {pricePerNight == null
+                  ? `Al asignar, el precio queda en ${formatRoomPrice(nextPrice)}`
+                  : `${formatRoomPrice(pricePerNight)} por noche pasa a ${formatRoomPrice(nextPrice)}`}
+                {bestRate ? ` (${bestRate.name})` : ''}.
               </Typography>
             ) : null}
-            {!typeChanged && selectedRoom ? (
-              <Typography color='text.secondary'>El precio por noche no cambia.</Typography>
+            {staleRates.length > 0 ? (
+              <Typography color='warning.main'>
+                {staleRates.map(rate => `«${rate.name}» venció el ${formatRateDate(rate.validTo)}`).join('. ')}. Actualice
+                las fechas si esta estadía debería usar esa tarifa.
+              </Typography>
             ) : null}
           </>
         )}
@@ -202,7 +243,11 @@ const AssignReservationRoomDialog = ({
         <Button variant='outlined' color='secondary' disabled={saving} onClick={onClose}>
           Cancelar
         </Button>
-        <Button variant='contained' disabled={saving || loading || roomId === '' || tooSmall} onClick={handleAssign}>
+        <Button
+          variant='contained'
+          disabled={saving || loading || ratesLoading || roomId === '' || tooSmall}
+          onClick={handleAssign}
+        >
           {saving ? <CircularProgress size={20} color='inherit' /> : hasRoom ? 'Cambiar' : 'Asignar'}
         </Button>
       </DialogActions>

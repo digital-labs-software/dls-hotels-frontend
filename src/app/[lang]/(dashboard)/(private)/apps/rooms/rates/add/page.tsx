@@ -1,14 +1,16 @@
-import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
-import RateFormClient from '@views/apps/rates/form/RateFormClient'
+import type { Locale } from '@configs/i18n'
+import { getLocalizedUrl } from '@/utils/i18n'
 
-export const metadata: Metadata = {
-  title: 'Nueva tarifa',
-  description: 'Registrar una tarifa por temporada'
+type Props = {
+  params: Promise<{ lang: Locale }>
 }
 
-const RatesAddPage = () => {
-  return <RateFormClient />
+const RatesAddPage = async ({ params }: Props) => {
+  const { lang } = await params
+
+  redirect(getLocalizedUrl('/apps/rooms?tab=rates&nueva=1', lang))
 }
 
 export default RatesAddPage

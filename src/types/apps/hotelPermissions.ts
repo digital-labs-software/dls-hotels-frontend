@@ -15,7 +15,7 @@ export const RESERVATIONS_EDIT = 'reservations.edit'
 export const RESERVATIONS_CANCEL = 'reservations.cancel'
 export const RESERVATIONS_NOTES_MANAGE = 'reservations.notes.manage'
 
-export const PRICES_VIEW = 'prices.view'
+export const QUOTES_VIEW = 'quotes.view'
 export const SALES_VIEW = 'sales.view'
 export const SALES_CREATE = 'sales.create'
 export const SALES_VOID = 'sales.void'

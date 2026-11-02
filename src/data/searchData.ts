@@ -32,9 +32,9 @@ const data: SearchData[] = [
   },
   {
     id: 'prices',
-    name: 'Precios',
+    name: 'Cotizar',
     url: '/apps/prices',
-    icon: 'ri-price-tag-3-line',
+    icon: 'ri-calculator-line',
     section: 'Operación'
   },
   {

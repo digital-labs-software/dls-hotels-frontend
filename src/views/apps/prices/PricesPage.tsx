@@ -11,12 +11,18 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CircularProgress from '@mui/material/CircularProgress'
-import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
 
 import DateField from '@/components/date-picker/DateField'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
-import { getPricesApiErrorMessage, pricesApi, type PriceNight, type PriceQuote, type PriceTypeQuote } from '@/libs/pricesApi'
+import {
+  getPricesApiErrorMessage,
+  pricesApi,
+  type PriceNight,
+  type PriceQuote,
+  type PriceRoomQuote,
+  type PriceTypeQuote
+} from '@/libs/pricesApi'
 import { addDays, limaToday } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 
@@ -30,30 +36,63 @@ const uniform = (nights: PriceNight[]) => nights.every(night => night.price === 
 
 const MAX_QUANTITY = 20
 
-const lineTotal = (type: PriceTypeQuote, quantity: number) => Math.round(type.total * quantity * 100) / 100
+/** Siempre de la más barata a la más cara; si empatan, por número. */
+const orderRooms = (rooms: PriceRoomQuote[]) =>
+  [...rooms].sort((a, b) => {
+    const byPrice = a.total - b.total
 
-const copyQuote = (quote: PriceQuote, quantities: Record<number, number>) => {
-  const chosen = quote.types
-    .map(type => ({ type, quantity: quantities[type.roomTypeId] ?? 0 }))
-    .filter(item => item.quantity > 0)
-
-  const total = Math.round(chosen.reduce((sum, item) => sum + lineTotal(item.type, item.quantity), 0) * 100) / 100
-  const lines = [`Llegada ${formatEs(quote.from)}, salida ${formatEs(quote.to)}`]
-
-  chosen.forEach(({ type, quantity }) => {
-    const first = type.nights[0]
-    const amount = formatRoomPrice(lineTotal(type, quantity))
-
-    if (uniform(type.nights) && first) {
-      lines.push(`${quantity} ${type.name}: ${amount} (${first.label})`)
-
-      return
+    if (byPrice !== 0) {
+      return byPrice
     }
 
-    lines.push(`${quantity} ${type.name}: ${amount}`)
-    type.nights.forEach(night => {
-      lines.push(`${formatEs(night.date)}: ${formatRoomPrice(night.price)} por habitación (${night.label})`)
-    })
+    return a.number.localeCompare(b.number, 'es', { numeric: true })
+  })
+
+const pickedTotal = (rooms: PriceRoomQuote[]) => Math.round(rooms.reduce((sum, room) => sum + room.total, 0) * 100) / 100
+
+const rateNames = (nights: PriceNight[]) =>
+  [...new Set(nights.map(night => night.label).filter(label => label !== 'Precio normal'))]
+
+const roomAmount = (nights: PriceNight[]) => {
+  if (nights.length === 0) {
+    return ''
+  }
+
+  const rates = rateNames(nights)
+  const rate = rates.length > 0 ? ` · ${rates.join(', ')}` : ''
+
+  if (uniform(nights)) {
+    return `${formatRoomPrice(nights[0].price)}${rate}`
+  }
+
+  const prices = nights.map(night => night.price)
+
+  return `${formatRoomPrice(Math.min(...prices))} – ${formatRoomPrice(Math.max(...prices))}${rate}`
+}
+
+const resolvePicked = (type: PriceTypeQuote, ids: number[]) => {
+  const byId = new Map(type.rooms.map(room => [room.id, room]))
+
+  return ids.flatMap(id => {
+    const room = byId.get(id)
+
+    return room ? [room] : []
+  })
+}
+
+const copyQuote = (quote: PriceQuote, pickedIds: Record<number, number[]>) => {
+  const chosen = quote.types
+    .map(type => ({ type, picked: resolvePicked(type, pickedIds[type.roomTypeId] ?? []) }))
+    .filter(item => item.picked.length > 0)
+
+  const total = Math.round(chosen.reduce((sum, item) => sum + pickedTotal(item.picked), 0) * 100) / 100
+  const lines = [`Llegada ${formatEs(quote.from)}, salida ${formatEs(quote.to)}`]
+
+  chosen.forEach(({ type, picked }) => {
+    const labels = new Set(picked.flatMap(room => rateNames(room.nights)))
+    const suffix = labels.size === 1 ? ` (${[...labels][0]})` : ''
+
+    lines.push(`${picked.length} ${type.name}: ${formatRoomPrice(pickedTotal(picked))}${suffix}`)
   })
 
   lines.push(`Total ${quote.nights} ${quote.nights === 1 ? 'noche' : 'noches'}: ${formatRoomPrice(total)}`)
@@ -63,12 +102,12 @@ const copyQuote = (quote: PriceQuote, quantities: Record<number, number>) => {
 
 const PricesPage = () => {
   const { data: session } = useSession()
-  const { canViewPrices, loaded } = useSubscriptionAccess()
+  const { canViewQuotes, loaded } = useSubscriptionAccess()
   const propertyId = session?.user?.propertyId
   const [from, setFrom] = useState(limaToday)
   const [to, setTo] = useState(() => addDays(limaToday(), 1))
   const [quote, setQuote] = useState<PriceQuote | null>(null)
-  const [quantities, setQuantities] = useState<Record<number, number>>({})
+  const [pickedIds, setPickedIds] = useState<Record<number, number[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -77,7 +116,7 @@ const PricesPage = () => {
       return
     }
 
-    if (!canViewPrices || !propertyId || !from || !to || to <= from) {
+    if (!canViewQuotes || !propertyId || !from || !to || to <= from) {
       setLoading(false)
       setQuote(null)
 
@@ -111,7 +150,30 @@ const PricesPage = () => {
     return () => {
       active = false
     }
-  }, [canViewPrices, from, loaded, propertyId, to])
+  }, [canViewQuotes, from, loaded, propertyId, to])
+
+  useEffect(() => {
+    if (!quote) {
+      return
+    }
+
+    setPickedIds(current => {
+      let changed = false
+      const next = { ...current }
+
+      for (const type of quote.types) {
+        const allowed = new Set(type.rooms.map(room => room.id))
+        const kept = (current[type.roomTypeId] ?? []).filter(id => allowed.has(id))
+
+        if (kept.length !== (current[type.roomTypeId] ?? []).length) {
+          next[type.roomTypeId] = kept
+          changed = true
+        }
+      }
+
+      return changed ? next : current
+    })
+  }, [quote])
 
   const changeFrom = (value: string) => {
     setFrom(value)
@@ -121,16 +183,35 @@ const PricesPage = () => {
     }
   }
 
-  const setQuantity = (roomTypeId: number, quantity: number) => {
-    setQuantities(current => ({ ...current, [roomTypeId]: Math.min(MAX_QUANTITY, Math.max(0, quantity)) }))
+  const idsOf = (roomTypeId: number) => pickedIds[roomTypeId] ?? []
+
+  const toggleRoom = (type: PriceTypeQuote, roomId: number) => {
+    const current = idsOf(type.roomTypeId)
+
+    if (current.includes(roomId)) {
+      setPickedIds(prev => ({ ...prev, [type.roomTypeId]: current.filter(id => id !== roomId) }))
+
+      return
+    }
+
+    if (current.length >= type.availableCount || current.length >= MAX_QUANTITY) {
+      return
+    }
+
+    setPickedIds(prev => ({ ...prev, [type.roomTypeId]: [...current, roomId] }))
   }
 
   const chosen = quote
     ? quote.types
-        .map(type => ({ type, quantity: quantities[type.roomTypeId] ?? 0 }))
-        .filter(item => item.quantity > 0)
+        .map(type => ({ type, picked: resolvePicked(type, idsOf(type.roomTypeId)) }))
+        .filter(item => item.picked.length > 0)
     : []
-  const quoteTotal = Math.round(chosen.reduce((sum, item) => sum + lineTotal(item.type, item.quantity), 0) * 100) / 100
+
+  const quoteTotal = Math.round(chosen.reduce((sum, item) => sum + pickedTotal(item.picked), 0) * 100) / 100
+
+  const resetQuote = () => {
+    setPickedIds({})
+  }
 
   const copy = async () => {
     if (!quote || chosen.length === 0) {
@@ -138,16 +219,16 @@ const PricesPage = () => {
     }
 
     try {
-      await navigator.clipboard.writeText(copyQuote(quote, quantities))
+      await navigator.clipboard.writeText(copyQuote(quote, pickedIds))
       toast.success('Cotización copiada. Péguela en el chat.')
     } catch {
       toast.error('No se pudo copiar. Seleccione el texto y cópielo a mano.')
     }
   }
 
-  if (loaded && !canViewPrices) {
+  if (loaded && !canViewQuotes) {
     return (
-      <Alert severity='info'>El administrador del hotel tiene que darle el permiso Ver precios.</Alert>
+      <Alert severity='info'>El administrador del hotel tiene que darle el permiso Cotizar.</Alert>
     )
   }
 
@@ -182,83 +263,87 @@ const PricesPage = () => {
 
       {!loading && quote && quote.types.length > 0 ? (
         <div className='flex flex-col gap-4 lg:flex-row lg:items-start'>
-          <div className='flex max-h-[min(22rem,52vh)] min-is-0 flex-1 flex-col gap-3 overflow-y-auto p-1 lg:max-h-[calc(100vh-220px)]'>
+          <div className='flex min-is-0 flex-1 flex-col gap-2'>
             {quote.types.map(type => {
-            const same = uniform(type.nights)
-            const first = type.nights[0]
-            const quantity = quantities[type.roomTypeId] ?? 0
+              const selected = new Set(idsOf(type.roomTypeId))
+              const quantity = selected.size
+              const ordered = orderRooms(type.rooms)
+              const unavailable = type.roomCount > 0 && type.availableCount === 0
 
-            return (
-              <Card
-                key={type.roomTypeId}
-                className='shrink-0'
-                sx={{ border: '2px solid', borderColor: quantity > 0 ? 'primary.main' : 'transparent' }}
-              >
-                <CardContent className='flex flex-col gap-3'>
-                  <div className='flex flex-wrap items-start justify-between gap-3'>
+              return (
+                <Card
+                  key={type.roomTypeId}
+                  className='shrink-0'
+                  sx={{ border: '2px solid', borderColor: quantity > 0 ? 'primary.main' : 'transparent' }}
+                >
+                  <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-3'>
                     <div className='min-is-0'>
-                      <Typography variant='h5'>{type.name}</Typography>
-                      {same && first ? (
-                        <>
-                          <Typography variant='h3' sx={{ fontSize: { xs: '1.375rem', lg: '1.75rem' }, lineHeight: 1.3 }}>
-                            {formatRoomPrice(first.price)}
-                          </Typography>
-                          <Typography color='text.secondary'>por noche · {first.label}</Typography>
-                        </>
+                      <Typography variant='h6' fontWeight={700}>
+                        {type.name}
+                      </Typography>
+                      {type.roomCount === 0 ? (
+                        <Typography variant='body2' color='text.secondary'>
+                          Sin habitaciones
+                        </Typography>
+                      ) : unavailable ? (
+                        <Typography variant='body2' color='text.secondary'>
+                          No hay libre en esas fechas.
+                        </Typography>
                       ) : (
-                        <div className='flex flex-col gap-1 mbs-2'>
-                          {type.nights.map(night => (
-                            <Typography key={night.date}>
-                              {formatEs(night.date)} · {formatRoomPrice(night.price)} · {night.label}
-                            </Typography>
-                          ))}
-                        </div>
+                        <Typography variant='body2' color='text.secondary'>
+                          Libres: {type.availableCount}
+                        </Typography>
                       )}
-                      <Typography className='mbs-2' sx={{ overflowWrap: 'anywhere' }} fontWeight={600}>
-                        {quote.nights} {quote.nights === 1 ? 'noche' : 'noches'} · {formatRoomPrice(type.total)}
-                        {quantity > 1 ? ` · ${quantity} habitaciones · ${formatRoomPrice(lineTotal(type, quantity))}` : ''}
-                      </Typography>
                     </div>
-                    <div className='flex shrink-0 items-center gap-1'>
-                      <Typography color='text.secondary'>Cantidad</Typography>
-                      <IconButton aria-label={`Quitar ${type.name}`} disabled={quantity === 0} onClick={() => setQuantity(type.roomTypeId, quantity - 1)}>
-                        <i className='ri-subtract-line' />
-                      </IconButton>
-                      <Typography variant='h5' className='min-is-[1.5rem] text-center'>
-                        {quantity}
+                    {type.availableCount > 0 ? (
+                      <Typography variant='body2' color='text.secondary' className='shrink-0'>
+                        Seleccionadas: {quantity}
                       </Typography>
-                      <IconButton
-                        aria-label={`Agregar ${type.name}`}
-                        disabled={quantity >= MAX_QUANTITY}
-                        onClick={() => setQuantity(type.roomTypeId, quantity + 1)}
-                      >
-                        <i className='ri-add-line' />
-                      </IconButton>
-                    </div>
+                    ) : null}
                   </div>
-
-                  {type.rooms.length > 0 ? (
-                    <div className='flex flex-col gap-2'>
-                      <Typography fontWeight={600}>Habitaciones con otro precio</Typography>
-                      {type.rooms.map(room => {
-                        const roomSame = uniform(room.nights)
+                  {ordered.length > 0 ? (
+                    <div className='flex flex-col gap-1 px-3 pb-3'>
+                      {ordered.map(room => {
+                        const marked = selected.has(room.id)
 
                         return (
-                          <Typography key={room.id} color='text.secondary'>
-                            {room.number}
-                            {roomSame && room.nights[0]
-                              ? ` · ${formatRoomPrice(room.nights[0].price)} por noche · ${room.nights[0].label}`
-                              : ` · ${room.nights.map(night => `${formatEs(night.date)} ${formatRoomPrice(night.price)}`).join(', ')}`}
-                            {` · total ${formatRoomPrice(room.total)}`}
-                          </Typography>
+                          <Box
+                            key={room.id}
+                            component='button'
+                            type='button'
+                            onClick={() => toggleRoom(type, room.id)}
+                            className='flex items-center gap-2 rounded-md px-2 py-1.5 text-start is-full'
+                            sx={{
+                              border: 0,
+                              cursor: 'pointer',
+                              color: 'inherit',
+                              font: 'inherit',
+                              bgcolor: marked ? 'primary.lightOpacity' : 'transparent',
+                              '&:hover': {
+                                bgcolor: marked ? 'primary.lightOpacity' : 'action.hover'
+                              }
+                            }}
+                          >
+                            <i
+                              className={
+                                marked
+                                  ? 'ri-checkbox-fill text-xl text-primary'
+                                  : 'ri-checkbox-blank-line text-xl'
+                              }
+                            />
+                            <Typography className='font-medium'>{room.number}</Typography>
+                            <Typography>—</Typography>
+                            <Typography className='font-medium' color={marked ? 'primary.main' : 'text.primary'}>
+                              {roomAmount(room.nights)}
+                            </Typography>
+                          </Box>
                         )
                       })}
                     </div>
                   ) : null}
-                </CardContent>
-              </Card>
-            )
-          })}
+                </Card>
+              )
+            })}
           </div>
           <Box className='lg:sticky lg:top-6 lg:is-[360px] lg:shrink-0'>
             <Card sx={{ bgcolor: 'var(--mui-palette-primary-lightOpacity)', border: '1px solid', borderColor: 'primary.main' }}>
@@ -268,15 +353,15 @@ const PricesPage = () => {
                   {quote.nights} {quote.nights === 1 ? 'noche' : 'noches'} · {formatEs(quote.from)} al {formatEs(quote.to)}
                 </Typography>
                 {chosen.length === 0 ? (
-                  <Typography>Elija cuántas habitaciones pide el huésped.</Typography>
+                  <Typography>Marque las habitaciones que pide el huésped.</Typography>
                 ) : (
                   <div className='flex flex-col gap-2'>
                     {chosen.map(item => (
                       <div key={item.type.roomTypeId} className='flex items-start justify-between gap-3'>
                         <Typography>
-                          {item.quantity} {item.type.name}
+                          {item.picked.length} {item.type.name}
                         </Typography>
-                        <Typography className='shrink-0'>{formatRoomPrice(lineTotal(item.type, item.quantity))}</Typography>
+                        <Typography className='shrink-0'>{formatRoomPrice(pickedTotal(item.picked))}</Typography>
                       </div>
                     ))}
                   </div>
@@ -284,6 +369,9 @@ const PricesPage = () => {
                 {chosen.length > 0 ? <Typography variant='h4'>{formatRoomPrice(quoteTotal)}</Typography> : null}
                 <Button variant='contained' fullWidth disabled={chosen.length === 0} onClick={copy}>
                   Copiar cotización
+                </Button>
+                <Button variant='outlined' color='secondary' fullWidth disabled={chosen.length === 0} onClick={resetQuote}>
+                  Nueva cotización
                 </Button>
               </CardContent>
             </Card>

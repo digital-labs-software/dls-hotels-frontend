@@ -25,7 +25,45 @@ export const getSalesApiErrorMessage = (error: unknown, fallback = 'Ocurrió un 
   return fallback
 }
 
-export type ProductChargeUnit = 'UNIT' | 'HOUR' | 'NIGHT' | 'CUP'
+/** Ordenadas por uso: lo que más se vende primero. */
+export const CHARGE_UNITS = ['UNIT', 'HOUR', 'NIGHT', 'DAY', 'KILO', 'SERVICE'] as const
+
+export type ProductChargeUnit = (typeof CHARGE_UNITS)[number]
+
+export const CHARGE_UNIT_LABEL: Record<ProductChargeUnit, string> = {
+  UNIT: 'Unidad',
+  HOUR: 'Hora',
+  NIGHT: 'Noche',
+  DAY: 'Día',
+  KILO: 'Kilo',
+  SERVICE: 'Servicio'
+}
+
+const CHARGE_UNIT_WORDS: Record<ProductChargeUnit, [string, string] | null> = {
+  UNIT: null,
+  HOUR: ['hora', 'horas'],
+  NIGHT: ['noche', 'noches'],
+  DAY: ['día', 'días'],
+  KILO: ['kilo', 'kilos'],
+  SERVICE: ['servicio', 'servicios']
+}
+
+/** «por hora», «por kilo»; vacío para unidad. */
+export const priceSuffix = (unit: ProductChargeUnit) => {
+  const words = CHARGE_UNIT_WORDS[unit]
+
+  return words ? `por ${words[0]}` : ''
+}
+
+/** «2 horas», «1.5 kilos»; solo el número para unidad. */
+export const quantityText = (quantity: number, unit: ProductChargeUnit) => {
+  const words = CHARGE_UNIT_WORDS[unit]
+  const amount = String(quantity)
+
+  if (!words) return amount
+
+  return `${amount} ${quantity === 1 ? words[0] : words[1]}`
+}
 
 export type SaleProduct = {
   uuid: string

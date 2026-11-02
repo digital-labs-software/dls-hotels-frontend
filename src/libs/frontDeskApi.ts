@@ -113,7 +113,7 @@ const normalizeStay = (stay: Stay): Stay => ({
   nights: toNumber(stay.nights),
   adults: toNumber(stay.adults),
   children: toNumber(stay.children),
-  pricePerNight: toNumber(stay.pricePerNight),
+  pricePerNight: toNullableNumber(stay.pricePerNight),
   guestName: stay.guestName ?? null,
   bookerName: stay.bookerName ?? null,
   occupantNames: Array.isArray(stay.occupantNames) ? stay.occupantNames : [],

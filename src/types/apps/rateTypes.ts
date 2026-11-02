@@ -1,60 +1,52 @@
-/** Precio de una temporada para un tipo. El id es el que se envía al reservar. */
-export type Rate = {
-  id: number
-  uuid: string
-  propertyId: number
-  roomTypeId: number
-  roomTypeName: string
-  name: string
-  price: number
-  validFrom: string | null
-  validTo: string | null
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-export type SeasonPrice = {
-  id: number
-  roomTypeId: number
-  roomTypeName: string
-  price: number
-}
-
-export type Season = {
+/** Tarifa del hotel: nombre y rango de fechas. El monto vive en cada habitación. */
+export type HotelRate = {
   id: number
   uuid: string
   propertyId: number
   name: string
-  validFrom: string | null
-  validTo: string | null
+  validFrom: string
+  validTo: string
   isActive: boolean
-  prices: SeasonPrice[]
+  expired: boolean
   createdAt: string
   updatedAt: string
   restored?: boolean
 }
 
-export type SeasonPriceInput = {
-  roomTypeId: number
-  price: number
-}
-
-export type CreateSeasonPayload = {
+/** Precio de una tarifa en una habitación. El id es el que se envía al reservar. */
+export type Rate = {
+  id: number
+  uuid: string
+  rateId: number
+  roomId: number
+  roomNumber: string
   name: string
-  validFrom?: string | null
-  validTo?: string | null
-  isActive?: boolean
-  prices: SeasonPriceInput[]
+  price: number
+  validFrom: string
+  validTo: string
+  isActive: boolean
+  expired: boolean
 }
 
-export type UpdateSeasonPayload = Partial<CreateSeasonPayload>
+export type CreateRatePayload = {
+  name: string
+  validFrom: string
+  validTo: string
+  isActive?: boolean
+}
+
+export type UpdateRatePayload = Partial<CreateRatePayload>
 
 export type ListRatesQuery = {
   page?: number
   limit?: number
-  roomTypeId?: number
   isActive?: boolean
+}
+
+export type ListRoomRatesQuery = {
+  page?: number
+  limit?: number
+  roomId: number
 }
 
 export const formatRateDate = (value: string | null | undefined) => {
@@ -121,11 +113,9 @@ type PriceSourceInput = {
   rate?: Pick<Rate, 'name' | 'price'> | null
   roomNumber?: string | null
   roomPrice?: number | null
-  typeName?: string | null
-  typePrice?: number | null
 }
 
-export const priceSourceLabel = ({ price, rate, roomNumber, roomPrice, typeName, typePrice }: PriceSourceInput) => {
+export const priceSourceLabel = ({ price, rate, roomNumber, roomPrice }: PriceSourceInput) => {
   const value = Number(price)
 
   if (!price || !Number.isFinite(value)) {
@@ -136,12 +126,8 @@ export const priceSourceLabel = ({ price, rate, roomNumber, roomPrice, typeName,
     return `Tarifa «${rate.name}»`
   }
 
-  if (roomNumber && roomPrice != null && value === Number(roomPrice) && Number(roomPrice) !== Number(typePrice)) {
+  if (roomNumber && roomPrice != null && value === Number(roomPrice)) {
     return `Precio de la habitación ${roomNumber}`
-  }
-
-  if (typeName && typePrice != null && value === Number(typePrice)) {
-    return `Precio del tipo ${typeName}`
   }
 
   return 'Precio escrito a mano'

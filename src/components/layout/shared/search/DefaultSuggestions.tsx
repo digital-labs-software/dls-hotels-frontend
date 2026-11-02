@@ -40,9 +40,9 @@ const defaultSuggestions: DefaultSuggestionsType[] = [
         icon: 'ri-calendar-check-line'
       },
       {
-        label: 'Precios',
+        label: 'Cotizar',
         href: '/apps/prices',
-        icon: 'ri-price-tag-3-line'
+        icon: 'ri-calculator-line'
       }
     ]
   },

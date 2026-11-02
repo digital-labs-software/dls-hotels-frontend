@@ -127,7 +127,8 @@ const BookingBar = ({
               {formatPlanningDate(booking.checkInDate)} – {formatPlanningDate(booking.checkOutDate)} · {booking.nights} noches
             </div>
             <div>
-              {booking.adults} adultos{booking.children ? ` · ${booking.children} niños` : ''} · {formatRoomPrice(booking.pricePerNight)}
+              {booking.adults} adultos{booking.children ? ` · ${booking.children} niños` : ''}
+              {booking.pricePerNight == null ? ' · Sin precio' : ` · ${formatRoomPrice(booking.pricePerNight)}`}
             </div>
             <div>Saldo {formatRoomPrice(booking.reservationBalance)}</div>
           </div>

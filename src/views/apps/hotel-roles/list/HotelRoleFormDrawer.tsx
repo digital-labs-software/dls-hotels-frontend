@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
@@ -15,6 +15,7 @@ import { toast } from 'react-toastify'
 
 import type { HotelRole } from '@/types/apps/hotelRoleTypes'
 import { createHotelRole, getHotelRolesApiErrorMessage, updateHotelRole } from '@/libs/hotelRolesApi'
+import { scrollToFirstInvalid } from '@/utils/scrollToFirstInvalid'
 
 export type HotelRoleDrawerMode = 'create' | 'edit' | 'view'
 
@@ -41,6 +42,7 @@ const HotelRoleFormDrawer = (props: Props) => {
   const { open, mode, propertyId, role, onClose, onSuccess } = props
   const isView = mode === 'view'
   const isEdit = mode === 'edit'
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   const {
     control,
@@ -104,18 +106,36 @@ const HotelRoleFormDrawer = (props: Props) => {
       anchor='right'
       variant='temporary'
       onClose={handleReset}
+      disableAutoFocus
+      SlideProps={{ onEntered: () => !isView && nameInputRef.current?.focus() }}
       ModalProps={{ keepMounted: true }}
-      sx={{ '& .MuiDrawer-paper': { width: { xs: '100%', md: 400 } } }}
+      sx={{
+        '& .MuiDrawer-paper': {
+          width: { xs: '100%', md: 400 },
+          maxWidth: '100vw',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }
+      }}
     >
-      <div className='flex items-center justify-between pli-5 plb-4'>
+      <div className='flex shrink-0 items-center justify-between pli-5 plb-4'>
         <Typography variant='h5'>{titles[mode]}</Typography>
         <IconButton size='small' onClick={handleReset}>
           <i className='ri-close-line text-2xl' />
         </IconButton>
       </div>
       <Divider />
-      <div className='p-5'>
-        <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-5'>
+      <form
+        className='flex min-bs-0 min-is-0 flex-1 flex-col overflow-hidden'
+        onSubmit={event => {
+          const form = event.currentTarget
+
+          void handleSubmit(onSubmit, () => scrollToFirstInvalid(form))(event)
+        }}
+      >
+        <div className='flex min-bs-0 min-is-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto p-5'>
           <Controller
             name='name'
             control={control}
@@ -127,6 +147,10 @@ const HotelRoleFormDrawer = (props: Props) => {
               <TextField
                 {...field}
                 fullWidth
+                inputRef={node => {
+                  field.ref(node)
+                  nameInputRef.current = node
+                }}
                 label='Nombre'
                 placeholder='Recepcionista'
                 disabled={isView || isSubmitting}
@@ -154,18 +178,26 @@ const HotelRoleFormDrawer = (props: Props) => {
             </div>
           ) : null}
 
-          <div className='flex flex-wrap items-center justify-end gap-4'>
-            <Button variant='outlined' color='secondary' type='button' onClick={handleReset} disabled={isSubmitting}>
-              {isView ? 'Cerrar' : 'Volver'}
+        </div>
+        <Divider />
+        <div className='flex shrink-0 flex-col gap-3 p-5 sm:flex-row sm:justify-end'>
+          <Button
+            variant='outlined'
+            color='secondary'
+            type='button'
+            onClick={handleReset}
+            disabled={isSubmitting}
+            className='max-sm:is-full'
+          >
+            {isView ? 'Cerrar' : 'Volver'}
+          </Button>
+          {!isView ? (
+            <Button variant='contained' type='submit' disabled={isSubmitting || !propertyId} className='max-sm:is-full'>
+              {isSubmitting ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
             </Button>
-            {!isView ? (
-              <Button variant='contained' type='submit' disabled={isSubmitting || !propertyId}>
-                {isSubmitting ? <CircularProgress size={20} color='inherit' /> : 'Guardar'}
-              </Button>
-            ) : null}
-          </div>
-        </form>
-      </div>
+          ) : null}
+        </div>
+      </form>
     </Drawer>
   )
 }

@@ -31,6 +31,7 @@ import type { Role } from '@/types/apps/staffTypes'
 import { employeesApi, getStaffApiErrorMessage, rolesApi } from '@/libs/staffApi'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { getLocalizedUrl } from '@/utils/i18n'
+import { scrollToFirstInvalid } from '@/utils/scrollToFirstInvalid'
 import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup'
 import { DocumentLookupAdornment, DocumentLookupHelper } from '@/components/document-lookup/DocumentLookupHelper'
 import DateField, { todayIso } from '@/components/date-picker/DateField'
@@ -238,7 +239,13 @@ const EmployeeForm = ({ uuid }: Props) => {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form
+      onSubmit={event => {
+        const form = event.currentTarget
+
+        void handleSubmit(onSubmit, () => scrollToFirstInvalid(form))(event)
+      }}
+    >
       <Grid container spacing={6}>
         <Grid size={{ xs: 12 }}>
           <Typography variant='h4'>{title}</Typography>

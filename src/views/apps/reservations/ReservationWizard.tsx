@@ -173,8 +173,9 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   const [step, setStep] = useState(0)
   const [rooms, setRooms] = useState<RoomDraft[]>([emptyRoom(today, prefill)])
   const [availability, setAvailability] = useState<AvailabilityRoomType[]>([])
-  const [ratesByType, setRatesByType] = useState<Record<number, Rate[]>>({})
-  const requestedRateTypes = useRef(new Set<number>())
+  const [ratesByRoom, setRatesByRoom] = useState<Record<number, Rate[]>>({})
+  const requestedRateRooms = useRef(new Set<number>())
+  const roomTypeInputRef = useRef<HTMLInputElement>(null)
   const [loadingAvailability, setLoadingAvailability] = useState(false)
   const [guest, setGuest] = useState<Guest | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
@@ -211,8 +212,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     setStep(0)
     setRooms([emptyRoom(today, prefill)])
     setAvailability([])
-    setRatesByType({})
-    requestedRateTypes.current.clear()
+    setRatesByRoom({})
+    requestedRateRooms.current.clear()
     setGuest(null)
     setCompany(null)
     setSource('PHONE')
@@ -290,20 +291,20 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, primary?.checkInDate, primary?.checkOutDate])
 
-  const loadRates = async (roomTypeId: number) => {
-    if (requestedRateTypes.current.has(roomTypeId)) {
+  const loadRates = async (roomId: number) => {
+    if (requestedRateRooms.current.has(roomId)) {
       return
     }
 
-    requestedRateTypes.current.add(roomTypeId)
+    requestedRateRooms.current.add(roomId)
 
     try {
-      const page = await reservationsApi.rates(propertyId, roomTypeId)
+      const page = await reservationsApi.rates(propertyId, roomId)
 
-      setRatesByType(current => ({ ...current, [roomTypeId]: page.data }))
+      setRatesByRoom(current => ({ ...current, [roomId]: page.data }))
       setRooms(current =>
         current.map(room => {
-          if (room.rateManual || Number(room.roomTypeId) !== roomTypeId) {
+          if (room.rateManual || room.roomId !== roomId) {
             return room
           }
 
@@ -317,7 +318,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
         })
       )
     } catch {
-      setRatesByType(current => ({ ...current, [roomTypeId]: [] }))
+      setRatesByRoom(current => ({ ...current, [roomId]: [] }))
     }
   }
 
@@ -327,21 +328,21 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     }
 
     rooms.forEach(room => {
-      if (room.roomTypeId) {
-        loadRates(Number(room.roomTypeId))
+      if (typeof room.roomId === 'number') {
+        loadRates(room.roomId)
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, rooms])
 
   const ratesForRoom = (room: RoomDraft) =>
-    room.roomTypeId ? sortRatesForDate(ratesByType[Number(room.roomTypeId)] ?? [], room.checkInDate) : []
+    typeof room.roomId === 'number' ? sortRatesForDate(ratesByRoom[room.roomId] ?? [], room.checkInDate) : []
 
   const roomPriceFor = (room: RoomDraft) => {
     const type = availability.find(item => item.roomTypeId === Number(room.roomTypeId))
     const free = type?.freeRooms.find(item => item.id === room.roomId)
 
-    return free?.effectivePrice ?? type?.basePrice
+    return typeof room.roomId === 'number' ? free?.effectivePrice : undefined
   }
 
   useEffect(() => {
@@ -366,7 +367,9 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
     rooms.forEach(room => {
       const rate =
-        room.rateId === '' ? undefined : ratesByType[Number(room.roomTypeId)]?.find(item => item.id === room.rateId)
+        room.rateId === '' || typeof room.roomId !== 'number'
+          ? undefined
+          : ratesByRoom[room.roomId]?.find(item => item.id === room.rateId)
 
       if (rate && !isRateValidOn(rate, room.checkInDate)) {
         expired.set(room.key, rate)
@@ -397,18 +400,18 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
       })
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rooms, ratesByType])
+  }, [rooms, ratesByRoom])
 
   useEffect(() => {
     setRooms(current => {
       let changed = false
 
       const next = current.map(room => {
-        if (room.rateManual || !room.roomTypeId) {
+        if (room.rateManual || typeof room.roomId !== 'number') {
           return room
         }
 
-        const rates = ratesByType[Number(room.roomTypeId)]
+        const rates = ratesByRoom[room.roomId]
 
         if (!rates) {
           return room
@@ -432,7 +435,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
       return changed ? next : current
     })
-  }, [ratesByType, rooms])
+  }, [ratesByRoom, rooms])
 
   const updateRoom = (key: string, patch: Partial<RoomDraft>) => {
     setRooms(current => current.map(room => (room.key === key ? { ...room, ...patch } : room)))
@@ -489,19 +492,16 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     const chosen = prefilled ?? free[0]
 
     const people = Math.max(1, Math.min(roomCapacity(type), Number(type.maxAdults) || roomCapacity(type)))
-    const best = pickRateForDate(ratesByType[type.roomTypeId] ?? [], room.checkInDate)
-
     updateRoom(room.key, {
       roomTypeId: type.roomTypeId,
       roomId: chosen?.id ?? 'later',
-      pricePerNight: best ? String(best.price) : String(chosen?.effectivePrice ?? type.basePrice),
-      rateId: best?.id ?? '',
+      pricePerNight: chosen ? String(chosen.effectivePrice) : '',
+      rateId: '',
       rateManual: false,
       rateNotice: '',
       adults: String(people),
       children: '0'
     })
-    loadRates(type.roomTypeId)
   }
 
   const handleSelectRoom = (room: RoomDraft, roomId: number | 'later', type?: AvailabilityRoomType) => {
@@ -509,15 +509,16 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
     updateRoom(room.key, {
       roomId,
-      pricePerNight:
-        room.rateId === '' || !room.pricePerNight
-          ? String(free?.effectivePrice ?? type?.basePrice ?? room.pricePerNight)
-          : room.pricePerNight
+      rateId: '',
+      rateManual: false,
+      rateNotice: '',
+      pricePerNight: free ? String(free.effectivePrice) : ''
     })
   }
 
   const handleSelectRate = (room: RoomDraft, rateId: number | '') => {
-    const rate = ratesByType[Number(room.roomTypeId)]?.find(item => item.id === rateId)
+    const rate =
+      typeof room.roomId === 'number' ? ratesByRoom[room.roomId]?.find(item => item.id === rateId) : undefined
     const roomPrice = roomPriceFor(room)
 
     updateRoom(room.key, {
@@ -668,6 +669,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     const selectedType = availability.find(type => type.roomTypeId === room.roomTypeId)
     const rates = ratesForRoom(room)
     const selectedRate = rates.find(rate => rate.id === room.rateId)
+    const staleRates = typeof room.roomId === 'number' ? (ratesByRoom[room.roomId] ?? []).filter(rate => rate.expired) : []
     const selectedFree = selectedType?.freeRooms.find(free => free.id === room.roomId)
     const roomNights = nightsBetween(room.checkInDate, room.checkOutDate)
     const { adults, children } = roomGuests(room)
@@ -683,10 +685,9 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
       price: room.pricePerNight,
       rate: selectedRate,
       roomNumber: selectedFree?.number,
-      roomPrice: selectedFree?.effectivePrice,
-      typeName: selectedType?.roomTypeName,
-      typePrice: selectedType?.basePrice
+      roomPrice: selectedFree?.effectivePrice
     })
+    const hasPrice = room.pricePerNight.trim() !== '' && Number.isFinite(Number(room.pricePerNight))
 
     return (
       <div key={room.key} className='flex flex-col gap-2'>
@@ -724,7 +725,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                     : 'Sin disponibilidad'
                   : !fits
                     ? `No caben (hasta ${formatPeople(roomCapacity(type))})`
-                    : `${formatRoomPrice(type.basePrice)} · ${remaining} libres`
+                    : `${remaining} libres`
 
               return (
                 <li key={key} {...optionProps}>
@@ -746,6 +747,15 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                 placeholder='Elige el tipo'
                 error={missingType}
                 helperText={missingType ? 'Elige un tipo de habitación.' : undefined}
+                inputRef={node => {
+                  if (typeof params.inputRef === 'function') {
+                    params.inputRef(node)
+                  } else if (params.inputRef) {
+                    params.inputRef.current = node
+                  }
+
+                  if (index === 0) roomTypeInputRef.current = node
+                }}
               />
             )}
           />
@@ -760,8 +770,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
               <MenuItem value='later'>Asignar después</MenuItem>
               {freeRooms.map(free => (
                 <MenuItem key={free.id} value={free.id}>
-                  {free.number} · {free.floorName}
-                  {free.effectivePrice !== selectedType?.basePrice ? ` · ${formatRoomPrice(free.effectivePrice)}` : ''}
+                  {free.number} · {free.floorName} · {formatRoomPrice(free.effectivePrice)}
                   {free.status === 'CLEANING' ? ' · Limpieza' : ''}
                 </MenuItem>
               ))}
@@ -790,7 +799,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
             size='small'
             label='Precio/noche'
             value={room.pricePerNight}
-            disabled={!selectedType}
+            placeholder={selectedType && typeof room.roomId !== 'number' ? 'Al asignar' : undefined}
+            disabled={!selectedType || typeof room.roomId !== 'number'}
             onChange={e => updateRoom(room.key, { pricePerNight: e.target.value, rateNotice: '' })}
             slotProps={{ input: { startAdornment: <Typography variant='body2' className='mie-1'>S/</Typography> } }}
           />
@@ -808,13 +818,15 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
         </div>
         <div className='flex justify-end items-baseline gap-4'>
           <Typography variant='body2' color='text.secondary'>
-            {roomNights} noche{roomNights === 1 ? '' : 's'} × {formatRoomPrice(Number(room.pricePerNight) || 0)}
+            {hasPrice
+              ? `${roomNights} noche${roomNights === 1 ? '' : 's'} × ${formatRoomPrice(Number(room.pricePerNight))}`
+              : 'Sin precio hasta asignar la habitación'}
           </Typography>
           <Typography variant='body2' color='text.secondary'>
             Subtotal
           </Typography>
           <Typography fontWeight={700} sx={{ minWidth: 88, textAlign: 'right' }}>
-            {formatRoomPrice(subtotal)}
+            {hasPrice ? formatRoomPrice(subtotal) : '—'}
           </Typography>
         </div>
 
@@ -832,6 +844,15 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
         {room.rateNotice ? (
           <Typography variant='caption' color='warning.main'>
             {room.rateNotice}
+          </Typography>
+        ) : null}
+        {staleRates.length > 0 ? (
+          <Typography variant='caption' color='warning.main'>
+            {staleRates
+              .map(rate => `«${rate.name}» venció el ${formatRateDate(rate.validTo)}`)
+              .join('. ')}
+            . Actualice las fechas de esa tarifa si esta reserva debería usarla. Si no, se cobra el precio normal o la
+            tarifa vigente.
           </Typography>
         ) : null}
 
@@ -929,7 +950,15 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
   return (
     <>
-      <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='md' fullScreen={isMobile}>
+      <Dialog
+        open={open}
+        onClose={() => !saving && onClose()}
+        fullWidth
+        maxWidth='md'
+        fullScreen={isMobile}
+        disableAutoFocus
+        TransitionProps={{ onEntered: () => !quickBooking && roomTypeInputRef.current?.focus() }}
+      >
         <DialogTitle>{fromNote ? 'Completar reserva' : quickBooking ? 'Reserva rápida' : 'Nueva reserva'}</DialogTitle>
         <DialogContent className='flex flex-col gap-5 pt-4'>
           <Stepper activeStep={step} alternativeLabel={!isMobile} orientation={isMobile ? 'horizontal' : 'horizontal'}>
@@ -999,15 +1028,22 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
               <Section
                 title={`2. Habitaciones (${rooms.length})`}
                 footer={
-                  <div className='flex items-center justify-end gap-4'>
-                    <Typography variant='body2' color='text.secondary' className='mie-auto'>
-                      {rooms.length} habitación{rooms.length === 1 ? '' : 'es'} ·{' '}
-                      {formatPeople(rooms.reduce((sum, room) => sum + roomGuests(room).adults + roomGuests(room).children, 0))}
-                    </Typography>
-                    <Typography fontWeight={700}>Total</Typography>
-                    <Typography fontWeight={700} sx={{ minWidth: 88, textAlign: 'right' }}>
-                      {formatRoomPrice(selectedSubtotal)}
-                    </Typography>
+                  <div className='flex flex-col items-end gap-1'>
+                    <div className='flex items-center justify-end gap-4 is-full'>
+                      <Typography variant='body2' color='text.secondary' className='mie-auto'>
+                        {rooms.length} habitación{rooms.length === 1 ? '' : 'es'} ·{' '}
+                        {formatPeople(rooms.reduce((sum, room) => sum + roomGuests(room).adults + roomGuests(room).children, 0))}
+                      </Typography>
+                      <Typography fontWeight={700}>Total</Typography>
+                      <Typography fontWeight={700} sx={{ minWidth: 88, textAlign: 'right' }}>
+                        {formatRoomPrice(selectedSubtotal)}
+                      </Typography>
+                    </div>
+                    {rooms.some(room => room.roomTypeId && !room.pricePerNight.trim()) ? (
+                      <Typography variant='caption' color='text.secondary'>
+                        El total no incluye las habitaciones que todavía no tienen número.
+                      </Typography>
+                    ) : null}
                   </div>
                 }
               >

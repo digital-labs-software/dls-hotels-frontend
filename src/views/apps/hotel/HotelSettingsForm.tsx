@@ -27,6 +27,7 @@ import HotelLogoField from './HotelLogoField'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { HOTEL_EDIT, HOTEL_LOGO } from '@/types/apps/hotelPermissions'
 import { getLocalizedUrl } from '@/utils/i18n'
+import { scrollToFirstInvalid } from '@/utils/scrollToFirstInvalid'
 import type { Locale } from '@configs/i18n'
 
 type FormValues = {
@@ -224,7 +225,13 @@ const HotelSettingsForm = () => {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form
+      onSubmit={event => {
+        const form = event.currentTarget
+
+        void handleSubmit(onSubmit, () => scrollToFirstInvalid(form))(event)
+      }}
+    >
       <Grid container spacing={6}>
         <Grid size={{ xs: 12 }}>
           <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col gap-6'>

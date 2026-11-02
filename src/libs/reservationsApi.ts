@@ -146,7 +146,7 @@ const normalizeBooking = (booking: Planning['bookings'][number]) => ({
   nights: toNumber(booking.nights),
   adults: toNumber(booking.adults),
   children: toNumber(booking.children),
-  pricePerNight: toNumber(booking.pricePerNight),
+  pricePerNight: toNullableNumber(booking.pricePerNight),
   reservationBalance: toNumber(booking.reservationBalance),
   guestName: booking.guestName ?? null,
   companyName: booking.companyName ?? null,
@@ -198,8 +198,8 @@ const normalizeReservation = (reservation: Reservation): Reservation => ({
         roomTypeId: toNumber(room.roomTypeId),
         roomId: toNullableNumber(room.roomId),
         nights: toNumber(room.nights),
-        pricePerNight: toNumber(room.pricePerNight),
-        subtotal: toNumber(room.subtotal),
+        pricePerNight: toNullableNumber(room.pricePerNight),
+        subtotal: toNullableNumber(room.subtotal),
         adults: toNumber(room.adults),
         children: toNumber(room.children),
         guests: Array.isArray(room.guests) ? room.guests : []
@@ -264,7 +264,6 @@ export const reservationsApi = {
         ...type,
         roomTypeId: toNumber(type.roomTypeId || (type as AvailabilityRoomType & { id?: number }).id),
         roomTypeName: type.roomTypeName || (type as AvailabilityRoomType & { name?: string }).name || '',
-        basePrice: toNumber(type.basePrice),
         maxAdults: toNumber(type.maxAdults),
         maxChildren: toNumber(type.maxChildren),
         availableCount: toNumber(type.availableCount),
@@ -279,19 +278,22 @@ export const reservationsApi = {
       }))
     } satisfies Availability
   },
-  rates: async (propertyId: number, roomTypeId: number, token?: string) => {
+  rates: async (propertyId: number, roomId: number, token?: string) => {
     return normalizePage(
       await request<Paginated<Rate> | Rate[]>(
-        `/properties/${propertyId}/seasons/prices?${q({ roomTypeId, isActive: true, limit: 100 })}`,
+        `/properties/${propertyId}/rates/prices?${q({ roomId, limit: 100 })}`,
         {},
         token
       ),
       rate => ({
         ...rate,
         id: toNumber(rate.id),
+        rateId: toNumber(rate.rateId),
+        roomId: toNumber(rate.roomId),
         price: toNumber(rate.price),
-        validFrom: rate.validFrom ?? null,
-        validTo: rate.validTo ?? null
+        validFrom: rate.validFrom || '',
+        validTo: rate.validTo || '',
+        expired: Boolean(rate.expired)
       })
     )
   },

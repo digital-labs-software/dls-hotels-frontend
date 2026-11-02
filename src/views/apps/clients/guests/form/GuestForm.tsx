@@ -28,6 +28,7 @@ import type { DocumentType } from '@/types/apps/clientsTypes'
 import { DOCUMENT_TYPE_LABELS, guestDocumentOptions } from '@/types/apps/clientsTypes'
 import { getClientsApiErrorMessage, guestsApi } from '@/libs/clientsApi'
 import { getLocalizedUrl } from '@/utils/i18n'
+import { scrollToFirstInvalid } from '@/utils/scrollToFirstInvalid'
 import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup'
 import { useExistingRecord } from '@/hooks/useExistingRecord'
 import { DocumentLookupAdornment, DocumentLookupHelper } from '@/components/document-lookup/DocumentLookupHelper'
@@ -244,7 +245,13 @@ const GuestForm = ({ uuid }: Props) => {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form
+      onSubmit={event => {
+        const form = event.currentTarget
+
+        void handleSubmit(onSubmit, () => scrollToFirstInvalid(form))(event)
+      }}
+    >
       <Grid container spacing={6}>
         <Grid size={{ xs: 12 }}>
           <Typography variant='h4'>{title}</Typography>

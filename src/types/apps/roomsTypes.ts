@@ -17,6 +17,22 @@ export type RoomMaintenance = {
   reason: string
 }
 
+export type RoomRatePrice = {
+  rateId: number
+  rateUuid: string
+  name: string
+  validFrom: string
+  validTo: string
+  isActive: boolean
+  expired: boolean
+  price: number | null
+}
+
+export type RoomRatePriceInput = {
+  rateId: number
+  price: number | null
+}
+
 export type Room = {
   id: number
   uuid: string
@@ -26,8 +42,9 @@ export type Room = {
   floorId: number
   floorName: string
   number: string
-  priceOverride: number | null
+  priceOverride: number
   effectivePrice: number
+  ratePrices?: RoomRatePrice[]
   photoUrl: string | null
   status: RoomStatus
   displayStatus: RoomDisplayStatus
@@ -42,20 +59,22 @@ export type CreateRoomDto = {
   roomTypeId: number
   floorId: number
   number: string
-  priceOverride?: number | null
+  priceOverride: number
   photoUrl?: string | null
   status: RoomStatus
   notes?: string | null
+  ratePrices?: RoomRatePriceInput[]
 }
 
 export type UpdateRoomDto = {
   roomTypeId?: number
   floorId?: number
   number?: string
-  priceOverride?: number | null
+  priceOverride?: number
   photoUrl?: string | null
   status?: RoomStatus
   notes?: string | null
+  ratePrices?: RoomRatePriceInput[]
 }
 
 export type ListRoomsQuery = {

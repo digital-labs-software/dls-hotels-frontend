@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
@@ -26,7 +26,7 @@ import { DOCUMENT_TYPE_LABELS, guestDocumentOptions } from '@/types/apps/clients
 import type { PaymentMethod, RackRoom, WalkInGuest } from '@/types/apps/frontDeskTypes'
 import { addDays, nightsBetween, PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@/types/apps/frontDeskTypes'
 import type { Rate } from '@/types/apps/rateTypes'
-import { formatRateDate, priceSourceLabel, rateEndsDuringStay, ratesValidOn } from '@/types/apps/rateTypes'
+import { formatRateDate, pickRateForDate, priceSourceLabel, rateEndsDuringStay, ratesValidOn } from '@/types/apps/rateTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
 import { capacityLabel } from '@/types/apps/roomTypeTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
@@ -34,7 +34,7 @@ import DateField from '@/components/date-picker/DateField'
 import GuestPicker from './GuestPicker'
 import { CASH_REQUIRED_MESSAGE, useCashSessionOpen } from '@/hooks/useCashSessionOpen'
 import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
-import { listRates } from '@/libs/ratesApi'
+import { listRoomRates } from '@/libs/ratesApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
 
 type PersonDraft = {
@@ -142,12 +142,19 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
     const load = async () => {
       try {
         const [ratePage, typePage] = await Promise.all([
-          listRates(propertyId, { roomTypeId: room.roomTypeId, isActive: true, limit: 100 }),
+          listRoomRates(propertyId, { roomId: room.id, limit: 100 }),
           listRoomTypes(propertyId, { limit: 100 })
         ])
 
         setRates(ratePage.data)
         setRoomType(typePage.data.find(type => type.id === room.roomTypeId) ?? null)
+
+        const best = pickRateForDate(ratePage.data, date)
+
+        if (best) {
+          setRateId(best.id)
+          setPricePerNight(String(best.price))
+        }
       } catch {
         setRates([])
         setRoomType(null)
@@ -157,11 +164,14 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
     load()
   }, [date, open, propertyId, room])
 
+  const documentRef = useRef<HTMLInputElement>(null)
+
   const personFields = (
     person: PersonDraft,
     onChange: (next: PersonDraft) => void,
     title: string,
-    onRemove?: () => void
+    onRemove?: () => void,
+    focusDocument = false
   ) => (
     <div className='flex flex-col gap-3'>
       <div className='flex items-center justify-between'>
@@ -195,6 +205,7 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
         </FormControl>
         <TextField
           fullWidth
+          inputRef={focusDocument ? documentRef : undefined}
           label='Número'
           value={person.documentNumber}
           disabled={person.locked || saving}
@@ -297,7 +308,14 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
   }, [roomType])
 
   return (
-    <Dialog open={open} onClose={() => !saving && onClose()} fullWidth maxWidth='sm'>
+    <Dialog
+      open={open}
+      onClose={() => !saving && onClose()}
+      fullWidth
+      maxWidth='sm'
+      disableAutoFocus
+      TransitionProps={{ onEntered: () => documentRef.current?.focus() }}
+    >
       <DialogTitle>Nuevo ingreso</DialogTitle>
       <DialogContent className='flex flex-col gap-4 pt-3'>
         <Typography>
@@ -329,9 +347,7 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
               price: pricePerNight,
               rate: selectedRate,
               roomNumber: room?.number,
-              roomPrice: room?.effectivePrice,
-              typeName: roomType?.name ?? room?.roomTypeName,
-              typePrice: roomType?.basePrice
+              roomPrice: room?.effectivePrice
             })}
           />
           {validRates.length > 0 ? (
@@ -366,8 +382,17 @@ const WalkInDialog = ({ open, propertyId, room, date, onClose, onSuccess }: Prop
             noche.
           </Typography>
         ) : null}
+        {rates.some(rate => rate.expired) ? (
+          <Typography variant='body2' color='warning.main'>
+            {rates
+              .filter(rate => rate.expired)
+              .map(rate => `«${rate.name}» venció el ${formatRateDate(rate.validTo)}`)
+              .join('. ')}
+            . Actualice las fechas de esa tarifa si este ingreso debería usarla. Si no, se cobra el precio normal.
+          </Typography>
+        ) : null}
         <Divider />
-        {personFields(holder, setHolder, 'Titular')}
+        {personFields(holder, setHolder, 'Titular', undefined, true)}
         <Divider />
         <div className='flex items-center justify-between'>
           <Typography className='font-medium'>Acompañantes</Typography>

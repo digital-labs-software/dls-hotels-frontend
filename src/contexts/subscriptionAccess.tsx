@@ -20,7 +20,7 @@ import {
   DASHBOARD_VIEW,
   HOTEL_MENU_PERMISSIONS,
   PROFILE_MENU_PERMISSIONS,
-  PRICES_VIEW,
+  QUOTES_VIEW,
   RECEPTION_PERMISSIONS,
   REPORT_MENU_PERMISSIONS,
   RESERVATION_PERMISSIONS,
@@ -49,7 +49,7 @@ type SubscriptionAccessValue = {
   canViewDashboard: boolean
   canViewReception: boolean
   canViewReservations: boolean
-  canViewPrices: boolean
+  canViewQuotes: boolean
   canViewSales: boolean
   canViewRooms: boolean
   canViewClients: boolean
@@ -95,7 +95,7 @@ const SubscriptionAccessContext = createContext<SubscriptionAccessValue>({
   canViewDashboard: true,
   canViewReception: true,
   canViewReservations: true,
-  canViewPrices: true,
+  canViewQuotes: true,
   canViewSales: true,
   canViewRooms: true,
   canViewClients: true,
@@ -226,7 +226,7 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
   const canViewDashboard = can(DASHBOARD_VIEW)
   const canViewReception = canAny(RECEPTION_PERMISSIONS)
   const canViewReservations = canAny(RESERVATION_PERMISSIONS)
-  const canViewPrices = can(PRICES_VIEW)
+  const canViewQuotes = can(QUOTES_VIEW)
   const canViewSales = canAny(SALES_PERMISSIONS)
   const canViewAudit = can(AUDIT_VIEW)
   const canViewRooms = canAny(ROOM_MENU_PERMISSIONS)
@@ -273,7 +273,7 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
       canViewDashboard,
       canViewReception,
       canViewReservations,
-      canViewPrices,
+      canViewQuotes,
       canViewSales,
       canViewAudit,
       canViewRooms,
@@ -324,7 +324,7 @@ export const SubscriptionAccessProvider = ({ children }: { children: ReactNode }
       canViewEmployees,
       canViewHotel,
       canViewProfile,
-      canViewPrices,
+      canViewQuotes,
       canViewSales,
       canViewAudit,
       canViewReception,

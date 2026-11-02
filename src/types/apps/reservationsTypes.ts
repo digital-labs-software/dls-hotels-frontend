@@ -53,7 +53,7 @@ export interface PlanningBooking {
   nights: number
   adults: number
   children: number
-  pricePerNight: number
+  pricePerNight: number | null
   guestName: string | null
   companyName: string | null
   reservationBalance: number
@@ -94,7 +94,6 @@ export interface UnassignedHold {
 export interface AvailabilityRoomType {
   roomTypeId: number
   roomTypeName: string
-  basePrice: number
   maxAdults: number
   maxChildren: number
   maxOccupancy: number | null

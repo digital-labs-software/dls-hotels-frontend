@@ -125,7 +125,9 @@ const SupportChatWidget = () => {
         position: 'fixed',
         right: { xs: 16, sm: 24 },
         bottom: { xs: 16, sm: 24 },
-        zIndex: 1290,
+
+        // Debajo del panel lateral (1200) para no tapar Guardar.
+        zIndex: theme => theme.zIndex.drawer - 1,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-end',

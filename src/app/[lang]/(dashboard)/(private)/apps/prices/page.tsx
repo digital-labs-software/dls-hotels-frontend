@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import PricesPage from '@views/apps/prices/PricesPage'
 
 export const metadata: Metadata = {
-  title: 'Precios',
+  title: 'Cotizar',
   description: 'Precio por noche para contestarle al huésped'
 }
 

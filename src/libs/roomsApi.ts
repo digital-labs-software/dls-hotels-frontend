@@ -47,16 +47,6 @@ const toNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
-const toNullableNumber = (value: unknown) => {
-  if (value === null || value === undefined || value === '') {
-    return null
-  }
-
-  const parsed = Number(value)
-
-  return Number.isFinite(parsed) ? parsed : null
-}
-
 const normalizeStatus = (status: unknown): RoomStatus => {
   const value = String(status || 'AVAILABLE').toUpperCase()
 
@@ -86,8 +76,20 @@ const normalizeRoom = (room: Room): Room => ({
   floorName: room.floorName || '',
   photoUrl: room.photoUrl ?? null,
   notes: room.notes ?? null,
-  priceOverride: toNullableNumber(room.priceOverride),
+  priceOverride: toNumber(room.priceOverride),
   effectivePrice: toNumber(room.effectivePrice),
+  ratePrices: Array.isArray(room.ratePrices)
+    ? room.ratePrices.map(price => ({
+        rateId: toNumber(price.rateId),
+        rateUuid: price.rateUuid || '',
+        name: price.name || '',
+        validFrom: String(price.validFrom || '').slice(0, 10),
+        validTo: String(price.validTo || '').slice(0, 10),
+        isActive: Boolean(price.isActive),
+        expired: Boolean(price.expired),
+        price: price.price === null || price.price === undefined ? null : toNumber(price.price)
+      }))
+    : [],
   status: normalizeStatus(room.status),
   displayStatus: normalizeDisplayStatus(room.displayStatus, room.status),
   maintenances: Array.isArray(room.maintenances) ? room.maintenances.map(normalizeMaintenance) : []
@@ -148,7 +150,14 @@ const toPayload = (body: CreateRoomDto | UpdateRoomDto) => {
   if (body.notes !== undefined) payload.notes = emptyToNull(body.notes)
 
   if (body.priceOverride !== undefined) {
-    payload.priceOverride = body.priceOverride === null ? null : Number(body.priceOverride)
+    payload.priceOverride = Number(body.priceOverride)
+  }
+
+  if (body.ratePrices !== undefined) {
+    payload.ratePrices = body.ratePrices.map(price => ({
+      rateId: Number(price.rateId),
+      price: price.price === null ? null : Number(price.price)
+    }))
   }
 
   return payload
@@ -258,6 +267,35 @@ export async function deleteRoomMaintenance(propertyId: number, uuid: string, ma
   await request<null>(
     `/properties/${propertyId}/rooms/${uuid}/maintenances/${maintenanceUuid}`,
     { method: 'DELETE' },
+    token
+  )
+}
+
+export type RoomPriceBoardRow = {
+  id: number
+  number: string
+  roomTypeName: string
+  priceOverride: number
+}
+
+export async function getRoomPriceBoard(propertyId: number, token?: string) {
+  const rows = await request<RoomPriceBoardRow[]>(`/properties/${propertyId}/rooms/price-adjustments`, {}, token)
+
+  return (Array.isArray(rows) ? rows : []).map(row => ({
+    ...row,
+    id: toNumber(row.id),
+    priceOverride: toNumber(row.priceOverride)
+  }))
+}
+
+export async function adjustRoomPrices(
+  propertyId: number,
+  body: { rooms: { roomId: number; price: number }[] },
+  token?: string
+) {
+  return request<{ updated: number }>(
+    `/properties/${propertyId}/rooms/price-adjustments`,
+    { method: 'POST', body: JSON.stringify(body) },
     token
   )
 }

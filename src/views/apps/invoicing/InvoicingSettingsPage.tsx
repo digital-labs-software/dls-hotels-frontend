@@ -53,6 +53,7 @@ const InvoicingSettingsPage = () => {
   const [saving, setSaving] = useState(false)
   const [savingSeries, setSavingSeries] = useState(false)
   const seriesLock = useRef(false)
+  const seriesInputRef = useRef<HTMLInputElement>(null)
   const [enabled, setEnabled] = useState(false)
   const [igvRate, setIgvRate] = useState('18')
   const [pricesIncludeIgv, setPricesIncludeIgv] = useState(true)
@@ -333,7 +334,14 @@ const InvoicingSettingsPage = () => {
         </Grid>
       )}
 
-      <Dialog open={seriesOpen} onClose={() => !savingSeries && setSeriesOpen(false)} fullWidth maxWidth='sm'>
+      <Dialog
+        open={seriesOpen}
+        onClose={() => !savingSeries && setSeriesOpen(false)}
+        fullWidth
+        maxWidth='sm'
+        disableAutoFocus
+        TransitionProps={{ onEntered: () => seriesInputRef.current?.focus() }}
+      >
         <DialogTitle>Nueva serie</DialogTitle>
         <DialogContent className='flex flex-col gap-4 pt-4'>
           <FormControl fullWidth>
@@ -353,6 +361,7 @@ const InvoicingSettingsPage = () => {
             </Select>
           </FormControl>
           <TextField
+            inputRef={seriesInputRef}
             label='Serie'
             placeholder={SERIES_PURPOSE_OPTIONS.find(option => option.id === newKind)?.hint.replace('Ejemplo: ', '')}
             helperText={SERIES_PURPOSE_OPTIONS.find(option => option.id === newKind)?.hint}
