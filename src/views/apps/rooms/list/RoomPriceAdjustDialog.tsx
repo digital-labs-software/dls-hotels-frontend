@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
+import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -66,6 +67,7 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
   const [nextPrice, setNextPrice] = useState<Record<number, string>>({})
   const [amount, setAmount] = useState('20')
   const [typeFilter, setTypeFilter] = useState('')
+  const [notice, setNotice] = useState('')
 
   useEffect(() => {
     if (!open) {
@@ -78,6 +80,7 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
     setNextPrice({})
     setAmount('20')
     setTypeFilter('')
+    setNotice('')
     setLoading(true)
 
     void getRoomPriceBoard(propertyId)
@@ -103,6 +106,13 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
     }
   }, [open, propertyId])
 
+  const changeTypeFilter = (value: string) => {
+    setTypeFilter(value)
+    setChecked({})
+    setNextPrice({})
+    setNotice('')
+  }
+
   const selected = rooms.filter(room => checked[room.id])
   const typeNames = [...new Set(rooms.map(room => room.roomTypeName))]
   const visible = typeFilter ? rooms.filter(room => room.roomTypeName === typeFilter) : rooms
@@ -110,6 +120,7 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
   const allChecked = visible.length > 0 && visibleSelected.length === visible.length
 
   const toggleRoom = (room: RoomPriceBoardRow, value: boolean) => {
+    setNotice('')
     setChecked(current => ({ ...current, [room.id]: value }))
 
     if (value) {
@@ -120,6 +131,7 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
   }
 
   const toggleAll = (value: boolean) => {
+    setNotice('')
     setChecked(current => ({ ...current, ...Object.fromEntries(visible.map(room => [room.id, value])) }))
 
     if (value) {
@@ -137,7 +149,7 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
 
   const shift = (sign: 1 | -1) => {
     if (!visibleSelected.length) {
-      toast.error('Marque primero las habitaciones en la tabla.')
+      setNotice('Marque primero las habitaciones en la tabla.')
 
       return
     }
@@ -145,7 +157,7 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
     const value = parseMoney(amount)
 
     if (value === null || value <= 0) {
-      toast.error('Escriba cuántos soles.')
+      setNotice('Escriba cuántos soles.')
 
       return
     }
@@ -153,10 +165,12 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
     const tooLow = visibleSelected.find(room => money(room.priceOverride + sign * value) <= 0)
 
     if (tooLow) {
-      toast.error(`La habitación ${tooLow.number} quedaría sin precio. Baje un monto menor.`)
+      setNotice(`La habitación ${tooLow.number} quedaría sin precio. Baje un monto menor.`)
 
       return
     }
+
+    setNotice('')
 
     setNextPrice(current => {
       const copy = { ...current }
@@ -171,10 +185,12 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
 
   const save = async () => {
     if (!selected.length) {
-      toast.error('Marque al menos una habitación.')
+      setNotice('Marque al menos una habitación.')
 
       return
     }
+
+    setNotice('')
 
     const items: { roomId: number; price: number }[] = []
 
@@ -182,7 +198,7 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
       const price = parseMoney(nextPrice[room.id] ?? '')
 
       if (price === null || price <= 0) {
-        toast.error(`Escriba el precio nuevo de la habitación ${room.number}.`)
+        setNotice(`Escriba el precio nuevo de la habitación ${room.number}.`)
 
         return
       }
@@ -232,7 +248,7 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
                 size='small'
                 label='Tipo de habitación'
                 value={typeFilter}
-                onChange={event => setTypeFilter(event.target.value)}
+                onChange={event => changeTypeFilter(event.target.value)}
                 className='is-full sm:is-[220px]'
               >
                 <MenuItem value=''>Todos los tipos</MenuItem>
@@ -251,9 +267,6 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
                   InputProps={{ startAdornment: <InputAdornment position='start'>S/</InputAdornment> }}
                   className='is-[120px]'
                 />
-                <Button variant='contained' onClick={() => shift(1)} startIcon={<i className='ri-add-line' />}>
-                  Subir
-                </Button>
                 <Button
                   variant='outlined'
                   color='secondary'
@@ -262,8 +275,13 @@ const RoomPriceAdjustDialog = ({ open, propertyId, onClose, onSaved }: Props) =>
                 >
                   Bajar
                 </Button>
+                <Button variant='contained' onClick={() => shift(1)} startIcon={<i className='ri-add-line' />}>
+                  Subir
+                </Button>
               </div>
             </div>
+
+            {notice ? <Alert severity='warning'>{notice}</Alert> : null}
 
             <div className='overflow-auto border rounded max-bs-[400px]'>
               <table className={tableStyles.table}>

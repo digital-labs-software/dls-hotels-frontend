@@ -131,6 +131,17 @@ const RoomForm = ({ uuid }: Props) => {
         setHotelRates(ratesRes.data)
 
         if (!uuid) {
+          const activeTypes = typesRes.data.filter(type => type.isActive)
+
+          reset({
+            number: '',
+            floorId: floorsRes.data.length === 1 ? floorsRes.data[0].id : '',
+            roomTypeId: activeTypes.length === 1 ? activeTypes[0].id : '',
+            status: 'AVAILABLE',
+            priceOverride: '',
+            notes: ''
+          })
+
           return
         }
 
@@ -374,46 +385,37 @@ const RoomForm = ({ uuid }: Props) => {
           <Card className='bs-full'>
             <CardHeader title='Clasificación' />
             <CardContent className='flex flex-col gap-5'>
-              <FormControl fullWidth error={Boolean(errors.roomTypeId)}>
-                <InputLabel id='room-type'>Tipo de habitación</InputLabel>
-                <Controller
-                  name='roomTypeId'
-                  control={control}
-                  rules={{ required: 'El tipo de habitación es obligatorio.' }}
-                  render={({ field }) => (
-                    <Select
-                      {...field}
-                      autoFocus={!uuid && !isView}
-                      defaultOpen={!uuid && !isView}
-                      label='Tipo de habitación'
-                      labelId='room-type'
-                      disabled={isView || isSubmitting}
-                    >
-                      {selectableTypes.map(type => (
-                        <MenuItem key={type.uuid} value={type.id}>
-                          {type.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  )}
-                />
-                {errors.roomTypeId?.message ? (
-                  <FormHelperText>{errors.roomTypeId.message}</FormHelperText>
-                ) : selectableTypes.length === 0 ? (
-                  <FormHelperText sx={{ color: 'warning.main' }}>
-                    Primero cree un tipo en la pestaña «Tipos de habitación».
-                  </FormHelperText>
-                ) : null}
-              </FormControl>
-
               <FormControl fullWidth error={Boolean(errors.floorId)}>
-                <InputLabel id='room-floor'>Piso</InputLabel>
+                <InputLabel id='room-floor' shrink>
+                  Piso
+                </InputLabel>
                 <Controller
                   name='floorId'
                   control={control}
                   rules={{ required: 'El piso es obligatorio.' }}
                   render={({ field }) => (
-                    <Select {...field} label='Piso' labelId='room-floor' disabled={isView || isSubmitting}>
+                    <Select
+                      {...field}
+                      autoFocus={!uuid && !isView}
+                      displayEmpty
+                      label='Piso'
+                      labelId='room-floor'
+                      disabled={isView || isSubmitting}
+                      renderValue={selected => {
+                        if (selected === '') {
+                          return (
+                            <Typography component='span' color='text.disabled'>
+                              Elige el piso
+                            </Typography>
+                          )
+                        }
+
+                        return floors.find(floor => floor.id === selected)?.name ?? ''
+                      }}
+                    >
+                      <MenuItem value='' disabled>
+                        Elige el piso
+                      </MenuItem>
                       {floors.map(floor => (
                         <MenuItem key={floor.uuid} value={floor.id}>
                           {floor.name}
@@ -427,6 +429,53 @@ const RoomForm = ({ uuid }: Props) => {
                 ) : floors.length === 0 ? (
                   <FormHelperText sx={{ color: 'warning.main' }}>
                     Primero cree un piso en la pestaña «Pisos».
+                  </FormHelperText>
+                ) : null}
+              </FormControl>
+
+              <FormControl fullWidth error={Boolean(errors.roomTypeId)}>
+                <InputLabel id='room-type' shrink>
+                  Tipo de habitación
+                </InputLabel>
+                <Controller
+                  name='roomTypeId'
+                  control={control}
+                  rules={{ required: 'El tipo de habitación es obligatorio.' }}
+                  render={({ field }) => (
+                    <Select
+                      {...field}
+                      displayEmpty
+                      label='Tipo de habitación'
+                      labelId='room-type'
+                      disabled={isView || isSubmitting}
+                      renderValue={selected => {
+                        if (selected === '') {
+                          return (
+                            <Typography component='span' color='text.disabled'>
+                              Elige el tipo
+                            </Typography>
+                          )
+                        }
+
+                        return selectableTypes.find(type => type.id === selected)?.name ?? ''
+                      }}
+                    >
+                      <MenuItem value='' disabled>
+                        Elige el tipo
+                      </MenuItem>
+                      {selectableTypes.map(type => (
+                        <MenuItem key={type.uuid} value={type.id}>
+                          {type.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  )}
+                />
+                {errors.roomTypeId?.message ? (
+                  <FormHelperText>{errors.roomTypeId.message}</FormHelperText>
+                ) : selectableTypes.length === 0 ? (
+                  <FormHelperText sx={{ color: 'warning.main' }}>
+                    Primero cree un tipo en la pestaña «Tipos de habitación».
                   </FormHelperText>
                 ) : null}
               </FormControl>
