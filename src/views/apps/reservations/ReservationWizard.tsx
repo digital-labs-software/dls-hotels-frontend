@@ -86,7 +86,7 @@ import { cashApi, getCashApiErrorMessage } from '@/libs/cashApi'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
 
 const CASH_ADVANCE_MESSAGE =
-  'No hay una caja abierta. No se puede guardar la reserva con este adelanto: abre la caja y vuelve a crearla.'
+  'No tienes una caja abierta. No se puede guardar la reserva con este adelanto: abre tu caja y vuelve a crearla.'
 
 type RoomDraft = {
   key: string

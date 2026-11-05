@@ -131,7 +131,7 @@ export const cashApi = {
   cashiers: (propertyId: number) => request<CashierOption[]>(`${base(propertyId)}/cashiers`),
   list: (propertyId: number) => request<CashSession[]>(base(propertyId)),
   findOne: (propertyId: number, uuid: string) => request<CashSessionDetail>(`${base(propertyId)}/${uuid}`),
-  open: (propertyId: number, body: { openingAmount: number; cashierUuid?: string; notes?: string }) =>
+  open: (propertyId: number, body: { openingAmount: number; notes?: string }) =>
     request<CashSessionDetail>(base(propertyId), { method: 'POST', body: JSON.stringify(body) }),
   addExpense: (propertyId: number, uuid: string, body: { amount: number; notes: string }) =>
     request<CashSessionDetail>(`${base(propertyId)}/${uuid}/expenses`, {

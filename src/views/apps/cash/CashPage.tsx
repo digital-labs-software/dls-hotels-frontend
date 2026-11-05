@@ -3,19 +3,25 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { useParams, useRouter } from 'next/navigation'
+
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
-import DeleteReasonDialog from '@/components/dialogs/DeleteReasonDialog'
 
+import Accordion from '@mui/material/Accordion'
+import AccordionDetails from '@mui/material/AccordionDetails'
+import AccordionSummary from '@mui/material/AccordionSummary'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
-import MenuItem from '@mui/material/MenuItem'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -24,14 +30,18 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
+import DeleteReasonDialog from '@/components/dialogs/DeleteReasonDialog'
+
 import type { Locale } from '@configs/i18n'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
-import { cashApi, getCashApiErrorMessage, type CashierOption, type CashSession, type CashSessionDetail } from '@/libs/cashApi'
+import { cashApi, getCashApiErrorMessage, type CashSession, type CashSessionDetail } from '@/libs/cashApi'
 import { PAYMENT_METHOD_LABELS } from '@/types/apps/frontDeskTypes'
 import { getLocalizedUrl } from '@/utils/i18n'
 import { buildCashSessionDocument, cashMethodRows, collectedTotal } from '@views/apps/reports/document/cashSessionDocument'
 import { formatDateTime, formatMoney, formatTime } from '@views/apps/reports/document/reportDocument'
 import { openReportPdf } from '@views/apps/reports/document/openReportPdf'
+
+type CashMoveDialog = 'expense' | 'reinforcement' | null
 
 const moneyValue = (value: string) => {
   const parsed = Number(value.replace(',', '.'))
@@ -60,14 +70,11 @@ const CashPage = () => {
   const { lang: locale } = useParams()
   const propertyId = session?.user?.propertyId
   const hotelName = session?.user?.propertyName || 'Hotel'
-  const myEmployeeUuid = session?.user?.employeeUuid ?? ''
 
   const [current, setCurrent] = useState<CashSessionDetail | null>(null)
   const [history, setHistory] = useState<CashSession[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [cashiers, setCashiers] = useState<CashierOption[]>([])
-  const [cashierUuid, setCashierUuid] = useState('')
   const [openingAmount, setOpeningAmount] = useState('0')
   const [openNotes, setOpenNotes] = useState('')
   const [expenseAmount, setExpenseAmount] = useState('')
@@ -77,6 +84,10 @@ const CashPage = () => {
   const [countedCash, setCountedCash] = useState('')
   const [closeNotes, setCloseNotes] = useState('')
   const [pendingRemoval, setPendingRemoval] = useState<{ kind: 'expense' | 'reinforcement'; uuid: string } | null>(null)
+  const [moveDialog, setMoveDialog] = useState<CashMoveDialog>(null)
+  const [closingOther, setClosingOther] = useState<CashSession | null>(null)
+  const [otherCountedCash, setOtherCountedCash] = useState('')
+  const [otherCloseNotes, setOtherCloseNotes] = useState('')
 
   const load = useCallback(async () => {
     if (!propertyId) {
@@ -86,32 +97,16 @@ const CashPage = () => {
     setLoading(true)
 
     try {
-      const [openSession, turns, people] = await Promise.all([
-        cashApi.current(propertyId),
-        cashApi.list(propertyId),
-        canOpenCash ? cashApi.cashiers(propertyId) : Promise.resolve([])
-      ])
+      const [openSession, turns] = await Promise.all([cashApi.current(propertyId), cashApi.list(propertyId)])
 
       setCurrent(openSession)
       setHistory(turns)
-      setCashiers(people)
-      setCashierUuid(currentId => {
-        if (currentId && people.some(person => person.uuid === currentId)) {
-          return currentId
-        }
-
-        if (people.some(person => person.uuid === myEmployeeUuid)) {
-          return myEmployeeUuid
-        }
-
-        return people[0]?.uuid ?? ''
-      })
     } catch (error) {
       toast.error(getCashApiErrorMessage(error, 'No se pudo cargar la caja.'))
     } finally {
       setLoading(false)
     }
-  }, [canOpenCash, myEmployeeUuid, propertyId])
+  }, [propertyId])
 
   useEffect(() => {
     if (status === 'loading' || !loaded) {
@@ -154,8 +149,34 @@ const CashPage = () => {
       return
     }
 
-    if (!cashierUuid) {
-      toast.error('Elige al recepcionista que va a tener el efectivo.')
+    setSaving(true)
+
+    try {
+      const opened = await cashApi.open(propertyId, {
+        openingAmount: amount,
+        notes: openNotes.trim() || undefined
+      })
+
+      setCurrent(opened)
+      setOpenNotes('')
+      toast.success('Tu caja quedó abierta.')
+      await load()
+    } catch (error) {
+      toast.error(getCashApiErrorMessage(error, 'No se pudo abrir la caja.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const closeOtherCash = async () => {
+    if (!propertyId || !closingOther) {
+      return
+    }
+
+    const counted = moneyValue(otherCountedCash)
+
+    if (counted === null || counted < 0) {
+      toast.error('Escribe el efectivo que se contó en esa caja.')
 
       return
     }
@@ -163,21 +184,30 @@ const CashPage = () => {
     setSaving(true)
 
     try {
-      const opened = await cashApi.open(propertyId, {
-        openingAmount: amount,
-        cashierUuid,
-        notes: openNotes.trim() || undefined
+      const closed = await cashApi.close(propertyId, closingOther.uuid, {
+        countedCash: counted,
+        notes: otherCloseNotes.trim() || undefined
       })
 
-      setCurrent(opened)
-      setOpenNotes('')
-      toast.success('Caja abierta.')
+      setClosingOther(null)
+      setOtherCountedCash('')
+      setOtherCloseNotes('')
+      toast.success(`Se cerró la caja de ${closingOther.cashier.name}.`)
+      await openReportPdf(buildCashSessionDocument(closed, hotelName))
       await load()
     } catch (error) {
-      toast.error(getCashApiErrorMessage(error, 'No se pudo abrir la caja.'))
+      toast.error(getCashApiErrorMessage(error, 'No se pudo cerrar esa caja.'))
     } finally {
       setSaving(false)
     }
+  }
+
+  const closeMoveDialog = () => {
+    setMoveDialog(null)
+    setExpenseAmount('')
+    setExpenseNotes('')
+    setReinforcementAmount('')
+    setReinforcementNotes('')
   }
 
   const addReinforcement = async () => {
@@ -194,7 +224,7 @@ const CashPage = () => {
     }
 
     if (!reinforcementNotes.trim()) {
-      toast.error('Escribe de dónde entró el dinero.')
+      toast.error('Escribe una descripción del refuerzo.')
 
       return
     }
@@ -307,6 +337,7 @@ const CashPage = () => {
       setCurrent(null)
       setCountedCash('')
       setCloseNotes('')
+      closeMoveDialog()
       toast.success('Caja cerrada. Puedes abrir el siguiente turno.')
       await openReportPdf(buildCashSessionDocument(closed, hotelName))
       await load()
@@ -328,57 +359,78 @@ const CashPage = () => {
   const methodRows = current ? cashMethodRows(current.byMethod) : []
   const collected = current ? collectedTotal(current.byMethod) : 0
 
+  const expectedColor =
+    current && current.cashExpected < 0 ? 'error.main' : current && current.cashExpected === 0 ? 'text.primary' : 'success.main'
+
+  // Solo turnos cerrados. Con caja abierta: las últimas 10. Sin caja: más historial para consultar.
+  const previousTurns = history.filter(turn => turn.status === 'CLOSED').slice(0, current ? 10 : 30)
+
+  const otherOpenSessions = history.filter(
+    turn => turn.status === 'OPEN' && turn.uuid !== current?.uuid
+  )
+
+  const historyTable = (
+    <Table size='small'>
+      <TableHead>
+        <TableRow>
+          <TableCell>Turno</TableCell>
+          <TableCell>Cajero</TableCell>
+          <TableCell>Abrió</TableCell>
+          <TableCell>Cerró</TableCell>
+          <TableCell align='right'>Efectivo a entregar</TableCell>
+          <TableCell align='right'>Contado</TableCell>
+          <TableCell>Diferencia</TableCell>
+          <TableCell />
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {previousTurns.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={8}>Todavía no hay turnos cerrados.</TableCell>
+          </TableRow>
+        ) : (
+          previousTurns.map(turn => (
+            <TableRow key={turn.uuid}>
+              <TableCell>{turn.number}</TableCell>
+              <TableCell>{turn.cashier.name}</TableCell>
+              <TableCell>
+                {turn.openedBy.name}
+                <br />
+                {formatDateTime(turn.openedAt)}
+              </TableCell>
+              <TableCell>
+                {turn.closedBy?.name ?? '—'}
+                <br />
+                {formatDateTime(turn.closedAt)}
+              </TableCell>
+              <TableCell align='right' sx={{ color: turn.cashExpected < 0 ? 'error.main' : undefined }}>
+                {formatMoney(turn.cashExpected)}
+              </TableCell>
+              <TableCell align='right'>{turn.countedCash === null ? '—' : formatMoney(turn.countedCash)}</TableCell>
+              <TableCell>{differenceLabel(turn)}</TableCell>
+              <TableCell align='right'>
+                <Button size='small' onClick={() => void printSession(turn.uuid)}>
+                  Ver
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </Table>
+  )
+
   return (
     <div className='flex flex-col gap-6'>
       {current ? (
-        <div className='flex flex-wrap justify-end gap-2'>
-          <Button variant='outlined' color='secondary' startIcon={<i className='ri-refresh-line' />} onClick={() => void load()}>
-            Actualizar
-          </Button>
-          <Button variant='outlined' startIcon={<i className='ri-file-pdf-2-line' />} onClick={() => void printSession(current.uuid)}>
-            Ver cierre de caja
-          </Button>
-        </div>
-      ) : null}
-
-      {current ? (
         <>
-          <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-5'>
-            <Card>
-              <CardContent>
-                <Typography color='text.secondary'>Monto inicial</Typography>
-                <Typography variant='h5'>{formatMoney(current.openingAmount)}</Typography>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent>
-                <Typography color='text.secondary'>Refuerzo</Typography>
-                <Typography variant='h5'>{formatMoney(current.reinforcementTotal)}</Typography>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent>
-                <Typography color='text.secondary'>Efectivo cobrado</Typography>
-                <Typography variant='h5'>{formatMoney(current.cashCharges)}</Typography>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent>
-                <Typography color='text.secondary'>Devoluciones y egresos</Typography>
-                <Typography variant='h5'>{formatMoney(current.cashRefunds + current.expenseTotal)}</Typography>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent>
-                <Typography color='text.secondary'>{current.cashExpected < 0 ? 'Faltante' : 'Efectivo a entregar'}</Typography>
-                <Typography
-                  variant='h5'
-                  color={current.cashExpected < 0 ? 'error.main' : current.cashExpected === 0 ? 'text.primary' : 'success.main'}
-                >
-                  {formatMoney(current.cashExpected)}
-                </Typography>
-              </CardContent>
-            </Card>
+          <div className='flex flex-wrap justify-end gap-2'>
+            <Button variant='outlined' color='secondary' startIcon={<i className='ri-refresh-line' />} onClick={() => void load()}>
+              Actualizar
+            </Button>
+            <Button variant='outlined' startIcon={<i className='ri-file-pdf-2-line' />} onClick={() => void printSession(current.uuid)}>
+              Ver cierre de caja
+            </Button>
           </div>
 
           <Card>
@@ -393,189 +445,99 @@ const CashPage = () => {
                   Abrió {current.openedBy.name} · {formatDateTime(current.openedAt)}
                 </Typography>
               </div>
-              <Typography variant='h6'>Cobrado hasta ahora</Typography>
-              <Table size='small'>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Medio de pago</TableCell>
-                    <TableCell align='right'>Monto</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {methodRows.map(item => (
-                    <TableRow key={item.method}>
-                      <TableCell>{item.label}</TableCell>
-                      <TableCell align='right'>{formatMoney(item.net)}</TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow>
-                    <TableCell className='font-semibold border-bs-2'>Total cobrado en el turno</TableCell>
-                    <TableCell align='right' className='font-semibold border-bs-2 text-lg'>
-                      {formatMoney(collected)}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
 
-          <Card
-            className='border-2'
-            sx={{
-              borderColor:
-                current.cashExpected < 0 ? 'error.main' : current.cashExpected === 0 ? 'divider' : 'success.main'
-            }}
-          >
-            <CardContent className='flex flex-col gap-1'>
-              <Typography
-                color={current.cashExpected < 0 ? 'error.main' : current.cashExpected === 0 ? 'text.primary' : 'success.main'}
-                className='font-medium uppercase'
+              <div
+                className='rounded-lg border-2 p-4'
+                style={{
+                  borderColor:
+                    current.cashExpected < 0
+                      ? 'var(--mui-palette-error-main)'
+                      : current.cashExpected === 0
+                        ? 'var(--mui-palette-divider)'
+                        : 'var(--mui-palette-success-main)'
+                }}
               >
-                {current.cashExpected < 0 ? 'Faltante' : 'Efectivo a entregar'}
-              </Typography>
-              <Typography
-                variant='h3'
-                color={current.cashExpected < 0 ? 'error.main' : current.cashExpected === 0 ? 'text.primary' : 'success.main'}
-              >
-                {formatMoney(current.cashExpected)}
-              </Typography>
-              <Typography color='text.secondary'>
-                Monto inicial {formatMoney(current.openingAmount)} + refuerzo {formatMoney(current.reinforcementTotal)} +
-                efectivo {formatMoney(current.cashCharges)} − devoluciones {formatMoney(current.cashRefunds)} − egresos{' '}
-                {formatMoney(current.expenseTotal)}. Yape, Plin, transferencia y tarjeta ya están en la cuenta del hotel.
-              </Typography>
-            </CardContent>
-          </Card>
+                <Typography color={expectedColor} className='font-medium uppercase'>
+                  {current.cashExpected < 0 ? 'Faltante' : 'Efectivo a entregar'}
+                </Typography>
+                <Typography variant='h3' color={expectedColor}>
+                  {formatMoney(current.cashExpected)}
+                </Typography>
+                <Typography color='text.secondary'>
+                  Inicial {formatMoney(current.openingAmount)}
+                  {current.reinforcementTotal > 0 ? ` + refuerzo ${formatMoney(current.reinforcementTotal)}` : ''}
+                  {current.cashCharges > 0 ? ` + efectivo ${formatMoney(current.cashCharges)}` : ''}
+                  {current.cashRefunds > 0 ? ` − devoluciones ${formatMoney(current.cashRefunds)}` : ''}
+                  {current.expenseTotal > 0 ? ` − egresos ${formatMoney(current.expenseTotal)}` : ''}
+                  . Yape, Plin, transferencia y tarjeta ya están en la cuenta del hotel.
+                </Typography>
+              </div>
 
-          <Card>
-            <CardContent className='flex flex-col gap-4'>
-              <Typography variant='h6'>Refuerzo</Typography>
-              {canRecordCashExpense ? (
-                <div className='flex flex-wrap items-end gap-3'>
-                  <TextField
-                    label='Monto'
-                    value={reinforcementAmount}
-                    onChange={event => setReinforcementAmount(event.target.value)}
-                    className='min-is-[140px]'
-                    placeholder='50.00'
-                  />
-                  <TextField
-                    label='¿De dónde entró?'
-                    value={reinforcementNotes}
-                    onChange={event => setReinforcementNotes(event.target.value)}
-                    className='min-is-[280px] is-full max-is-[480px]'
-                    placeholder='Para gastos del turno'
-                  />
-                  <Button variant='contained' disabled={saving} onClick={() => void addReinforcement()}>
-                    Registrar refuerzo
-                  </Button>
-                </div>
-              ) : null}
-              <Table size='small'>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Hora</TableCell>
-                    <TableCell>De dónde</TableCell>
-                    <TableCell align='right'>Monto</TableCell>
-                    <TableCell>Registró</TableCell>
-                    <TableCell />
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {current.reinforcements.length === 0 ? (
+              <div>
+                <Typography variant='subtitle1' className='mbe-2 font-medium'>
+                  Cobrado hasta ahora
+                </Typography>
+                <Table size='small'>
+                  <TableHead>
                     <TableRow>
-                      <TableCell colSpan={5}>No ha entrado refuerzo a esta caja.</TableCell>
+                      <TableCell>Medio de pago</TableCell>
+                      <TableCell align='right'>Monto</TableCell>
                     </TableRow>
-                  ) : (
-                    current.reinforcements.map(reinforcement => (
-                      <TableRow key={reinforcement.uuid}>
-                        <TableCell>{formatTime(reinforcement.receivedAt)}</TableCell>
-                        <TableCell>{reinforcement.notes}</TableCell>
-                        <TableCell align='right'>{formatMoney(reinforcement.amount)}</TableCell>
-                        <TableCell>{reinforcement.employeeName}</TableCell>
-                        <TableCell align='right'>
-                          {canRecordCashExpense ? (
-                            <IconButton
-                              aria-label='Quitar refuerzo'
-                              disabled={saving}
-                              onClick={() => setPendingRemoval({ kind: 'reinforcement', uuid: reinforcement.uuid })}
-                            >
-                              <i className='ri-delete-bin-line' />
-                            </IconButton>
-                          ) : null}
-                        </TableCell>
+                  </TableHead>
+                  <TableBody>
+                    {methodRows.map(item => (
+                      <TableRow key={item.method}>
+                        <TableCell>{item.label}</TableCell>
+                        <TableCell align='right'>{formatMoney(item.net)}</TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                    ))}
+                    <TableRow>
+                      <TableCell className='font-semibold border-bs-2'>Total cobrado en el turno</TableCell>
+                      <TableCell align='right' className='font-semibold border-bs-2 text-lg'>
+                        {formatMoney(collected)}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
 
-          <Card>
-            <CardContent className='flex flex-col gap-4'>
-              <Typography variant='h6'>Egresos</Typography>
               {canRecordCashExpense ? (
-                <div className='flex flex-wrap items-end gap-3'>
-                  <TextField
-                    label='Monto'
-                    value={expenseAmount}
-                    onChange={event => setExpenseAmount(event.target.value)}
-                    className='min-is-[140px]'
-                    placeholder='12.00'
-                  />
-                  <TextField
-                    label='¿Para qué salió?'
-                    value={expenseNotes}
-                    onChange={event => setExpenseNotes(event.target.value)}
-                    className='min-is-[280px] is-full max-is-[480px]'
-                    placeholder='Almuerzo, pan, plomero…'
-                  />
-                  <Button variant='contained' disabled={saving} onClick={() => void addExpense()}>
+                <div className='flex flex-wrap gap-2'>
+                  <Button
+                    variant='outlined'
+                    startIcon={<i className='ri-subtract-line' />}
+                    onClick={() => setMoveDialog('expense')}
+                  >
                     Registrar egreso
+                    {current.expenses.length > 0 ? ` (${current.expenses.length})` : ''}
+                  </Button>
+                  <Button
+                    variant='outlined'
+                    startIcon={<i className='ri-add-line' />}
+                    onClick={() => setMoveDialog('reinforcement')}
+                  >
+                    Registrar refuerzo
+                    {current.reinforcements.length > 0 ? ` (${current.reinforcements.length})` : ''}
                   </Button>
                 </div>
+              ) : current.expenses.length > 0 || current.reinforcements.length > 0 ? (
+                <Typography variant='body2' color='text.secondary'>
+                  {current.expenses.length > 0 ? `${current.expenses.length} egreso(s)` : ''}
+                  {current.expenses.length > 0 && current.reinforcements.length > 0 ? ' · ' : ''}
+                  {current.reinforcements.length > 0 ? `${current.reinforcements.length} refuerzo(s)` : ''}
+                </Typography>
               ) : null}
-              <Table size='small'>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Hora</TableCell>
-                    <TableCell>Para qué</TableCell>
-                    <TableCell align='right'>Monto</TableCell>
-                    <TableCell>Registró</TableCell>
-                    <TableCell />
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {current.expenses.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5}>No ha salido dinero de esta caja.</TableCell>
-                    </TableRow>
-                  ) : (
-                    current.expenses.map(expense => (
-                      <TableRow key={expense.uuid}>
-                        <TableCell>{formatTime(expense.spentAt)}</TableCell>
-                        <TableCell>{expense.notes}</TableCell>
-                        <TableCell align='right'>{formatMoney(expense.amount)}</TableCell>
-                        <TableCell>{expense.employeeName}</TableCell>
-                        <TableCell align='right'>
-                          {canRecordCashExpense ? (
-                            <IconButton aria-label='Quitar egreso' disabled={saving} onClick={() => setPendingRemoval({ kind: 'expense', uuid: expense.uuid })}>
-                              <i className='ri-delete-bin-line' />
-                            </IconButton>
-                          ) : null}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className='flex flex-col gap-4'>
-              <Typography variant='h6'>Cobros y devoluciones de este turno</Typography>
+          <Accordion disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, '&:before': { display: 'none' } }}>
+            <AccordionSummary expandIcon={<i className='ri-arrow-down-s-line' />}>
+              <Typography className='font-medium'>
+                Ver movimientos del turno
+                {current.payments.length > 0 ? ` (${current.payments.length})` : ''}
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
               <Table size='small'>
                 <TableHead>
                   <TableRow>
@@ -608,8 +570,8 @@ const CashPage = () => {
                   )}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+            </AccordionDetails>
+          </Accordion>
 
           {canCloseCash ? (
             <Card>
@@ -644,26 +606,14 @@ const CashPage = () => {
       ) : (
         <Card>
           <CardContent className='flex flex-col gap-4'>
-            <Typography variant='h6'>No hay caja abierta</Typography>
+            <Typography variant='h6'>Tu caja no está abierta</Typography>
             {canOpenCash ? (
               <>
                 <Typography color='text.secondary'>
-                  Elige al recepcionista que va a tener el efectivo. Escribe el monto inicial que deja la administración. Si no deja nada, abre con 0.
+                  Cada cajero abre su propia caja en su computadora. Escribe el sencillo inicial. Si no dejas nada, abre con
+                  0.
                 </Typography>
                 <div className='flex flex-wrap items-end gap-3'>
-                  <TextField
-                    select
-                    label='Cajero'
-                    value={cashierUuid}
-                    onChange={event => setCashierUuid(event.target.value)}
-                    className='min-is-[240px]'
-                  >
-                    {cashiers.map(person => (
-                      <MenuItem key={person.uuid} value={person.uuid}>
-                        {person.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
                   <TextField
                     label='Monto inicial'
                     value={openingAmount}
@@ -678,7 +628,7 @@ const CashPage = () => {
                     placeholder='Turno de la mañana'
                   />
                   <Button variant='contained' disabled={saving} onClick={() => void openCash()}>
-                    Abrir caja
+                    Abrir mi caja
                   </Button>
                 </div>
               </>
@@ -689,61 +639,235 @@ const CashPage = () => {
         </Card>
       )}
 
-      <Card>
-        <CardContent className='flex flex-col gap-4'>
-          <Typography variant='h6'>Turnos anteriores</Typography>
-          <Table size='small'>
-            <TableHead>
-              <TableRow>
-                <TableCell>Turno</TableCell>
-                <TableCell>Cajero</TableCell>
-                <TableCell>Estado</TableCell>
-                <TableCell>Abrió</TableCell>
-                <TableCell>Cerró</TableCell>
-                <TableCell align='right'>Efectivo a entregar</TableCell>
-                <TableCell align='right'>Contado</TableCell>
-                <TableCell>Diferencia</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {history.length === 0 ? (
+      {otherOpenSessions.length > 0 ? (
+        <Accordion
+          defaultExpanded
+          disableGutters
+          elevation={0}
+          sx={{ border: 1, borderColor: 'divider', borderRadius: 1, '&:before': { display: 'none' } }}
+        >
+          <AccordionSummary expandIcon={<i className='ri-arrow-down-s-line' />}>
+            <Typography className='font-medium'>Otras cajas abiertas ({otherOpenSessions.length})</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Table size='small'>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={9}>Todavía no hay turnos de caja.</TableCell>
+                  <TableCell>Turno</TableCell>
+                  <TableCell>Cajero</TableCell>
+                  <TableCell>Abierta</TableCell>
+                  <TableCell align='right'>Efectivo a entregar</TableCell>
+                  <TableCell />
                 </TableRow>
-              ) : (
-                history.map(turn => (
+              </TableHead>
+              <TableBody>
+                {otherOpenSessions.map(turn => (
                   <TableRow key={turn.uuid}>
                     <TableCell>{turn.number}</TableCell>
                     <TableCell>{turn.cashier.name}</TableCell>
-                    <TableCell>{turn.status === 'OPEN' ? 'Abierta' : 'Cerrada'}</TableCell>
                     <TableCell>
                       {turn.openedBy.name}
                       <br />
                       {formatDateTime(turn.openedAt)}
                     </TableCell>
-                    <TableCell>
-                      {turn.closedBy?.name ?? '—'}
-                      <br />
-                      {formatDateTime(turn.closedAt)}
-                    </TableCell>
                     <TableCell align='right' sx={{ color: turn.cashExpected < 0 ? 'error.main' : undefined }}>
                       {formatMoney(turn.cashExpected)}
                     </TableCell>
-                    <TableCell align='right'>{turn.countedCash === null ? '—' : formatMoney(turn.countedCash)}</TableCell>
-                    <TableCell>{differenceLabel(turn)}</TableCell>
                     <TableCell align='right'>
-                      <Button size='small' onClick={() => void printSession(turn.uuid)}>
-                        Ver
-                      </Button>
+                      <div className='flex flex-wrap justify-end gap-1'>
+                        <Button size='small' onClick={() => void printSession(turn.uuid)}>
+                          Ver
+                        </Button>
+                        {canCloseCash ? (
+                          <Button
+                            size='small'
+                            color='warning'
+                            onClick={() => {
+                              setClosingOther(turn)
+                              setOtherCountedCash('')
+                              setOtherCloseNotes('')
+                            }}
+                          >
+                            Cerrar
+                          </Button>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </AccordionDetails>
+        </Accordion>
+      ) : null}
+
+      <Accordion
+        defaultExpanded={!current}
+        disableGutters
+        elevation={0}
+        sx={{ border: 1, borderColor: 'divider', borderRadius: 1, '&:before': { display: 'none' } }}
+      >
+        <AccordionSummary expandIcon={<i className='ri-arrow-down-s-line' />}>
+          <Typography className='font-medium'>
+            Turnos anteriores
+            {previousTurns.length > 0 ? ` (${previousTurns.length})` : ''}
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>{historyTable}</AccordionDetails>
+      </Accordion>
+
+      <Dialog open={moveDialog === 'expense'} onClose={saving ? undefined : closeMoveDialog} fullWidth maxWidth='sm'>
+        <DialogTitle>Registrar egreso</DialogTitle>
+        <DialogContent className='flex flex-col gap-4 pt-4'>
+          {current ? (
+            <Typography color='text.secondary'>
+              Caja <strong>{current.number}</strong> · abierta · cajero {current.cashier.name}
+            </Typography>
+          ) : null}
+          <div className='flex flex-wrap items-end gap-3'>
+            <TextField
+              label='Monto'
+              value={expenseAmount}
+              onChange={event => setExpenseAmount(event.target.value)}
+              className='min-is-[140px]'
+              placeholder='12.00'
+              disabled={saving}
+              autoFocus
+            />
+            <TextField
+              label='¿Para qué salió?'
+              value={expenseNotes}
+              onChange={event => setExpenseNotes(event.target.value)}
+              className='min-is-[220px] flex-1'
+              placeholder='Almuerzo, pan, plomero…'
+              disabled={saving}
+            />
+          </div>
+          <Table size='small'>
+            <TableHead>
+              <TableRow>
+                <TableCell>Hora</TableCell>
+                <TableCell>Para qué</TableCell>
+                <TableCell align='right'>Monto</TableCell>
+                <TableCell>Registró</TableCell>
+                <TableCell />
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {!current || current.expenses.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5}>No ha salido dinero de esta caja.</TableCell>
+                </TableRow>
+              ) : (
+                current.expenses.map(expense => (
+                  <TableRow key={expense.uuid}>
+                    <TableCell>{formatTime(expense.spentAt)}</TableCell>
+                    <TableCell>{expense.notes}</TableCell>
+                    <TableCell align='right'>{formatMoney(expense.amount)}</TableCell>
+                    <TableCell>{expense.employeeName}</TableCell>
+                    <TableCell align='right'>
+                      {canRecordCashExpense ? (
+                        <IconButton
+                          aria-label='Quitar egreso'
+                          disabled={saving}
+                          onClick={() => setPendingRemoval({ kind: 'expense', uuid: expense.uuid })}
+                        >
+                          <i className='ri-delete-bin-line' />
+                        </IconButton>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </DialogContent>
+        <DialogActions>
+          <Button color='secondary' disabled={saving} onClick={closeMoveDialog}>
+            Cerrar
+          </Button>
+          <Button variant='contained' disabled={saving} onClick={() => void addExpense()}>
+            {saving ? <CircularProgress size={20} color='inherit' /> : 'Guardar egreso'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={moveDialog === 'reinforcement'} onClose={saving ? undefined : closeMoveDialog} fullWidth maxWidth='sm'>
+        <DialogTitle>Registrar refuerzo</DialogTitle>
+        <DialogContent className='flex flex-col gap-4 pt-4'>
+          {current ? (
+            <Typography color='text.secondary'>
+              Caja <strong>{current.number}</strong> · abierta · cajero {current.cashier.name}
+            </Typography>
+          ) : null}
+          <div className='flex flex-wrap items-end gap-3'>
+            <TextField
+              label='Monto'
+              value={reinforcementAmount}
+              onChange={event => setReinforcementAmount(event.target.value)}
+              className='min-is-[140px]'
+              placeholder='50.00'
+              disabled={saving}
+              autoFocus
+            />
+            <TextField
+              label='Descripción'
+              value={reinforcementNotes}
+              onChange={event => setReinforcementNotes(event.target.value)}
+              className='min-is-[220px] flex-1'
+              placeholder='Ej. Cambio para el turno'
+              disabled={saving}
+            />
+          </div>
+          <Table size='small'>
+            <TableHead>
+              <TableRow>
+                <TableCell>Hora</TableCell>
+                <TableCell>Descripción</TableCell>
+                <TableCell align='right'>Monto</TableCell>
+                <TableCell>Registró</TableCell>
+                <TableCell />
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {!current || current.reinforcements.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5}>No ha entrado refuerzo a esta caja.</TableCell>
+                </TableRow>
+              ) : (
+                current.reinforcements.map(reinforcement => (
+                  <TableRow key={reinforcement.uuid}>
+                    <TableCell>{formatTime(reinforcement.receivedAt)}</TableCell>
+                    <TableCell>{reinforcement.notes}</TableCell>
+                    <TableCell align='right'>{formatMoney(reinforcement.amount)}</TableCell>
+                    <TableCell>{reinforcement.employeeName}</TableCell>
+                    <TableCell align='right'>
+                      {canRecordCashExpense ? (
+                        <IconButton
+                          aria-label='Quitar refuerzo'
+                          disabled={saving}
+                          onClick={() => setPendingRemoval({ kind: 'reinforcement', uuid: reinforcement.uuid })}
+                        >
+                          <i className='ri-delete-bin-line' />
+                        </IconButton>
+                      ) : null}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </DialogContent>
+        <DialogActions>
+          <Button color='secondary' disabled={saving} onClick={closeMoveDialog}>
+            Cerrar
+          </Button>
+          <Button variant='contained' disabled={saving} onClick={() => void addReinforcement()}>
+            {saving ? <CircularProgress size={20} color='inherit' /> : 'Guardar refuerzo'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <DeleteReasonDialog
         open={Boolean(pendingRemoval)}
         title={pendingRemoval?.kind === 'expense' ? 'Quitar egreso' : 'Quitar refuerzo'}
@@ -754,6 +878,42 @@ const CashPage = () => {
         onClose={() => setPendingRemoval(null)}
         onConfirm={reason => void confirmRemoval(reason)}
       />
+
+      <Dialog
+        open={Boolean(closingOther)}
+        onClose={saving ? undefined : () => setClosingOther(null)}
+        fullWidth
+        maxWidth='sm'
+      >
+        <DialogTitle>Cerrar caja de {closingOther?.cashier.name ?? ''}</DialogTitle>
+        <DialogContent className='flex flex-col gap-4 pt-4'>
+          {closingOther ? (
+            <Typography color='text.secondary'>
+              Turno <strong>{closingOther.number}</strong> · efectivo a entregar {formatMoney(closingOther.cashExpected)}.
+            </Typography>
+          ) : null}
+          <TextField
+            label='Efectivo contado'
+            value={otherCountedCash}
+            onChange={event => setOtherCountedCash(event.target.value)}
+            autoFocus
+          />
+          <TextField
+            label='Nota'
+            value={otherCloseNotes}
+            onChange={event => setOtherCloseNotes(event.target.value)}
+            placeholder='Opcional'
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button color='secondary' disabled={saving} onClick={() => setClosingOther(null)}>
+            Cancelar
+          </Button>
+          <Button variant='contained' color='warning' disabled={saving} onClick={() => void closeOtherCash()}>
+            {saving ? <CircularProgress size={20} color='inherit' /> : 'Cerrar caja'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   )
 }

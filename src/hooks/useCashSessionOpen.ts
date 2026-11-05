@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 
 import { cashApi } from '@/libs/cashApi'
 
-export const CASH_REQUIRED_MESSAGE = 'Abre la caja antes de cobrar.'
+export const CASH_REQUIRED_MESSAGE = 'Abre tu caja antes de cobrar.'
 
-/** true si hay caja abierta, false si no, null mientras se consulta. */
+/** true si el cajero logueado tiene su caja abierta, false si no, null mientras se consulta. */
 export const useCashSessionOpen = (propertyId: number, enabled: boolean) => {
   const [open, setOpen] = useState<boolean | null>(null)
 

@@ -73,7 +73,7 @@ export const buildCashSessionDocument = (session: CashSessionDetail, hotelName: 
         title: 'Refuerzo',
         columns: [
           { header: 'Hora', width: 10 },
-          { header: 'De dónde', width: 36 },
+          { header: 'Descripción', width: 36 },
           { header: 'Monto', kind: 'money', width: 14 },
           { header: 'Registró', width: 18 }
         ],
