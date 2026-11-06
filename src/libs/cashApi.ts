@@ -130,8 +130,10 @@ export const cashApi = {
   current: (propertyId: number) => request<CashSessionDetail | null>(`${base(propertyId)}/current`),
   cashiers: (propertyId: number) => request<CashierOption[]>(`${base(propertyId)}/cashiers`),
   list: (propertyId: number) => request<CashSession[]>(base(propertyId)),
+  findByCode: (propertyId: number, code: string) =>
+    request<CashSession>(`${base(propertyId)}/by-code?code=${encodeURIComponent(code)}`),
   findOne: (propertyId: number, uuid: string) => request<CashSessionDetail>(`${base(propertyId)}/${uuid}`),
-  open: (propertyId: number, body: { openingAmount: number; notes?: string }) =>
+  open: (propertyId: number, body: { openingAmount: number; cashierUuid?: string; notes?: string }) =>
     request<CashSessionDetail>(base(propertyId), { method: 'POST', body: JSON.stringify(body) }),
   addExpense: (propertyId: number, uuid: string, body: { amount: number; notes: string }) =>
     request<CashSessionDetail>(`${base(propertyId)}/${uuid}/expenses`, {

@@ -54,6 +54,7 @@ export const REPORTS_IN_HOUSE_VIEW = 'reports.in-house.view'
 export const REPORTS_HOUSEKEEPING_VIEW = 'reports.housekeeping.view'
 export const REPORTS_INVOICES_VIEW = 'reports.invoices.view'
 export const REPORTS_BALANCES_VIEW = 'reports.balances.view'
+export const REPORTS_CASH_VARIANCE_VIEW = 'reports.cash-variance.view'
 export const REPORTS_OCCUPANCY_VIEW = 'reports.occupancy.view'
 export const REPORTS_MINCETUR_VIEW = 'reports.mincetur.view'
 export const REPORTS_SOURCES_VIEW = 'reports.sources.view'
@@ -81,8 +82,10 @@ export const SUPPORT_RESOLVE = 'support.resolve'
 
 export const CASH_VIEW = 'cash.view'
 export const CASH_OPEN = 'cash.open'
+export const CASH_OPEN_OTHERS = 'cash.open.others'
 export const CASH_EXPENSE = 'cash.expense'
 export const CASH_CLOSE = 'cash.close'
+export const CASH_CLOSE_OTHERS = 'cash.close.others'
 
 export const PROFILE_VIEW = 'profile.view'
 export const PROFILE_EDIT = 'profile.edit'
@@ -95,6 +98,7 @@ export const REPORT_TAB_PERMISSION: Record<string, string> = {
   housekeeping: REPORTS_HOUSEKEEPING_VIEW,
   invoices: REPORTS_INVOICES_VIEW,
   balances: REPORTS_BALANCES_VIEW,
+  'cash-variance': REPORTS_CASH_VARIANCE_VIEW,
   occupancy: REPORTS_OCCUPANCY_VIEW,
   mincetur: REPORTS_MINCETUR_VIEW,
   audit: AUDIT_VIEW,
@@ -156,7 +160,7 @@ export const CLIENT_MENU_PERMISSIONS = [
 
 export const REPORT_MENU_PERMISSIONS = Object.values(REPORT_TAB_PERMISSION)
 
-export const CASH_MENU_PERMISSIONS = [CASH_VIEW, CASH_OPEN, CASH_EXPENSE, CASH_CLOSE]
+export const CASH_MENU_PERMISSIONS = [CASH_VIEW, CASH_OPEN, CASH_OPEN_OTHERS, CASH_EXPENSE, CASH_CLOSE, CASH_CLOSE_OTHERS]
 
 export const HOTEL_MENU_PERMISSIONS = [HOTEL_VIEW, HOTEL_EDIT, HOTEL_LOGO]
 

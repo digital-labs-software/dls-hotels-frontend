@@ -5,6 +5,7 @@ import type {
   BalancesReport,
   CancellationsReport,
   CashClosingReport,
+  CashVarianceReport,
   GuestSheet,
   GuestSheetFloor,
   GuestSheetStay,
@@ -135,6 +136,8 @@ export const reportsApi = {
   balances: (propertyId: number) => report<BalancesReport>(propertyId, 'balances'),
   occupancy: (propertyId: number, from?: string, to?: string) =>
     report<OccupancyReport>(propertyId, 'occupancy', { from, to }),
+  cashVariance: (propertyId: number, from?: string, to?: string, cashierId?: number | null) =>
+    report<CashVarianceReport>(propertyId, 'cash-variance', { from, to, cashierId }),
   monthlyStats: (propertyId: number, month?: string) =>
     report<MonthlyStatsReport>(propertyId, 'monthly-stats', { month }),
   salesBySource: (propertyId: number, from?: string, to?: string) =>

@@ -1,12 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FocusEvent } from 'react'
 
 import { useParams, useRouter } from 'next/navigation'
 
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 
+
+import TabContext from '@mui/lab/TabContext'
+import TabPanel from '@mui/lab/TabPanel'
 
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
@@ -22,6 +25,8 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
+import MenuItem from '@mui/material/MenuItem'
+import Tab from '@mui/material/Tab'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -31,10 +36,11 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
 import DeleteReasonDialog from '@/components/dialogs/DeleteReasonDialog'
+import CustomTabList from '@core/components/mui/TabList'
 
 import type { Locale } from '@configs/i18n'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
-import { cashApi, getCashApiErrorMessage, type CashSession, type CashSessionDetail } from '@/libs/cashApi'
+import { cashApi, getCashApiErrorMessage, type CashierOption, type CashSession, type CashSessionDetail } from '@/libs/cashApi'
 import { PAYMENT_METHOD_LABELS } from '@/types/apps/frontDeskTypes'
 import { getLocalizedUrl } from '@/utils/i18n'
 import { buildCashSessionDocument, cashMethodRows, collectedTotal } from '@views/apps/reports/document/cashSessionDocument'
@@ -43,10 +49,48 @@ import { openReportPdf } from '@views/apps/reports/document/openReportPdf'
 
 type CashMoveDialog = 'expense' | 'reinforcement' | null
 
+type CloseTarget = {
+  uuid: string
+  cashierName: string
+  expected: number
+  own: boolean
+}
+
 const moneyValue = (value: string) => {
   const parsed = Number(value.replace(',', '.'))
 
   return Number.isFinite(parsed) ? parsed : null
+}
+
+const selectFieldText = (event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  event.target.select()
+}
+
+const signedDifference = (expected: number, counted: number) => {
+  const difference = Math.round((counted - expected) * 100) / 100
+
+  if (difference === 0) {
+    return { difference, label: 'Cuadra', color: 'success.main' }
+  }
+
+  if (difference > 0) {
+    return { difference, label: 'Sobrante', color: 'info.main' }
+  }
+
+  return { difference, label: 'Faltante', color: 'error.main' }
+}
+
+const signedMoney = (difference: number) =>
+  difference > 0 ? `+${formatMoney(difference)}` : formatMoney(difference)
+
+const closeResultText = (difference: number, label: string) =>
+  difference === 0 ? label : `${label} ${formatMoney(Math.abs(difference))}`
+
+const closeResultBandClass = (difference: number) => {
+  if (difference === 0) return 'bg-[var(--mui-palette-success-lighterOpacity)]'
+  if (difference > 0) return 'bg-[var(--mui-palette-info-lighterOpacity)]'
+
+  return 'bg-[var(--mui-palette-error-lighterOpacity)]'
 }
 
 const differenceLabel = (session: CashSession) => {
@@ -59,22 +103,36 @@ const differenceLabel = (session: CashSession) => {
   }
 
   return session.difference > 0
-    ? `Sobra ${formatMoney(session.difference)}`
-    : `Falta ${formatMoney(Math.abs(session.difference))}`
+    ? `Sobrante ${signedMoney(session.difference)}`
+    : `Faltante ${signedMoney(session.difference)}`
 }
 
 const CashPage = () => {
   const { data: session, status } = useSession()
-  const { canViewCash, canOpenCash, canRecordCashExpense, canCloseCash, loaded } = useSubscriptionAccess()
+
+  const {
+    canViewCash,
+    canOpenCash,
+    canOpenCashOthers,
+    canRecordCashExpense,
+    canCloseCash,
+    canCloseCashOthers,
+    loaded
+  } = useSubscriptionAccess()
+
   const router = useRouter()
   const { lang: locale } = useParams()
   const propertyId = session?.user?.propertyId
   const hotelName = session?.user?.propertyName || 'Hotel'
+  const myEmployeeUuid = session?.user?.employeeUuid ?? ''
 
   const [current, setCurrent] = useState<CashSessionDetail | null>(null)
   const [history, setHistory] = useState<CashSession[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [cashiers, setCashiers] = useState<CashierOption[]>([])
+  const [otherCashierUuid, setOtherCashierUuid] = useState('')
+  const [cashTab, setCashTab] = useState('mine')
   const [openingAmount, setOpeningAmount] = useState('0')
   const [openNotes, setOpenNotes] = useState('')
   const [expenseAmount, setExpenseAmount] = useState('')
@@ -85,9 +143,11 @@ const CashPage = () => {
   const [closeNotes, setCloseNotes] = useState('')
   const [pendingRemoval, setPendingRemoval] = useState<{ kind: 'expense' | 'reinforcement'; uuid: string } | null>(null)
   const [moveDialog, setMoveDialog] = useState<CashMoveDialog>(null)
-  const [closingOther, setClosingOther] = useState<CashSession | null>(null)
-  const [otherCountedCash, setOtherCountedCash] = useState('')
-  const [otherCloseNotes, setOtherCloseNotes] = useState('')
+  const [closeTarget, setCloseTarget] = useState<CloseTarget | null>(null)
+  const [codeQuery, setCodeQuery] = useState('')
+  const [foundTurn, setFoundTurn] = useState<CashSession | null>(null)
+  const [codeSearchMiss, setCodeSearchMiss] = useState(false)
+  const [searching, setSearching] = useState(false)
 
   const load = useCallback(async () => {
     if (!propertyId) {
@@ -97,16 +157,30 @@ const CashPage = () => {
     setLoading(true)
 
     try {
-      const [openSession, turns] = await Promise.all([cashApi.current(propertyId), cashApi.list(propertyId)])
+      const [openSession, turns, people] = await Promise.all([
+        cashApi.current(propertyId),
+        cashApi.list(propertyId),
+        canOpenCashOthers ? cashApi.cashiers(propertyId) : Promise.resolve([])
+      ])
 
       setCurrent(openSession)
       setHistory(turns)
+      setCashiers(people)
+      setOtherCashierUuid(currentId => {
+        const others = people.filter(person => person.uuid !== myEmployeeUuid)
+
+        if (currentId && others.some(person => person.uuid === currentId)) {
+          return currentId
+        }
+
+        return others[0]?.uuid ?? ''
+      })
     } catch (error) {
       toast.error(getCashApiErrorMessage(error, 'No se pudo cargar la caja.'))
     } finally {
       setLoading(false)
     }
-  }, [propertyId])
+  }, [canOpenCashOthers, myEmployeeUuid, propertyId])
 
   useEffect(() => {
     if (status === 'loading' || !loaded) {
@@ -122,6 +196,40 @@ const CashPage = () => {
     void load()
   }, [canViewCash, load, loaded, locale, router, status])
 
+  const searchCash = async () => {
+    if (!propertyId) {
+      return
+    }
+
+    const query = codeQuery.trim()
+
+    if (!query) {
+      toast.error('Escribe el código de la caja.')
+
+      return
+    }
+
+    setSearching(true)
+
+    try {
+      const found = await cashApi.findByCode(propertyId, query)
+
+      setFoundTurn(found)
+      setCodeSearchMiss(false)
+    } catch (error) {
+      const message = getCashApiErrorMessage(error, 'No se pudo buscar la caja.')
+
+      setFoundTurn(null)
+      setCodeSearchMiss(message === 'No hay una caja con ese código.')
+
+      if (message !== 'No hay una caja con ese código.') {
+        toast.error(message)
+      }
+    } finally {
+      setSearching(false)
+    }
+  }
+
   const printSession = async (uuid: string) => {
     if (!propertyId) {
       return
@@ -132,11 +240,11 @@ const CashPage = () => {
 
       await openReportPdf(buildCashSessionDocument(detail, hotelName))
     } catch (error) {
-      toast.error(getCashApiErrorMessage(error, 'No se pudo preparar el cierre de caja.'))
+      toast.error(getCashApiErrorMessage(error, 'No se pudo preparar el informe de caja.'))
     }
   }
 
-  const openCash = async () => {
+  const openCash = async (forEmployeeUuid?: string) => {
     if (!propertyId) {
       return
     }
@@ -149,17 +257,29 @@ const CashPage = () => {
       return
     }
 
+    const forOther = Boolean(forEmployeeUuid && forEmployeeUuid !== myEmployeeUuid)
+
     setSaving(true)
 
     try {
       const opened = await cashApi.open(propertyId, {
         openingAmount: amount,
+        cashierUuid: forEmployeeUuid || undefined,
         notes: openNotes.trim() || undefined
       })
 
-      setCurrent(opened)
+      setOpeningAmount('0')
       setOpenNotes('')
-      toast.success('Tu caja quedó abierta.')
+
+      if (forOther) {
+        const name = cashiers.find(person => person.uuid === forEmployeeUuid)?.name ?? 'ese empleado'
+
+        toast.success(`La caja ${opened.number} de ${name} quedó abierta.`)
+      } else {
+        setCurrent(opened)
+        toast.success(`Tu caja ${opened.number} quedó abierta.`)
+      }
+
       await load()
     } catch (error) {
       toast.error(getCashApiErrorMessage(error, 'No se pudo abrir la caja.'))
@@ -168,38 +288,10 @@ const CashPage = () => {
     }
   }
 
-  const closeOtherCash = async () => {
-    if (!propertyId || !closingOther) {
-      return
-    }
-
-    const counted = moneyValue(otherCountedCash)
-
-    if (counted === null || counted < 0) {
-      toast.error('Escribe el efectivo que se contó en esa caja.')
-
-      return
-    }
-
-    setSaving(true)
-
-    try {
-      const closed = await cashApi.close(propertyId, closingOther.uuid, {
-        countedCash: counted,
-        notes: otherCloseNotes.trim() || undefined
-      })
-
-      setClosingOther(null)
-      setOtherCountedCash('')
-      setOtherCloseNotes('')
-      toast.success(`Se cerró la caja de ${closingOther.cashier.name}.`)
-      await openReportPdf(buildCashSessionDocument(closed, hotelName))
-      await load()
-    } catch (error) {
-      toast.error(getCashApiErrorMessage(error, 'No se pudo cerrar esa caja.'))
-    } finally {
-      setSaving(false)
-    }
+  const openCloseDialog = (target: CloseTarget) => {
+    setCountedCash('')
+    setCloseNotes('')
+    setCloseTarget(target)
   }
 
   const closeMoveDialog = () => {
@@ -313,8 +405,21 @@ const CashPage = () => {
     }
   }
 
-  const closeCash = async () => {
-    if (!propertyId || !current) {
+  const askCloseCash = () => {
+    if (!current) {
+      return
+    }
+
+    openCloseDialog({
+      uuid: current.uuid,
+      cashierName: current.cashier.name,
+      expected: current.cashExpected,
+      own: true
+    })
+  }
+
+  const confirmClose = async () => {
+    if (!propertyId || !closeTarget) {
       return
     }
 
@@ -329,16 +434,29 @@ const CashPage = () => {
     setSaving(true)
 
     try {
-      const closed = await cashApi.close(propertyId, current.uuid, {
+      const closed = await cashApi.close(propertyId, closeTarget.uuid, {
         countedCash: counted,
         notes: closeNotes.trim() || undefined
       })
 
-      setCurrent(null)
+      const own = closeTarget.own
+      const cashierName = closeTarget.cashierName
+      const result = signedDifference(closeTarget.expected, counted)
+
+      setCloseTarget(null)
       setCountedCash('')
       setCloseNotes('')
-      closeMoveDialog()
-      toast.success('Caja cerrada. Puedes abrir el siguiente turno.')
+      setOpeningAmount('0')
+      setOpenNotes('')
+
+      if (own) {
+        setCurrent(null)
+        closeMoveDialog()
+        toast.success(`Caja cerrada. ${closeResultText(result.difference, result.label)}.`)
+      } else {
+        toast.success(`Se cerró la caja de ${cashierName}. ${closeResultText(result.difference, result.label)}.`)
+      }
+
       await openReportPdf(buildCashSessionDocument(closed, hotelName))
       await load()
     } catch (error) {
@@ -368,6 +486,14 @@ const CashPage = () => {
   const otherOpenSessions = history.filter(
     turn => turn.status === 'OPEN' && turn.uuid !== current?.uuid
   )
+
+  const otherCashiers = cashiers.filter(person => person.uuid !== myEmployeeUuid)
+  const countedPreview = moneyValue(countedCash)
+
+  const closeVariance =
+    closeTarget && countedPreview !== null && countedPreview >= 0
+      ? signedDifference(closeTarget.expected, countedPreview)
+      : null
 
   const historyTable = (
     <Table size='small'>
@@ -407,7 +533,20 @@ const CashPage = () => {
                 {formatMoney(turn.cashExpected)}
               </TableCell>
               <TableCell align='right'>{turn.countedCash === null ? '—' : formatMoney(turn.countedCash)}</TableCell>
-              <TableCell>{differenceLabel(turn)}</TableCell>
+              <TableCell
+                sx={{
+                  color:
+                    turn.difference === null
+                      ? undefined
+                      : turn.difference > 0
+                        ? 'info.main'
+                        : turn.difference < 0
+                          ? 'error.main'
+                          : 'success.main'
+                }}
+              >
+                {differenceLabel(turn)}
+              </TableCell>
               <TableCell align='right'>
                 <Button size='small' onClick={() => void printSession(turn.uuid)}>
                   Ver
@@ -420,7 +559,9 @@ const CashPage = () => {
     </Table>
   )
 
-  return (
+  const canManageOtherCash = canOpenCashOthers || canCloseCashOthers
+
+  const myCashPanel = (
     <div className='flex flex-col gap-6'>
       {current ? (
         <>
@@ -429,7 +570,7 @@ const CashPage = () => {
               Actualizar
             </Button>
             <Button variant='outlined' startIcon={<i className='ri-file-pdf-2-line' />} onClick={() => void printSession(current.uuid)}>
-              Ver cierre de caja
+              Ver arqueo
             </Button>
           </div>
 
@@ -501,31 +642,42 @@ const CashPage = () => {
                 </Table>
               </div>
 
-              {canRecordCashExpense ? (
-                <div className='flex flex-wrap gap-2'>
-                  <Button
-                    variant='outlined'
-                    startIcon={<i className='ri-subtract-line' />}
-                    onClick={() => setMoveDialog('expense')}
-                  >
-                    Registrar egreso
-                    {current.expenses.length > 0 ? ` (${current.expenses.length})` : ''}
-                  </Button>
-                  <Button
-                    variant='outlined'
-                    startIcon={<i className='ri-add-line' />}
-                    onClick={() => setMoveDialog('reinforcement')}
-                  >
-                    Registrar refuerzo
-                    {current.reinforcements.length > 0 ? ` (${current.reinforcements.length})` : ''}
-                  </Button>
+              {canRecordCashExpense || canCloseCash || current.expenses.length > 0 || current.reinforcements.length > 0 ? (
+                <div className='flex flex-wrap items-center justify-between gap-2'>
+                  <div className='flex flex-wrap items-center gap-2'>
+                    {canRecordCashExpense ? (
+                      <>
+                        <Button
+                          variant='outlined'
+                          startIcon={<i className='ri-subtract-line' />}
+                          onClick={() => setMoveDialog('expense')}
+                        >
+                          Registrar egreso
+                          {current.expenses.length > 0 ? ` (${current.expenses.length})` : ''}
+                        </Button>
+                        <Button
+                          variant='outlined'
+                          startIcon={<i className='ri-add-line' />}
+                          onClick={() => setMoveDialog('reinforcement')}
+                        >
+                          Registrar refuerzo
+                          {current.reinforcements.length > 0 ? ` (${current.reinforcements.length})` : ''}
+                        </Button>
+                      </>
+                    ) : current.expenses.length > 0 || current.reinforcements.length > 0 ? (
+                      <Typography variant='body2' color='text.secondary'>
+                        {current.expenses.length > 0 ? `${current.expenses.length} egreso(s)` : ''}
+                        {current.expenses.length > 0 && current.reinforcements.length > 0 ? ' · ' : ''}
+                        {current.reinforcements.length > 0 ? `${current.reinforcements.length} refuerzo(s)` : ''}
+                      </Typography>
+                    ) : null}
+                  </div>
+                  {canCloseCash ? (
+                    <Button variant='contained' color='warning' className='shrink-0' disabled={saving} onClick={askCloseCash}>
+                      Cerrar caja
+                    </Button>
+                  ) : null}
                 </div>
-              ) : current.expenses.length > 0 || current.reinforcements.length > 0 ? (
-                <Typography variant='body2' color='text.secondary'>
-                  {current.expenses.length > 0 ? `${current.expenses.length} egreso(s)` : ''}
-                  {current.expenses.length > 0 && current.reinforcements.length > 0 ? ' · ' : ''}
-                  {current.reinforcements.length > 0 ? `${current.reinforcements.length} refuerzo(s)` : ''}
-                </Typography>
               ) : null}
             </CardContent>
           </Card>
@@ -573,83 +725,148 @@ const CashPage = () => {
             </AccordionDetails>
           </Accordion>
 
-          {canCloseCash ? (
-            <Card>
-              <CardContent className='flex flex-col gap-4'>
-                <Typography variant='h6'>Cerrar caja</Typography>
-                <Typography color='text.secondary'>
-                  Cuenta solo los billetes y monedas. El {current.cashExpected < 0 ? 'faltante' : 'efectivo a entregar'} es{' '}
-                  {formatMoney(current.cashExpected)}.
-                </Typography>
-                <div className='flex flex-wrap items-end gap-3'>
-                  <TextField
-                    label='Efectivo contado'
-                    value={countedCash}
-                    onChange={event => setCountedCash(event.target.value)}
-                    className='min-is-[140px]'
-                  />
-                  <TextField
-                    label='Nota'
-                    value={closeNotes}
-                    onChange={event => setCloseNotes(event.target.value)}
-                    className='min-is-[280px] is-full max-is-[480px]'
-                    placeholder='Opcional'
-                  />
-                  <Button variant='contained' color='warning' className='shrink-0' disabled={saving} onClick={() => void closeCash()}>
-                    Cerrar caja
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : null}
         </>
       ) : (
         <Card>
           <CardContent className='flex flex-col gap-4'>
             <Typography variant='h6'>Tu caja no está abierta</Typography>
             {canOpenCash ? (
-              <>
-                <Typography color='text.secondary'>
-                  Cada cajero abre su propia caja en su computadora. Escribe el sencillo inicial. Si no dejas nada, abre con
-                  0.
-                </Typography>
-                <div className='flex flex-wrap items-end gap-3'>
-                  <TextField
-                    label='Monto inicial'
-                    value={openingAmount}
-                    onChange={event => setOpeningAmount(event.target.value)}
-                    className='min-is-[180px]'
-                  />
-                  <TextField
-                    label='Nota'
-                    value={openNotes}
-                    onChange={event => setOpenNotes(event.target.value)}
-                    className='min-is-[280px]'
-                    placeholder='Turno de la mañana'
-                  />
-                  <Button variant='contained' disabled={saving} onClick={() => void openCash()}>
-                    Abrir mi caja
-                  </Button>
-                </div>
-              </>
+              <div className='flex flex-wrap items-end gap-3'>
+                <TextField
+                  label='Monto inicial'
+                  value={openingAmount}
+                  onChange={event => setOpeningAmount(event.target.value)}
+                  onFocus={selectFieldText}
+                  className='min-is-[120px]'
+                />
+                <TextField
+                  label='Nota'
+                  value={openNotes}
+                  onChange={event => setOpenNotes(event.target.value)}
+                  className='min-is-[320px] flex-1 max-is-[480px]'
+                  placeholder='Turno de la mañana'
+                />
+                <Button variant='contained' disabled={saving} onClick={() => void openCash()}>
+                  Abrir mi caja
+                </Button>
+              </div>
             ) : (
-              <Alert severity='warning'>No tienes permiso para abrir la caja.</Alert>
+              <Alert severity='warning'>No tienes permiso para abrir tu caja.</Alert>
             )}
           </CardContent>
         </Card>
       )}
 
-      {otherOpenSessions.length > 0 ? (
-        <Accordion
-          defaultExpanded
-          disableGutters
-          elevation={0}
-          sx={{ border: 1, borderColor: 'divider', borderRadius: 1, '&:before': { display: 'none' } }}
-        >
-          <AccordionSummary expandIcon={<i className='ri-arrow-down-s-line' />}>
-            <Typography className='font-medium'>Otras cajas abiertas ({otherOpenSessions.length})</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
+      <div className='flex flex-col gap-3'>
+        <div className='flex flex-wrap items-end gap-3'>
+          <TextField
+            label='Código'
+            value={codeQuery}
+            onChange={event => {
+              setCodeQuery(event.target.value)
+              setCodeSearchMiss(false)
+            }}
+            onKeyDown={event => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                void searchCash()
+              }
+            }}
+            placeholder='C-000001'
+            className='min-is-[160px]'
+          />
+          <Button variant='outlined' disabled={searching} onClick={() => void searchCash()}>
+            Buscar
+          </Button>
+        </div>
+        {foundTurn ? (
+          <div className='flex flex-wrap items-center justify-between gap-3 rounded border border-solid border-[var(--mui-palette-divider)] px-4 py-3'>
+            <div>
+              <Typography className='font-medium'>{foundTurn.number}</Typography>
+              <Typography variant='body2' color='text.secondary'>
+                {foundTurn.cashier.name}
+                {' · '}
+                {foundTurn.status === 'OPEN' ? 'Abierta' : `Cerrada · ${differenceLabel(foundTurn)}`}
+              </Typography>
+            </div>
+            <Button size='small' onClick={() => void printSession(foundTurn.uuid)}>
+              Ver
+            </Button>
+          </div>
+        ) : codeSearchMiss ? (
+          <Typography color='text.secondary'>No hay una caja con ese código.</Typography>
+        ) : null}
+      </div>
+
+      <Accordion
+        defaultExpanded={!current}
+        disableGutters
+        elevation={0}
+        sx={{ border: 1, borderColor: 'divider', borderRadius: 1, '&:before': { display: 'none' } }}
+      >
+        <AccordionSummary expandIcon={<i className='ri-arrow-down-s-line' />}>
+          <Typography className='font-medium'>
+            Turnos anteriores
+            {previousTurns.length > 0 ? ` (${previousTurns.length})` : ''}
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>{historyTable}</AccordionDetails>
+      </Accordion>
+    </div>
+  )
+
+  const otherCashPanel = (
+    <div className='flex flex-col gap-6'>
+      {canOpenCashOthers ? (
+        <Card>
+          <CardContent className='flex flex-col gap-4'>
+            <Typography variant='h6'>Abrir caja de otro empleado</Typography>
+            {otherCashiers.length > 0 ? (
+              <div className='flex flex-wrap items-end gap-3'>
+                <TextField
+                  select
+                  label='Empleado'
+                  value={otherCashierUuid}
+                  onChange={event => setOtherCashierUuid(event.target.value)}
+                  className='min-is-[240px]'
+                >
+                  {otherCashiers.map(person => (
+                    <MenuItem key={person.uuid} value={person.uuid}>
+                      {person.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label='Monto inicial'
+                  value={openingAmount}
+                  onChange={event => setOpeningAmount(event.target.value)}
+                  onFocus={selectFieldText}
+                  className='min-is-[120px]'
+                />
+                <TextField
+                  label='Nota'
+                  value={openNotes}
+                  onChange={event => setOpenNotes(event.target.value)}
+                  className='min-is-[320px] flex-1 max-is-[480px]'
+                  placeholder='Turno de la mañana'
+                />
+                <Button variant='contained' disabled={saving || !otherCashierUuid} onClick={() => void openCash(otherCashierUuid)}>
+                  Abrir caja
+                </Button>
+              </div>
+            ) : (
+              <Typography color='text.secondary'>No hay otro empleado activo para abrirle la caja.</Typography>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Card>
+        <CardContent className='flex flex-col gap-4'>
+          <Typography variant='h6'>Turnos abiertos ({otherOpenSessions.length})</Typography>
+          {otherOpenSessions.length === 0 ? (
+            <Typography color='text.secondary'>No hay otros turnos abiertos.</Typography>
+          ) : (
             <Table size='small'>
               <TableHead>
                 <TableRow>
@@ -678,15 +895,18 @@ const CashPage = () => {
                         <Button size='small' onClick={() => void printSession(turn.uuid)}>
                           Ver
                         </Button>
-                        {canCloseCash ? (
+                        {canCloseCashOthers ? (
                           <Button
                             size='small'
                             color='warning'
-                            onClick={() => {
-                              setClosingOther(turn)
-                              setOtherCountedCash('')
-                              setOtherCloseNotes('')
-                            }}
+                            onClick={() =>
+                              openCloseDialog({
+                                uuid: turn.uuid,
+                                cashierName: turn.cashier.name,
+                                expected: turn.cashExpected,
+                                own: false
+                              })
+                            }
                           >
                             Cerrar
                           </Button>
@@ -697,24 +917,30 @@ const CashPage = () => {
                 ))}
               </TableBody>
             </Table>
-          </AccordionDetails>
-        </Accordion>
-      ) : null}
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
 
-      <Accordion
-        defaultExpanded={!current}
-        disableGutters
-        elevation={0}
-        sx={{ border: 1, borderColor: 'divider', borderRadius: 1, '&:before': { display: 'none' } }}
-      >
-        <AccordionSummary expandIcon={<i className='ri-arrow-down-s-line' />}>
-          <Typography className='font-medium'>
-            Turnos anteriores
-            {previousTurns.length > 0 ? ` (${previousTurns.length})` : ''}
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>{historyTable}</AccordionDetails>
-      </Accordion>
+  return (
+    <div className='flex flex-col gap-6'>
+      {canManageOtherCash ? (
+        <TabContext value={cashTab}>
+          <CustomTabList pill='true' onChange={(_event, value) => setCashTab(value)} aria-label='Caja'>
+            <Tab value='mine' label='Mi caja' />
+            <Tab value='others' label={otherOpenSessions.length > 0 ? `Otros turnos (${otherOpenSessions.length})` : 'Otros turnos'} />
+          </CustomTabList>
+          <TabPanel value='mine' className='p-0'>
+            {myCashPanel}
+          </TabPanel>
+          <TabPanel value='others' className='p-0'>
+            {otherCashPanel}
+          </TabPanel>
+        </TabContext>
+      ) : (
+        myCashPanel
+      )}
 
       <Dialog open={moveDialog === 'expense'} onClose={saving ? undefined : closeMoveDialog} fullWidth maxWidth='sm'>
         <DialogTitle>Registrar egreso</DialogTitle>
@@ -880,36 +1106,70 @@ const CashPage = () => {
       />
 
       <Dialog
-        open={Boolean(closingOther)}
-        onClose={saving ? undefined : () => setClosingOther(null)}
+        open={Boolean(closeTarget)}
+        onClose={saving ? undefined : () => setCloseTarget(null)}
         fullWidth
         maxWidth='sm'
       >
-        <DialogTitle>Cerrar caja de {closingOther?.cashier.name ?? ''}</DialogTitle>
+        <DialogTitle>Cerrar caja de {closeTarget?.cashierName ?? ''}</DialogTitle>
         <DialogContent className='flex flex-col gap-4 pt-4'>
-          {closingOther ? (
-            <Typography color='text.secondary'>
-              Turno <strong>{closingOther.number}</strong> · efectivo a entregar {formatMoney(closingOther.cashExpected)}.
-            </Typography>
+          {closeTarget ? (
+            <>
+              <Typography color='text.secondary'>
+                Efectivo según el sistema: <strong>{formatMoney(closeTarget.expected)}</strong>
+              </Typography>
+              <TextField
+                label='Efectivo contado'
+                value={countedCash}
+                onChange={event => setCountedCash(event.target.value)}
+                onFocus={selectFieldText}
+                autoFocus
+                placeholder='0.00'
+              />
+              {closeVariance ? (
+                <div
+                  className={`flex flex-col items-center justify-center gap-1 rounded px-4 py-4 text-center ${closeResultBandClass(closeVariance.difference)}`}
+                >
+                  <Typography
+                    color={closeVariance.color}
+                    variant='h6'
+                    className='font-bold uppercase tracking-[0.14em]'
+                  >
+                    {closeVariance.label}
+                  </Typography>
+                  {closeVariance.difference !== 0 ? (
+                    <Typography color={closeVariance.color} variant='h5'>
+                      {formatMoney(Math.abs(closeVariance.difference))}
+                    </Typography>
+                  ) : null}
+                </div>
+              ) : (
+                <Typography color='text.secondary' className='text-center'>
+                  Escribe los billetes y monedas que hay en la caja.
+                </Typography>
+              )}
+              <TextField
+                label='Nota'
+                value={closeNotes}
+                onChange={event => setCloseNotes(event.target.value)}
+                placeholder='Opcional'
+                multiline
+                minRows={2}
+                fullWidth
+              />
+            </>
           ) : null}
-          <TextField
-            label='Efectivo contado'
-            value={otherCountedCash}
-            onChange={event => setOtherCountedCash(event.target.value)}
-            autoFocus
-          />
-          <TextField
-            label='Nota'
-            value={otherCloseNotes}
-            onChange={event => setOtherCloseNotes(event.target.value)}
-            placeholder='Opcional'
-          />
         </DialogContent>
         <DialogActions>
-          <Button color='secondary' disabled={saving} onClick={() => setClosingOther(null)}>
-            Cancelar
+          <Button color='secondary' disabled={saving} onClick={() => setCloseTarget(null)}>
+            Volver
           </Button>
-          <Button variant='contained' color='warning' disabled={saving} onClick={() => void closeOtherCash()}>
+          <Button
+            variant='contained'
+            color='warning'
+            disabled={saving || !closeVariance}
+            onClick={() => void confirmClose()}
+          >
             {saving ? <CircularProgress size={20} color='inherit' /> : 'Cerrar caja'}
           </Button>
         </DialogActions>

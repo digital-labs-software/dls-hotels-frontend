@@ -12,6 +12,7 @@ const ROW_TONE_CLASS: Record<RowTone, string> = {
   warning: 'bg-[var(--mui-palette-warning-lighterOpacity)]',
   error: 'bg-[var(--mui-palette-error-lighterOpacity)]',
   success: 'bg-[var(--mui-palette-success-lighterOpacity)]',
+  info: 'bg-[var(--mui-palette-info-lighterOpacity)]',
   muted: 'opacity-70'
 }
 
@@ -19,6 +20,7 @@ const SECTION_TONE_CLASS: Record<RowTone, string> = {
   warning: 'bg-[var(--mui-palette-warning-lightOpacity)]',
   error: 'bg-[var(--mui-palette-error-lightOpacity)]',
   success: 'bg-[var(--mui-palette-success-lightOpacity)]',
+  info: 'bg-[var(--mui-palette-info-lightOpacity)]',
   muted: 'bg-[var(--mui-palette-action-hover)]'
 }
 

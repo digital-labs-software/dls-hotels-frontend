@@ -128,6 +128,8 @@ export const buildReportHtml = (report: ReportDocument) => {
     .handover.short p { color: #333; }
     tr.warning td { background: #fff6e5; }
     tr.error td { background: #ffeeee; }
+    tr.success td { background: #e8f5e9; }
+    tr.info td { background: #e3f2fd; }
     tr.muted td { color: #666; }
     td.empty { text-align: center; color: #666; padding: 12px; }
     thead { display: table-header-group; }

@@ -20,18 +20,19 @@ export const buildCashSessionDocument = (session: CashSessionDetail, hotelName: 
   const methods = cashMethodRows(session.byMethod)
   const collected = collectedTotal(session.byMethod)
   const closed = session.status === 'CLOSED'
+
   const difference =
     session.difference === null
       ? 'Aún no se cuenta'
       : session.difference === 0
         ? 'Cuadra'
         : session.difference > 0
-          ? `Sobra ${formatMoney(session.difference)}`
-          : `Falta ${formatMoney(Math.abs(session.difference))}`
+          ? `Sobrante +${formatMoney(session.difference)}`
+          : `Faltante ${formatMoney(session.difference)}`
 
   return {
-    fileName: `cierre-caja-${session.number}`,
-    title: 'Cierre de caja',
+    fileName: `${closed ? 'cierre' : 'arqueo'}-caja-${session.number}`,
+    title: closed ? 'Cierre de caja' : 'Arqueo de caja',
     hotelName,
     period: closed
       ? `${formatDateTime(session.openedAt)} al ${formatDateTime(session.closedAt)}`

@@ -372,6 +372,26 @@ export interface LostReservation {
   cancelledBy: string | null
 }
 
+export interface CashVarianceSession {
+  number: string
+  closedOn: string
+  cashierName: string
+  cashExpected: number
+  countedCash: number
+  difference: number
+}
+
+export interface CashVarianceReport {
+  from: string
+  to: string
+  hotelName: string
+  cashierId: number | null
+  cashierName: string | null
+  cashiers: { employeeId: number; name: string }[]
+  summary: { sessions: number; shortage: number; surplus: number; difference: number }
+  sessions: CashVarianceSession[]
+}
+
 export interface CancellationsReport {
   from: string
   to: string

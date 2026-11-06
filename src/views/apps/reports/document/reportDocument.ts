@@ -8,7 +8,7 @@ export type CellValue = string | number | boolean | null | undefined
 /** check = casilla para marcar con lapicero; write = espacio en blanco para escribir a mano. */
 export type ColumnKind = 'text' | 'number' | 'money' | 'percent' | 'check' | 'write'
 
-export type RowTone = 'warning' | 'error' | 'success' | 'muted'
+export type RowTone = 'warning' | 'error' | 'success' | 'info' | 'muted'
 
 export interface ReportColumn {
   header: string
