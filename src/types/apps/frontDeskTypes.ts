@@ -1,4 +1,4 @@
-export type RackStatus = 'AVAILABLE' | 'OCCUPIED' | 'CLEANING' | 'MAINTENANCE'
+export type RackStatus = 'AVAILABLE' | 'OCCUPIED' | 'CLEANING' | 'MAINTENANCE' | 'RESERVED'
 
 export type RoomPhysicalStatus = 'AVAILABLE' | 'OCCUPIED' | 'CLEANING'
 
@@ -34,7 +34,8 @@ export const RACK_STATUS_LABELS: Record<RackStatus, string> = {
   AVAILABLE: 'Disponible',
   OCCUPIED: 'Ocupado',
   CLEANING: 'Limpieza',
-  MAINTENANCE: 'Mantenimiento'
+  MAINTENANCE: 'Mantenimiento',
+  RESERVED: 'Reservado'
 }
 
 export const STAY_STATUS_LABELS: Record<StayStatus, string> = {
@@ -153,6 +154,7 @@ export interface FrontDeskSummary {
   occupied: number
   cleaning: number
   maintenance: number
+  reserved: number
   arrivals: number
   departures: number
   inHouse: number
@@ -180,16 +182,30 @@ export interface WalkInGuest {
   notes?: string | null
 }
 
-export interface WalkInPayload {
+export interface WalkInRoomPayload {
   roomId: number
+  adults?: number
+  children?: number
+  rateId?: number | null
+  pricePerNight?: number | null
+  companions?: WalkInGuest[]
+}
+
+export interface WalkInPayload {
+  /** Ingreso simple: una habitación. */
+  roomId?: number
+  /** Ingreso grupo: varias habitaciones en una sola reserva. */
+  rooms?: WalkInRoomPayload[]
   checkOutDate: string
   adults?: number
   children?: number
   rateId?: number | null
   pricePerNight?: number | null
-  holder: WalkInGuest
+  /** Titular de la habitación. En un ingreso simple va también cuando paga una empresa. */
+  holder?: WalkInGuest
   companions?: WalkInGuest[]
   companyId?: number | null
+  discountAmount?: number
   notes?: string | null
   actualCheckInAt?: string
   payment?: { amount: number; method: PaymentMethod; reference?: string | null; notes?: string | null }

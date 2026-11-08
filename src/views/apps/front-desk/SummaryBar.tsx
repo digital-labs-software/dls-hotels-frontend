@@ -28,6 +28,14 @@ const SummaryBar = ({ summary, selectedStatus, onSelectStatus }: Props) => {
       <Chip
         clickable
         size='small'
+        color='primary'
+        variant={selectedStatus === 'RESERVED' ? 'filled' : 'tonal'}
+        label={`${summary.reserved} Reservados`}
+        onClick={() => toggle('RESERVED')}
+      />
+      <Chip
+        clickable
+        size='small'
         color='error'
         variant={selectedStatus === 'OCCUPIED' ? 'filled' : 'tonal'}
         label={`${summary.occupied} Ocupados`}

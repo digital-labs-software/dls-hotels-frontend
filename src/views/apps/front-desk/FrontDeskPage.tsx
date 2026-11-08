@@ -2,18 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
-
+import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
-import Checkbox from '@mui/material/Checkbox'
 import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
 import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
+import InputAdornment from '@mui/material/InputAdornment'
 import Grid from '@mui/material/Grid'
 import InputLabel from '@mui/material/InputLabel'
 import Menu from '@mui/material/Menu'
@@ -21,23 +19,23 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Tab from '@mui/material/Tab'
 import TextField from '@mui/material/TextField'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import TabContext from '@mui/lab/TabContext'
 import TabPanel from '@mui/lab/TabPanel'
 
 import { useSession } from 'next-auth/react'
-
-import type { Locale } from '@configs/i18n'
+import { toast } from 'react-toastify'
 
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import { RECEPTION_PAYMENTS_CREATE, RECEPTION_WALK_IN } from '@/types/apps/hotelPermissions'
-import { toast } from 'react-toastify'
-
-import CustomTabList from '@core/components/mui/TabList'
 import type { FrontDesk, RackRoom, RackStatus, Stay } from '@/types/apps/frontDeskTypes'
 import { formatFrontDeskHeading, normalizeSearchText, stayMatchesQuery } from '@/types/apps/frontDeskTypes'
+import type { Room } from '@/types/apps/roomsTypes'
+import CustomTabList from '@core/components/mui/TabList'
+import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
+import { getRoom, getRoomsApiErrorMessage } from '@/libs/roomsApi'
+import { ROOM_PHOTO_DETAIL, cloudinaryTransformedUrl } from '@/libs/cloudinary'
+import RoomMaintenanceDialog from '@/views/apps/rooms/list/RoomMaintenanceDialog'
 import AssignRoomDialog from './AssignRoomDialog'
 import CheckOutDialog from './CheckOutDialog'
 import { EarlyDepartureDialog, UndoCheckInDialog } from './InHouseDepartureDialogs'
@@ -47,18 +45,12 @@ import StayDrawer from './StayDrawer'
 import StayList from './StayList'
 import SummaryBar from './SummaryBar'
 import WalkInDialog from './WalkInDialog'
-import { frontDeskApi, getFrontDeskApiErrorMessage } from '@/libs/frontDeskApi'
-import { getLocalizedUrl } from '@/utils/i18n'
-import { ROOM_PHOTO_DETAIL, cloudinaryTransformedUrl } from '@/libs/cloudinary'
+import WalkInGroupDialog from './WalkInGroupDialog'
 
-type ViewMode = 'compact' | 'photos'
-type PanelMode = 'rooms' | 'day'
 type SideTab = 'arrivals' | 'departures' | 'inHouse'
-
-const VIEW_KEY = 'frontDesk.view'
+type DayMovement = '' | 'arrival' | 'departure'
 
 const FrontDeskPage = () => {
-  const { lang: locale } = useParams()
   const { data: session, status } = useSession()
   const { can } = useSubscriptionAccess()
   const canWalkIn = can(RECEPTION_WALK_IN)
@@ -70,16 +62,16 @@ const FrontDeskPage = () => {
   const [floorId, setFloorId] = useState<number | 'all'>('all')
   const [roomTypeId, setRoomTypeId] = useState<number | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<RackStatus | ''>('')
-  const [arrivingToday, setArrivingToday] = useState(false)
-  const [departingToday, setDepartingToday] = useState(false)
-  const [withBalance, setWithBalance] = useState(false)
+  const [dayMovement, setDayMovement] = useState<DayMovement>('')
   const [search, setSearch] = useState('')
-  const [view, setView] = useState<ViewMode>('compact')
-  const [panel, setPanel] = useState<PanelMode>('rooms')
+  const [listSearch, setListSearch] = useState('')
   const [sideTab, setSideTab] = useState<SideTab>('arrivals')
-  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
   const [menuRoom, setMenuRoom] = useState<RackRoom | null>(null)
+  const [maintenanceRoom, setMaintenanceRoom] = useState<Room | null>(null)
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false)
   const [walkInRoom, setWalkInRoom] = useState<RackRoom | null>(null)
+  const [groupWalkInOpen, setGroupWalkInOpen] = useState(false)
   const [selectedStay, setSelectedStay] = useState<Stay | null>(null)
   const [stayOpen, setStayOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
@@ -91,14 +83,6 @@ const FrontDeskPage = () => {
   const [photoRoom, setPhotoRoom] = useState<RackRoom | null>(null)
   const [arrivalBusy, setArrivalBusy] = useState<{ id: string; action: 'checkIn' | 'noShow' } | null>(null)
   const arrivalLock = useRef(false)
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem(VIEW_KEY)
-
-    if (stored === 'compact' || stored === 'photos') {
-      setView(stored)
-    }
-  }, [])
 
   const fetchOverview = useCallback(async () => {
     setLoading(true)
@@ -133,6 +117,23 @@ const FrontDeskPage = () => {
     return [...map.entries()].map(([id, name]) => ({ id, name }))
   }, [overview])
 
+  const groupWalkInRooms = useMemo(() => {
+    if (!overview) {
+      return []
+    }
+
+    return overview.floors.flatMap(floor =>
+      floor.rooms
+        .filter(room => (room.displayStatus === 'AVAILABLE' || room.displayStatus === 'CLEANING') && !room.arrival)
+        .map(room => ({
+          ...room,
+          floorId: floor.floorId,
+          floorName: floor.floorName,
+          floorOrder: floor.displayOrder
+        }))
+    )
+  }, [overview])
+
   const filteredFloors = useMemo(() => {
     if (!overview) {
       return []
@@ -147,9 +148,8 @@ const FrontDeskPage = () => {
         rooms: floor.rooms.filter(room => {
           if (roomTypeId !== 'all' && room.roomTypeId !== roomTypeId) return false
           if (statusFilter && room.displayStatus !== statusFilter) return false
-          if (arrivingToday && !room.arrival) return false
-          if (departingToday && !room.departureDue) return false
-          if (withBalance && !((room.currentStay?.reservationBalance ?? 0) > 0)) return false
+          if (dayMovement === 'arrival' && !room.arrival) return false
+          if (dayMovement === 'departure' && !room.departureDue) return false
           if (query) {
             const people = (stay: Stay | null) =>
               stay
@@ -166,11 +166,53 @@ const FrontDeskPage = () => {
         })
       }))
       .filter(floor => floor.rooms.length > 0)
-  }, [arrivingToday, departingToday, floorId, overview, roomTypeId, search, statusFilter, withBalance])
+  }, [dayMovement, floorId, overview, roomTypeId, search, statusFilter])
 
   const closeMenu = () => {
-    setMenuAnchor(null)
+    setMenuPosition(null)
     setMenuRoom(null)
+  }
+
+  const openRoomMenu = (event: React.MouseEvent<HTMLElement>, room: RackRoom) => {
+    setMenuPosition({ top: event.clientY, left: event.clientX })
+    setMenuRoom(room)
+  }
+
+  const openMaintenance = async (rackRoom: RackRoom) => {
+    closeMenu()
+    setMaintenanceLoading(true)
+
+    try {
+      setMaintenanceRoom(await getRoom(propertyId, rackRoom.uuid))
+    } catch (error) {
+      toast.error(getRoomsApiErrorMessage(error, 'No se pudo abrir el mantenimiento.'))
+    } finally {
+      setMaintenanceLoading(false)
+    }
+  }
+
+  const handleRoomPrimaryAction = (room: RackRoom) => {
+    if (room.arrival) {
+      openStay(room.arrival)
+
+      return
+    }
+
+    if (room.displayStatus === 'OCCUPIED' && room.currentStay) {
+      openStay(room.currentStay)
+
+      return
+    }
+
+    if (room.displayStatus === 'MAINTENANCE') {
+      void openMaintenance(room)
+
+      return
+    }
+
+    if (canWalkIn && (room.displayStatus === 'AVAILABLE' || room.displayStatus === 'CLEANING')) {
+      setWalkInRoom(room)
+    }
   }
 
   const handleSetStatus = async (statusValue: 'AVAILABLE' | 'CLEANING') => {
@@ -226,7 +268,6 @@ const FrontDeskPage = () => {
     }
   }
 
-  const [listSearch, setListSearch] = useState('')
   const listQuery = normalizeSearchText(listSearch)
   const filterStays = useCallback(
     (rows: Stay[]) => rows.filter(stay => stayMatchesQuery(stay, listQuery)),
@@ -272,7 +313,7 @@ const FrontDeskPage = () => {
       <Grid container spacing={4}>
         <Grid size={{ xs: 12 }}>
           <Card>
-            <CardContent className='flex flex-col gap-3' sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+            <CardContent className='flex flex-col gap-4' sx={{ py: 2, '&:last-child': { pb: 2 } }}>
               <div className='flex flex-wrap items-center justify-between gap-3'>
                 <Typography variant='subtitle1' className='font-medium capitalize'>
                   {overview ? formatFrontDeskHeading(overview.date) : ''}
@@ -290,27 +331,38 @@ const FrontDeskPage = () => {
                   </Tooltip>
                 </div>
               </div>
-              {panel === 'rooms' ? (
-                <TabContext value={floorId === 'all' ? 'all' : String(floorId)}>
-                  <CustomTabList
-                    variant='scrollable'
-                    pill='true'
-                    onChange={(_event, value) => setFloorId(value === 'all' ? 'all' : Number(value))}
-                  >
-                    <Tab label='Todos' value='all' />
-                    {(overview?.floors ?? []).map(floor => (
-                      <Tab key={floor.floorId} label={floor.floorName} value={String(floor.floorId)} />
-                    ))}
-                  </CustomTabList>
-                </TabContext>
-              ) : null}
               <div className='flex flex-wrap items-center gap-2'>
-                {panel === 'rooms' ? (
-                  <>
-                <FormControl size='small' className='min-is-[180px]'>
-                  <InputLabel>Tipo</InputLabel>
+                {canWalkIn ? (
+                  <Button
+                    size='small'
+                    variant='outlined'
+                    startIcon={<i className='ri-group-line' />}
+                    onClick={() => setGroupWalkInOpen(true)}
+                  >
+                    Ingreso de grupo
+                  </Button>
+                ) : null}
+                <TextField
+                  size='small'
+                  placeholder='Habitación o huésped'
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className='is-full min-is-[180px] sm:is-auto sm:max-is-[220px]'
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position='start'>
+                          <i className='ri-search-line' />
+                        </InputAdornment>
+                      )
+                    }
+                  }}
+                />
+                <FormControl size='small' className='min-is-[220px]'>
+                  <InputLabel id='front-desk-room-type'>Tipo de habitación</InputLabel>
                   <Select
-                    label='Tipo'
+                    labelId='front-desk-room-type'
+                    label='Tipo de habitación'
                     value={roomTypeId}
                     onChange={e => {
                       const raw = String(e.target.value)
@@ -326,63 +378,47 @@ const FrontDeskPage = () => {
                     ))}
                   </Select>
                 </FormControl>
-                <FormControlLabel
-                  control={<Checkbox checked={arrivingToday} onChange={e => setArrivingToday(e.target.checked)} />}
-                  label='Llega hoy'
-                />
-                <FormControlLabel
-                  control={<Checkbox checked={departingToday} onChange={e => setDepartingToday(e.target.checked)} />}
-                  label='Sale hoy'
-                />
-                <FormControlLabel
-                  control={<Checkbox checked={withBalance} onChange={e => setWithBalance(e.target.checked)} />}
-                  label='Con saldo'
-                />
-                <TextField
+                <Chip
+                  clickable
                   size='small'
-                  placeholder='Buscar número de habitación o huésped'
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className='min-is-[220px] is-full sm:is-auto'
+                  color='primary'
+                  variant={floorId === 'all' ? 'filled' : 'tonal'}
+                  label='Todos'
+                  onClick={() => setFloorId('all')}
                 />
-                <ToggleButtonGroup
-                  exclusive
-                  size='small'
-                  value={view}
-                  onChange={(_, next) => {
-                    if (!next) {
-                      return
-                    }
-
-                    setView(next)
-                    window.localStorage.setItem(VIEW_KEY, next)
-                  }}
-                >
-                  <ToggleButton value='compact'>Compacta</ToggleButton>
-                  <ToggleButton value='photos'>Con fotos</ToggleButton>
-                </ToggleButtonGroup>
-                  </>
-                ) : null}
-                <div className='flex flex-wrap items-center gap-2 mis-auto'>
-                  <ToggleButtonGroup
-                    exclusive
+                {(overview?.floors ?? []).map(floor => (
+                  <Chip
+                    key={floor.floorId}
+                    clickable
                     size='small'
-                    value={panel}
-                    onChange={(_, next: PanelMode | null) => {
-                      if (next) setPanel(next)
-                    }}
-                  >
-                    <ToggleButton value='rooms'>Habitaciones</ToggleButton>
-                    <ToggleButton value='day'>Del día</ToggleButton>
-                  </ToggleButtonGroup>
-                </div>
+                    color='primary'
+                    variant={floorId === floor.floorId ? 'filled' : 'tonal'}
+                    label={floor.floorName}
+                    onClick={() => setFloorId(floor.floorId)}
+                  />
+                ))}
+                <Chip
+                  clickable
+                  size='small'
+                  color='secondary'
+                  variant={dayMovement === 'arrival' ? 'filled' : 'tonal'}
+                  label='Llega hoy'
+                  onClick={() => setDayMovement(current => (current === 'arrival' ? '' : 'arrival'))}
+                />
+                <Chip
+                  clickable
+                  size='small'
+                  color='secondary'
+                  variant={dayMovement === 'departure' ? 'filled' : 'tonal'}
+                  label='Sale hoy'
+                  onClick={() => setDayMovement(current => (current === 'departure' ? '' : 'departure'))}
+                />
               </div>
             </CardContent>
           </Card>
         </Grid>
 
-        {panel === 'rooms' ? (
-        <Grid size={{ xs: 12 }}>
+        <Grid size={{ xs: 12, lg: 8 }}>
           <Card>
             <CardContent>
               {loading && !overview ? (
@@ -407,11 +443,8 @@ const FrontDeskPage = () => {
                           <RoomCard
                             key={room.uuid}
                             room={room}
-                            view={view}
-                            onOpenMenu={(event, selected) => {
-                              setMenuAnchor(event.currentTarget)
-                              setMenuRoom(selected)
-                            }}
+                            onOpenMenu={openRoomMenu}
+                            onPrimaryAction={handleRoomPrimaryAction}
                             onOpenPhoto={setPhotoRoom}
                           />
                         ))}
@@ -423,11 +456,11 @@ const FrontDeskPage = () => {
             </CardContent>
           </Card>
         </Grid>
-        ) : (
-        <Grid size={{ xs: 12 }}>
+
+        <Grid size={{ xs: 12, lg: 4 }}>
           <Card>
             <TabContext value={sideTab}>
-              <div className='flex flex-col gap-6 px-4 pb-2 pt-4'>
+              <div className='flex flex-col gap-4 px-4 pb-2 pt-4'>
                 <TextField
                   fullWidth
                   size='small'
@@ -435,7 +468,7 @@ const FrontDeskPage = () => {
                   value={listSearch}
                   onChange={event => setListSearch(event.target.value)}
                 />
-                <CustomTabList onChange={(_event, value) => setSideTab(value as SideTab)} variant='fullWidth' pill='true'>
+                <CustomTabList onChange={(_event, value) => setSideTab(value as SideTab)} variant='fullWidth'>
                   <Tab label={`Llegadas (${overview?.summary.arrivals ?? 0})`} value='arrivals' />
                   <Tab label={`En casa (${stayingTonight.length})`} value='inHouse' />
                   <Tab label={`Salidas (${overview?.summary.departures ?? 0})`} value='departures' />
@@ -502,11 +535,18 @@ const FrontDeskPage = () => {
             </TabContext>
           </Card>
         </Grid>
-        )}
       </Grid>
 
-      <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={closeMenu}>
-        {canWalkIn && menuRoom?.displayStatus === 'AVAILABLE' && !menuRoom.arrival ? (
+      <Menu
+        open={Boolean(menuPosition)}
+        onClose={closeMenu}
+        anchorReference='anchorPosition'
+        anchorPosition={menuPosition ?? undefined}
+      >
+        {canWalkIn &&
+        menuRoom &&
+        !menuRoom.arrival &&
+        (menuRoom.displayStatus === 'AVAILABLE' || menuRoom.displayStatus === 'CLEANING') ? (
           <MenuItem
             onClick={() => {
               setWalkInRoom(menuRoom)
@@ -561,39 +601,34 @@ const FrontDeskPage = () => {
             Acompañantes
           </MenuItem>
         ) : null}
-        {menuRoom?.displayStatus === 'CLEANING' || menuRoom?.displayStatus === 'AVAILABLE' ? (
+        {menuRoom && menuRoom.displayStatus !== 'OCCUPIED' && menuRoom.displayStatus !== 'MAINTENANCE' ? (
           <MenuItem onClick={() => handleSetStatus('CLEANING')}>Marcar en limpieza</MenuItem>
         ) : null}
-        {menuRoom?.displayStatus === 'CLEANING' ? <MenuItem onClick={() => handleSetStatus('AVAILABLE')}>Marcar limpia</MenuItem> : null}
-        {canWalkIn && menuRoom?.displayStatus === 'CLEANING' ? (
-          <MenuItem
-            onClick={() => {
-              setWalkInRoom(menuRoom)
-              closeMenu()
-            }}
-          >
-            Nuevo ingreso
-          </MenuItem>
+        {menuRoom &&
+        menuRoom.status === 'CLEANING' &&
+        menuRoom.displayStatus !== 'OCCUPIED' &&
+        menuRoom.displayStatus !== 'MAINTENANCE' ? (
+          <MenuItem onClick={() => handleSetStatus('AVAILABLE')}>Marcar limpia</MenuItem>
         ) : null}
-        {menuRoom && (menuRoom.displayStatus === 'AVAILABLE' || menuRoom.displayStatus === 'CLEANING') ? (
-          <MenuItem
-            component={Link}
-            href={getLocalizedUrl(`/apps/rooms/edit/${menuRoom.uuid}`, locale as Locale)}
-            onClick={closeMenu}
-          >
-            Programar mantenimiento
+        {menuRoom && menuRoom.displayStatus !== 'OCCUPIED' && menuRoom.displayStatus !== 'MAINTENANCE' ? (
+          <MenuItem disabled={maintenanceLoading} onClick={() => void openMaintenance(menuRoom)}>
+            Poner en mantenimiento
           </MenuItem>
         ) : null}
         {menuRoom?.displayStatus === 'MAINTENANCE' ? (
-          <MenuItem
-            component={Link}
-            href={getLocalizedUrl(`/apps/rooms/edit/${menuRoom.uuid}`, locale as Locale)}
-            onClick={closeMenu}
-          >
+          <MenuItem disabled={maintenanceLoading} onClick={() => void openMaintenance(menuRoom)}>
             Ver mantenimiento
           </MenuItem>
         ) : null}
       </Menu>
+
+      <RoomMaintenanceDialog
+        open={Boolean(maintenanceRoom)}
+        propertyId={propertyId}
+        room={maintenanceRoom}
+        onClose={() => setMaintenanceRoom(null)}
+        onSaved={fetchOverview}
+      />
 
       <WalkInDialog
         open={Boolean(walkInRoom)}
@@ -601,6 +636,14 @@ const FrontDeskPage = () => {
         room={walkInRoom}
         date={overview?.date || new Date().toISOString().slice(0, 10)}
         onClose={() => setWalkInRoom(null)}
+        onSuccess={fetchOverview}
+      />
+      <WalkInGroupDialog
+        open={groupWalkInOpen}
+        propertyId={propertyId}
+        date={overview?.date || new Date().toISOString().slice(0, 10)}
+        availableRooms={groupWalkInRooms}
+        onClose={() => setGroupWalkInOpen(false)}
         onSuccess={fetchOverview}
       />
       <StayDrawer

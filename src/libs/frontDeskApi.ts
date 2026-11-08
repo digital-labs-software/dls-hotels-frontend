@@ -145,6 +145,7 @@ const emptySummary = (): FrontDesk['summary'] => ({
   occupied: 0,
   cleaning: 0,
   maintenance: 0,
+  reserved: 0,
   arrivals: 0,
   departures: 0,
   inHouse: 0
@@ -200,17 +201,36 @@ const emptyMeta = (total = 0): PageMeta => ({
 
 const toWalkInPayload = (body: WalkInPayload) => {
   const payload: WalkInPayload = {
-    roomId: Number(body.roomId),
-    checkOutDate: body.checkOutDate,
-    holder: body.holder
+    checkOutDate: body.checkOutDate
   }
 
-  if (body.adults !== undefined) payload.adults = Number(body.adults)
-  if (body.children !== undefined) payload.children = Number(body.children)
-  if (body.rateId !== undefined) payload.rateId = body.rateId
-  if (body.pricePerNight !== undefined) payload.pricePerNight = body.pricePerNight
-  if (body.companions !== undefined) payload.companions = body.companions
+  if (body.holder) payload.holder = body.holder
+
+  if (body.rooms && body.rooms.length > 0) {
+    payload.rooms = body.rooms.map(room => {
+      const item: NonNullable<WalkInPayload['rooms']>[number] = {
+        roomId: Number(room.roomId)
+      }
+
+      if (room.adults !== undefined) item.adults = Number(room.adults)
+      if (room.children !== undefined) item.children = Number(room.children)
+      if (room.rateId !== undefined) item.rateId = room.rateId
+      if (room.pricePerNight !== undefined) item.pricePerNight = room.pricePerNight
+      if (room.companions !== undefined) item.companions = room.companions
+
+      return item
+    })
+  } else if (body.roomId != null) {
+    payload.roomId = Number(body.roomId)
+    if (body.adults !== undefined) payload.adults = Number(body.adults)
+    if (body.children !== undefined) payload.children = Number(body.children)
+    if (body.rateId !== undefined) payload.rateId = body.rateId
+    if (body.pricePerNight !== undefined) payload.pricePerNight = body.pricePerNight
+    if (body.companions !== undefined) payload.companions = body.companions
+  }
+
   if (body.companyId !== undefined) payload.companyId = body.companyId
+  if (body.discountAmount) payload.discountAmount = body.discountAmount
   if (body.notes !== undefined) payload.notes = emptyToNull(body.notes) ?? null
   if (body.payment) payload.payment = body.payment
 
