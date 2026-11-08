@@ -9,7 +9,6 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import TextField from '@mui/material/TextField'
-import Typography from '@mui/material/Typography'
 
 import { toast } from 'react-toastify'
 
@@ -72,7 +71,7 @@ const RoomMaintenanceDialog = ({ open, propertyId, room, onClose, onSaved }: Pro
     }
 
     if (endsOn <= startsOn) {
-      toast.error('La fecha en que vuelve a venderse tiene que ser posterior al inicio.')
+      toast.error('La fecha hasta tiene que ser posterior al inicio.')
 
       return
     }
@@ -120,33 +119,37 @@ const RoomMaintenanceDialog = ({ open, propertyId, room, onClose, onSaved }: Pro
     <Dialog open={open} onClose={() => !busy && onClose()} fullWidth maxWidth='sm'>
       <DialogTitle>Mantenimiento · {room?.number || ''}</DialogTitle>
       <DialogContent className='flex flex-col gap-4 pt-2'>
-        <Typography variant='body2' color='text.secondary'>
-          Esas noches no se venden. El día de fin la habitación vuelve a poder reservarse.
-        </Typography>
-        <DateField
-          fullWidth
-          label='Desde'
-          value={startsOn}
-          minDate={block ? undefined : today}
-          disabled={busy}
-          onChange={value => {
-            setStartsOn(value)
+        <div className='flex flex-col gap-4 sm:flex-row'>
+          <DateField
+            fullWidth
+            className='flex-1'
+            label='Desde'
+            value={startsOn}
+            minDate={block ? undefined : today}
+            disabled={busy}
+            onChange={value => {
+              setStartsOn(value)
 
-            if (endsOn <= value) {
-              setEndsOn(nextDay(value))
-            }
-          }}
-        />
-        <DateField
-          fullWidth
-          label='Vuelve a venderse el'
-          value={endsOn}
-          minDate={laterDate(nextDay(startsOn), block ? nextDay(block.startsOn) : nextDay(today))}
-          disabled={busy}
-          onChange={setEndsOn}
-        />
+              if (endsOn <= value) {
+                setEndsOn(nextDay(value))
+              }
+            }}
+          />
+          <DateField
+            fullWidth
+            className='flex-1'
+            label='Hasta'
+            helperText='Vuelve a poder reservarse este día.'
+            value={endsOn}
+            minDate={laterDate(nextDay(startsOn), block ? nextDay(block.startsOn) : nextDay(today))}
+            disabled={busy}
+            onChange={setEndsOn}
+          />
+        </div>
         <TextField
           fullWidth
+          multiline
+          minRows={2}
           label='Motivo'
           placeholder='Se malogró el baño'
           value={reason}

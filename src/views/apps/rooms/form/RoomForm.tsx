@@ -479,31 +479,6 @@ const RoomForm = ({ uuid }: Props) => {
                   </FormHelperText>
                 ) : null}
               </FormControl>
-
-              <FormControl fullWidth>
-                <InputLabel id='room-status'>Estado</InputLabel>
-                <Controller
-                  name='status'
-                  control={control}
-                  rules={{ required: true }}
-                  render={({ field }) => (
-                    <Select {...field} label='Estado' labelId='room-status' disabled={statusLocked || isSubmitting}>
-                      {statusOptions.map(item => (
-                        <MenuItem key={item} value={item}>
-                          {ROOM_STATUS_LABELS[item]}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  )}
-                />
-                {displayStatus === 'MAINTENANCE' ? (
-                  <FormHelperText>
-                    Esta noche está en mantenimiento. Las fechas se cambian desde la lista de habitaciones.
-                  </FormHelperText>
-                ) : status === 'OCCUPIED' ? (
-                  <FormHelperText>Ocupada la asigna el ingreso del huésped.</FormHelperText>
-                ) : null}
-              </FormControl>
             </CardContent>
           </Card>
         </Grid>
@@ -523,7 +498,7 @@ const RoomForm = ({ uuid }: Props) => {
                   <TextField
                     {...field}
                     fullWidth
-                    label='Número'
+                    label='Número de habitación'
                     placeholder='101'
                     disabled={isView || isSubmitting}
                     error={Boolean(errors.number)}
@@ -552,8 +527,8 @@ const RoomForm = ({ uuid }: Props) => {
                     label='Precio normal (S/ por noche)'
                     placeholder='80'
                     disabled={isView || isSubmitting}
-                    helperText={errors.priceOverride?.message || 'Es el precio de esta habitación cuando no hay tarifa.'}
-                    {...(errors.priceOverride && { error: true })}
+                    error={Boolean(errors.priceOverride)}
+                    helperText={errors.priceOverride?.message}
                   />
                 )}
               />
@@ -561,6 +536,31 @@ const RoomForm = ({ uuid }: Props) => {
               {isView && effectivePrice != null ? (
                 <TextField fullWidth label='Precio efectivo' value={formatRoomPrice(effectivePrice)} disabled />
               ) : null}
+
+              <FormControl fullWidth>
+                <InputLabel id='room-status'>Estado</InputLabel>
+                <Controller
+                  name='status'
+                  control={control}
+                  rules={{ required: true }}
+                  render={({ field }) => (
+                    <Select {...field} label='Estado' labelId='room-status' disabled={statusLocked || isSubmitting}>
+                      {statusOptions.map(item => (
+                        <MenuItem key={item} value={item}>
+                          {ROOM_STATUS_LABELS[item]}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  )}
+                />
+                {displayStatus === 'MAINTENANCE' ? (
+                  <FormHelperText>
+                    Esta noche está en mantenimiento. Las fechas se cambian desde la lista de habitaciones.
+                  </FormHelperText>
+                ) : status === 'OCCUPIED' ? (
+                  <FormHelperText>Ocupada la asigna el ingreso del huésped.</FormHelperText>
+                ) : null}
+              </FormControl>
             </CardContent>
           </Card>
         </Grid>
