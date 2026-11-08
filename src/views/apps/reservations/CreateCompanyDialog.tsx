@@ -31,11 +31,14 @@ type Props = {
   propertyId: number
   onClose: () => void
 
+  /** Si el buscador tenía un RUC de 11 dígitos, se consulta SUNAT. Un nombre se copia a la razón social. */
+  initialQuery?: string
+
   /** Recibe la empresa creada o, si el RUC ya existía, la empresa existente. */
   onCreated: (company: Company) => void
 }
 
-const CreateCompanyDialog = ({ open, propertyId, onClose, onCreated }: Props) => {
+const CreateCompanyDialog = ({ open, propertyId, onClose, onCreated, initialQuery = '' }: Props) => {
   const [businessName, setBusinessName] = useState('')
   const [companyType, setCompanyType] = useState<CompanyType | ''>('')
   const [typeError, setTypeError] = useState(false)
@@ -54,25 +57,38 @@ const CreateCompanyDialog = ({ open, propertyId, onClose, onCreated }: Props) =>
 
   const existingCompany = useExistingRecord((number: string) => companiesApi.findByTaxNumber(propertyId, number))
 
-  const { reset: resetLookup } = rucLookup
-  const { clear: clearExisting } = existingCompany
+  const { reset: resetLookup, lookup: lookupRuc } = rucLookup
+  const { clear: clearExisting, check: checkExisting } = existingCompany
 
   useEffect(() => {
     if (!open) {
       return
     }
 
-    setBusinessName('')
+    const query = initialQuery.trim()
+    const isRuc = /^\d{11}$/.test(query)
+
+    setBusinessName(isRuc ? '' : query)
     setCompanyType('')
     setTypeError(false)
-    setTaxNumber('')
+    setTaxNumber(isRuc ? query : '')
     setTradeName('')
     setAddress('')
     setPhone('')
     setEmail('')
     resetLookup()
     clearExisting()
-  }, [open, resetLookup, clearExisting])
+
+    if (isRuc) {
+      void (async () => {
+        const found = await checkExisting(query)
+
+        if (found === undefined) return
+        if (found) resetLookup()
+        else void lookupRuc(query)
+      })()
+    }
+  }, [initialQuery, open, resetLookup, clearExisting, checkExisting, lookupRuc])
 
   const existing = existingCompany.record
 

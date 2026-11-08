@@ -24,6 +24,9 @@ const autocomplete = (skin: Skin): Theme['components'] => ({
     },
     styleOverrides: {
       root: {
+        '& .MuiAutocomplete-clearIndicator': {
+          visibility: 'visible !important'
+        },
         '& .MuiButtonBase-root.Mui-disabled i, & .MuiButtonBase-root.Mui-disabled svg': {
           color: 'var(--mui-palette-action-disabled)'
         },

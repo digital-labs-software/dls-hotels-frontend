@@ -62,6 +62,7 @@ import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { formatPeople, roomCapacity } from '@/types/apps/roomTypeTypes'
 import DateField from '@/components/date-picker/DateField'
 import GuestPicker from '@views/apps/front-desk/GuestPicker'
+import PayerKindToggle, { type PayerKind } from '@views/apps/front-desk/PayerKindToggle'
 import CompanyPicker from './CompanyPicker'
 import CreateCompanyDialog from './CreateCompanyDialog'
 import CreateGuestDialog from './CreateGuestDialog'
@@ -177,10 +178,13 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   const requestedRateRooms = useRef(new Set<number>())
   const roomTypeInputRef = useRef<HTMLInputElement>(null)
   const [loadingAvailability, setLoadingAvailability] = useState(false)
+  const [payerKind, setPayerKind] = useState<PayerKind>('person')
   const [guest, setGuest] = useState<Guest | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
   const [createGuestOpen, setCreateGuestOpen] = useState(false)
+  const [createGuestQuery, setCreateGuestQuery] = useState('')
   const [createCompanyOpen, setCreateCompanyOpen] = useState(false)
+  const [createCompanyQuery, setCreateCompanyQuery] = useState('')
   const [source, setSource] = useState<ReservationSource>('PHONE')
   const [externalCode, setExternalCode] = useState('')
   const [confirmed, setConfirmed] = useState(true)
@@ -198,7 +202,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   const primary = rooms[0]
   const stayNights = primary ? nightsBetween(primary.checkInDate, primary.checkOutDate) : 1
 
-  /** Abierta desde una celda del calendario: la habitación ya viene elegida (reserva rápida). */
+  /** Abierta desde una celda del calendario: la habitación ya viene elegida. */
   const quickBooking = Boolean(prefill?.roomId)
 
   /** Abierta desde una nota por completar: el texto ya es la nota de la reserva. */
@@ -214,6 +218,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     setAvailability([])
     setRatesByRoom({})
     requestedRateRooms.current.clear()
+    setPayerKind('person')
     setGuest(null)
     setCompany(null)
     setSource('PHONE')
@@ -560,6 +565,12 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
   const validateStep2 = () => {
     if (!guest && !company) {
+      setBookerAttempted(true)
+
+      return false
+    }
+
+    if (guest && company) {
       setBookerAttempted(true)
 
       return false
@@ -959,8 +970,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
         disableAutoFocus
         TransitionProps={{ onEntered: () => !quickBooking && roomTypeInputRef.current?.focus() }}
       >
-        <DialogTitle>{fromNote ? 'Completar reserva' : quickBooking ? 'Reserva rápida' : 'Nueva reserva'}</DialogTitle>
-        <DialogContent className='flex flex-col gap-5 pt-4'>
+        <DialogTitle>{fromNote ? 'Completar reserva' : 'Nueva reserva'}</DialogTitle>
+        <DialogContent className='flex flex-col gap-8 pt-4 pb-8'>
           <Stepper activeStep={step} alternativeLabel={!isMobile} orientation={isMobile ? 'horizontal' : 'horizontal'}>
             <Step>
               <StepLabel>Habitación</StepLabel>
@@ -981,12 +992,6 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
           {step === 0 ? (
             <div className='flex flex-col gap-4'>
-              {quickBooking ? (
-                <Typography variant='body2' color='text.secondary'>
-                  La habitación ya viene elegida desde el calendario. Revisa las personas y pulsa Siguiente.
-                </Typography>
-              ) : null}
-
               <Section
                 title='1. Estadía'
                 action={
@@ -1082,36 +1087,51 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
           ) : null}
 
           {step === 1 ? (
-            <div className='flex flex-col gap-4'>
-              <GuestPicker
-                propertyId={propertyId}
-                minChars={2}
-                limit={10}
-                label='Persona'
-                error={bookerAttempted && !guest && !company}
-                onSelect={setGuest}
+            <div className='flex flex-col gap-6'>
+              <PayerKindToggle
+                value={payerKind}
+                disabled={saving}
+                onChange={kind => {
+                  setPayerKind(kind)
+                  setBookerAttempted(false)
+                  if (kind === 'person') setCompany(null)
+                  else setGuest(null)
+                }}
               />
-              {guest ? (
-                <Chip label={`${guest.person.firstName} ${guest.person.lastName}`} onDelete={() => setGuest(null)} />
+              {payerKind === 'person' ? (
+                <GuestPicker
+                  propertyId={propertyId}
+                  minChars={2}
+                  limit={10}
+                  label='Persona'
+                  autoFocus
+                  error={bookerAttempted && !guest}
+                  selected={guest}
+                  onSelect={setGuest}
+                  onCreate={query => {
+                    setCreateGuestQuery(query)
+                    setCreateGuestOpen(true)
+                  }}
+                />
               ) : (
-                <Button onClick={() => setCreateGuestOpen(true)}>+ Nuevo huésped</Button>
+                <CompanyPicker
+                  propertyId={propertyId}
+                  label='Empresa'
+                  autoFocus
+                  error={bookerAttempted && !company}
+                  selected={company}
+                  onSelect={setCompany}
+                  onCreate={query => {
+                    setCreateCompanyQuery(query)
+                    setCreateCompanyOpen(true)
+                  }}
+                />
               )}
-              <CompanyPicker
-                propertyId={propertyId}
-                label='Agencia o empresa'
-                error={bookerAttempted && !guest && !company}
-                onSelect={setCompany}
-              />
               {bookerAttempted && !guest && !company ? (
                 <Typography variant='caption' color='error.main'>
-                  Elige una persona, una agencia, o las dos.
+                  Elige una persona o una empresa.
                 </Typography>
               ) : null}
-              {company ? (
-                <Chip label={company.businessName} onDelete={() => setCompany(null)} />
-              ) : (
-                <Button onClick={() => setCreateCompanyOpen(true)}>+ Nueva empresa</Button>
-              )}
             </div>
           ) : null}
 
@@ -1264,14 +1284,22 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
       <CreateGuestDialog
         open={createGuestOpen}
         propertyId={propertyId}
+        initialQuery={createGuestQuery}
         onClose={() => setCreateGuestOpen(false)}
-        onCreated={setGuest}
+        onCreated={next => {
+          setGuest(next)
+          setCompany(null)
+        }}
       />
       <CreateCompanyDialog
         open={createCompanyOpen}
         propertyId={propertyId}
+        initialQuery={createCompanyQuery}
         onClose={() => setCreateCompanyOpen(false)}
-        onCreated={setCompany}
+        onCreated={next => {
+          setCompany(next)
+          setGuest(null)
+        }}
       />
     </>
   )

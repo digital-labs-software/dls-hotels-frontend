@@ -15,12 +15,10 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
-import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 
 import { toast } from 'react-toastify'
@@ -444,38 +442,50 @@ const ReservationDrawer = ({
                 {editing ? (
                   <>
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                      <div className='flex flex-col gap-2'>
-                        <Typography variant='caption' color='text.secondary'>Persona</Typography>
-                        {guestEditLabel ? (
-                          <Chip label={guestEditLabel} onDelete={() => { setGuestId(null); setPickedGuest(null) }} />
-                        ) : (
-                          <GuestPicker
-                            propertyId={propertyId}
-                            minChars={2}
-                            limit={10}
-                            label='Persona'
-                            onSelect={guest => {
-                              setPickedGuest(guest)
-                              setGuestId(guest?.id ?? null)
-                            }}
-                          />
-                        )}
-                      </div>
-                      <div className='flex flex-col gap-2'>
-                        <Typography variant='caption' color='text.secondary'>Agencia o empresa</Typography>
-                        {companyEditLabel ? (
-                          <Chip label={companyEditLabel} onDelete={() => { setCompanyId(null); setPickedCompany(null) }} />
-                        ) : (
-                          <CompanyPicker
-                            propertyId={propertyId}
-                            label='Agencia o empresa'
-                            onSelect={company => {
-                              setPickedCompany(company)
-                              setCompanyId(company?.id ?? null)
-                            }}
-                          />
-                        )}
-                      </div>
+                      {!companyId || guestId != null ? (
+                        <div className='flex flex-col gap-2'>
+                          <Typography variant='caption' color='text.secondary'>Persona</Typography>
+                          {guestEditLabel ? (
+                            <Chip label={guestEditLabel} onDelete={() => { setGuestId(null); setPickedGuest(null) }} />
+                          ) : (
+                            <GuestPicker
+                              propertyId={propertyId}
+                              minChars={2}
+                              limit={10}
+                              label='Persona'
+                              onSelect={guest => {
+                                setPickedGuest(guest)
+                                setGuestId(guest?.id ?? null)
+                                if (guest) {
+                                  setCompanyId(null)
+                                  setPickedCompany(null)
+                                }
+                              }}
+                            />
+                          )}
+                        </div>
+                      ) : null}
+                      {!guestId || companyId != null ? (
+                        <div className='flex flex-col gap-2'>
+                          <Typography variant='caption' color='text.secondary'>Agencia o empresa</Typography>
+                          {companyEditLabel ? (
+                            <Chip label={companyEditLabel} onDelete={() => { setCompanyId(null); setPickedCompany(null) }} />
+                          ) : (
+                            <CompanyPicker
+                              propertyId={propertyId}
+                              label='Agencia o empresa'
+                              onSelect={company => {
+                                setPickedCompany(company)
+                                setCompanyId(company?.id ?? null)
+                                if (company) {
+                                  setGuestId(null)
+                                  setPickedGuest(null)
+                                }
+                              }}
+                            />
+                          )}
+                        </div>
+                      ) : null}
                       <DateField label='Ingreso' value={editCheckIn} onChange={setEditCheckIn} fullWidth />
                       <DateField
                         label='Salida'
@@ -775,8 +785,13 @@ const PersonSlot = ({
   const [inputValue, setInputValue] = useState('')
   const [options, setOptions] = useState<Guest[]>([])
   const [loading, setLoading] = useState(false)
+  const [searched, setSearched] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
+  const [listOpen, setListOpen] = useState(false)
   const filled = Boolean(value.guestId || value.label)
+  const typed = inputValue.trim()
+  const notFound = searched === typed && typed.length >= 2 && !loading && options.length === 0 && !disabled
+  const showOptions = listOpen && options.length > 0
 
   const placeGuest = (guest: Guest) => {
     setInputValue('')
@@ -789,6 +804,7 @@ const PersonSlot = ({
 
     if (query.length < 2 || disabled || filled) {
       setOptions([])
+      setSearched('')
 
       return
     }
@@ -800,8 +816,10 @@ const PersonSlot = ({
         const page = await reservationsApi.searchGuests(propertyId, query, 8)
 
         setOptions(page.data)
+        setSearched(query)
       } catch {
         setOptions([])
+        setSearched(query)
       } finally {
         setLoading(false)
       }
@@ -825,15 +843,19 @@ const PersonSlot = ({
     )
   }
 
-  const typed = inputValue.trim()
-  const notFound = typed.length >= 2 && !loading && options.length === 0 && !disabled
   const isAssigned = (guest: Guest) => takenIds.some(id => Number(id) === Number(guest.id))
 
   return (
     <>
+      <div className='flex flex-col gap-1'>
+        <div className='flex items-stretch gap-2'>
       <Autocomplete
+        className='min-is-0 flex-1'
         fullWidth
         size='small'
+        open={showOptions}
+        onOpen={() => setListOpen(true)}
+        onClose={() => setListOpen(false)}
         options={options}
         loading={loading}
         disabled={disabled}
@@ -848,8 +870,12 @@ const PersonSlot = ({
           if (!guest || isAssigned(guest)) return
 
           placeGuest(guest)
+          setListOpen(false)
         }}
-        noOptionsText={typed.length < 2 ? 'Escribe el nombre o el DNI' : 'No está registrado'}
+        slotProps={{
+          popper: { placement: 'bottom-start' },
+          paper: { sx: { width: '100%', minWidth: 0, boxSizing: 'border-box' } }
+        }}
         renderOption={(props, guest) => (
           <li {...props} key={guest.uuid}>
             <div className='flex flex-col'>
@@ -871,22 +897,6 @@ const PersonSlot = ({
                 endAdornment: (
                   <>
                     {loading ? <CircularProgress color='inherit' size={16} /> : null}
-                    {notFound ? (
-                      <Tooltip title='Registrar huésped'>
-                        <IconButton
-                          size='small'
-                          edge='end'
-                          aria-label='Registrar huésped'
-                          onMouseDown={event => event.preventDefault()}
-                          onClick={event => {
-                            event.stopPropagation()
-                            setCreateOpen(true)
-                          }}
-                        >
-                          <i className='ri-add-line' />
-                        </IconButton>
-                      </Tooltip>
-                    ) : null}
                     {params.InputProps.endAdornment}
                   </>
                 )
@@ -895,6 +905,24 @@ const PersonSlot = ({
           />
         )}
       />
+        {notFound ? (
+          <Button
+            className='shrink-0 self-stretch'
+            size='small'
+            variant='outlined'
+            onMouseDown={event => event.preventDefault()}
+            onClick={() => setCreateOpen(true)}
+          >
+            Agregar
+          </Button>
+        ) : null}
+        </div>
+        {notFound ? (
+          <Typography variant='caption' color='text.secondary'>
+            Sin coincidencias
+          </Typography>
+        ) : null}
+      </div>
       <CreateGuestDialog
         open={createOpen}
         propertyId={propertyId}
