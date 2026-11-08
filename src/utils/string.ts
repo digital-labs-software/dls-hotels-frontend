@@ -3,6 +3,16 @@ export const withoutSuffix = (str: string, suffix: string) =>
   str.endsWith(suffix) ? str.slice(0, -suffix.length) : str
 export const withoutPrefix = (str: string, prefix: string) => (str.startsWith(prefix) ? str.slice(prefix.length) : str)
 
+/** Cada palabra de un nombre: inicial en mayúscula y el resto en minúscula ("JUAN CARLOS" → "Juan Carlos"). */
+export const toPersonName = (str: string) => {
+  const name = str.trim().replace(/\s+/g, ' ').toLocaleLowerCase('es-PE')
+
+  return name.replace(
+    /(^|[\s'-])(\p{L})/gu,
+    (_, sep: string, letter: string) => sep + letter.toLocaleUpperCase('es-PE')
+  )
+}
+
 /** Igual que el servidor: sin espacios de más, primera letra en mayúscula y el resto en minúscula ("MATRIMONIAL" → "Matrimonial"). */
 export const toCatalogName = (str: string) => {
   const name = str.trim().replace(/\s+/g, ' ').toLocaleLowerCase('es-PE')

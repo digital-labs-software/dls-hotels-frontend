@@ -29,6 +29,7 @@ import { DOCUMENT_TYPE_LABELS, guestDocumentOptions } from '@/types/apps/clients
 import { getClientsApiErrorMessage, guestsApi } from '@/libs/clientsApi'
 import { getLocalizedUrl } from '@/utils/i18n'
 import { scrollToFirstInvalid } from '@/utils/scrollToFirstInvalid'
+import { toPersonName } from '@/utils/string'
 import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup'
 import { useExistingRecord } from '@/hooks/useExistingRecord'
 import { DocumentLookupAdornment, DocumentLookupHelper } from '@/components/document-lookup/DocumentLookupHelper'
@@ -190,8 +191,8 @@ const GuestForm = ({ uuid }: Props) => {
 
     try {
       const payload = {
-        firstName: data.firstName.trim(),
-        lastName: data.lastName.trim(),
+        firstName: toPersonName(data.firstName),
+        lastName: toPersonName(data.lastName),
         documentType: number ? data.documentType || null : null,
         documentNumber: number || null,
         phone: data.phone.trim() || null,
@@ -408,6 +409,10 @@ const GuestForm = ({ uuid }: Props) => {
                           label='Nombres'
                           placeholder='María'
                           disabled={isView || isSubmitting}
+                          onBlur={() => {
+                            field.onChange(toPersonName(field.value ?? ''))
+                            field.onBlur()
+                          }}
                           {...(errors.firstName && { error: true, helperText: errors.firstName.message })}
                         />
                       )}
@@ -428,6 +433,10 @@ const GuestForm = ({ uuid }: Props) => {
                           label='Apellidos'
                           placeholder='Quispe Huamán'
                           disabled={isView || isSubmitting}
+                          onBlur={() => {
+                            field.onChange(toPersonName(field.value ?? ''))
+                            field.onBlur()
+                          }}
                           {...(errors.lastName && { error: true, helperText: errors.lastName.message })}
                         />
                       )}

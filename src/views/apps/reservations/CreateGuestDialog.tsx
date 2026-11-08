@@ -24,6 +24,7 @@ import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup
 import { useExistingRecord } from '@/hooks/useExistingRecord'
 import { DocumentLookupAdornment, DocumentLookupHelper } from '@/components/document-lookup/DocumentLookupHelper'
 import ExistingRecordAlert from '@/components/document-lookup/ExistingRecordAlert'
+import { toPersonName } from '@/utils/string'
 
 type Props = {
   open: boolean
@@ -128,7 +129,13 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
       return
     }
 
-    if (!firstName.trim() || !lastName.trim()) {
+    const names = toPersonName(firstName)
+    const surnames = toPersonName(lastName)
+
+    setFirstName(names)
+    setLastName(surnames)
+
+    if (!names || !surnames) {
       toast.error('Nombres y apellidos son obligatorios.')
 
       return
@@ -146,8 +153,8 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
 
     try {
       const guest = await reservationsApi.createGuest(propertyId, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+        firstName: names,
+        lastName: surnames,
         documentType: number ? documentType || null : null,
         documentNumber: number || null,
         phone: phone.trim() || null,
@@ -254,8 +261,22 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
           />
         ) : (
           <>
-            <TextField label='Nombres' value={firstName} onChange={e => setFirstName(e.target.value)} />
-            <TextField label='Apellidos' value={lastName} onChange={e => setLastName(e.target.value)} />
+            <div className='flex gap-4 max-sm:flex-col'>
+              <TextField
+                fullWidth
+                label='Nombres'
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                onBlur={() => setFirstName(current => toPersonName(current))}
+              />
+              <TextField
+                fullWidth
+                label='Apellidos'
+                value={lastName}
+                onChange={e => setLastName(e.target.value)}
+                onBlur={() => setLastName(current => toPersonName(current))}
+              />
+            </div>
             <div className='flex gap-4 max-sm:flex-col'>
               <TextField fullWidth label='Teléfono' value={phone} onChange={e => setPhone(e.target.value)} />
               <TextField fullWidth label='Correo' value={email} onChange={e => setEmail(e.target.value)} />
