@@ -83,13 +83,6 @@ const horizontalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>
         activeUrl: '/apps/invoicing'
       },
       {
-        label: dictionary['navigation'].staff,
-        icon: 'ri-id-card-line',
-        href: '/apps/staff',
-        exactMatch: false,
-        activeUrl: '/apps/staff'
-      },
-      {
         label: dictionary['navigation'].cash,
         icon: 'ri-safe-2-line',
         href: '/apps/cash',
@@ -97,18 +90,25 @@ const horizontalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>
         activeUrl: '/apps/cash'
       },
       {
-        label: dictionary['navigation'].reports,
-        icon: 'ri-file-chart-line',
-        href: '/apps/reports',
-        exactMatch: false,
-        activeUrl: '/apps/reports'
-      },
-      {
         label: dictionary['navigation'].subscription,
         icon: 'ri-secure-payment-line',
         href: '/apps/billing',
         exactMatch: false,
         activeUrl: '/apps/billing'
+      },
+      {
+        label: dictionary['navigation'].staff,
+        icon: 'ri-id-card-line',
+        href: '/apps/staff',
+        exactMatch: false,
+        activeUrl: '/apps/staff'
+      },
+      {
+        label: dictionary['navigation'].reports,
+        icon: 'ri-file-chart-line',
+        href: '/apps/reports',
+        exactMatch: false,
+        activeUrl: '/apps/reports'
       },
       {
         label: dictionary['navigation'].hotel,

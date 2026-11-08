@@ -757,47 +757,6 @@ const CashPage = () => {
         </Card>
       )}
 
-      <div className='flex flex-col gap-3'>
-        <div className='flex flex-wrap items-end gap-3'>
-          <TextField
-            label='Código'
-            value={codeQuery}
-            onChange={event => {
-              setCodeQuery(event.target.value)
-              setCodeSearchMiss(false)
-            }}
-            onKeyDown={event => {
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                void searchCash()
-              }
-            }}
-            placeholder='C-000001'
-            className='min-is-[160px]'
-          />
-          <Button variant='outlined' disabled={searching} onClick={() => void searchCash()}>
-            Buscar
-          </Button>
-        </div>
-        {foundTurn ? (
-          <div className='flex flex-wrap items-center justify-between gap-3 rounded border border-solid border-[var(--mui-palette-divider)] px-4 py-3'>
-            <div>
-              <Typography className='font-medium'>{foundTurn.number}</Typography>
-              <Typography variant='body2' color='text.secondary'>
-                {foundTurn.cashier.name}
-                {' · '}
-                {foundTurn.status === 'OPEN' ? 'Abierta' : `Cerrada · ${differenceLabel(foundTurn)}`}
-              </Typography>
-            </div>
-            <Button size='small' onClick={() => void printSession(foundTurn.uuid)}>
-              Ver
-            </Button>
-          </div>
-        ) : codeSearchMiss ? (
-          <Typography color='text.secondary'>No hay una caja con ese código.</Typography>
-        ) : null}
-      </div>
-
       <Accordion
         defaultExpanded={!current}
         disableGutters
@@ -810,7 +769,49 @@ const CashPage = () => {
             {previousTurns.length > 0 ? ` (${previousTurns.length})` : ''}
           </Typography>
         </AccordionSummary>
-        <AccordionDetails>{historyTable}</AccordionDetails>
+        <AccordionDetails className='flex flex-col gap-4'>
+          <div className='flex flex-col gap-3'>
+            <div className='flex flex-wrap items-end gap-3'>
+              <TextField
+                label='Código'
+                value={codeQuery}
+                onChange={event => {
+                  setCodeQuery(event.target.value)
+                  setCodeSearchMiss(false)
+                }}
+                onKeyDown={event => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void searchCash()
+                  }
+                }}
+                placeholder='C-000001'
+                className='min-is-[160px]'
+              />
+              <Button variant='outlined' disabled={searching} onClick={() => void searchCash()}>
+                Buscar
+              </Button>
+            </div>
+            {foundTurn ? (
+              <div className='flex flex-wrap items-center justify-between gap-3 rounded border border-solid border-[var(--mui-palette-divider)] px-4 py-3'>
+                <div>
+                  <Typography className='font-medium'>{foundTurn.number}</Typography>
+                  <Typography variant='body2' color='text.secondary'>
+                    {foundTurn.cashier.name}
+                    {' · '}
+                    {foundTurn.status === 'OPEN' ? 'Abierta' : `Cerrada · ${differenceLabel(foundTurn)}`}
+                  </Typography>
+                </div>
+                <Button size='small' onClick={() => void printSession(foundTurn.uuid)}>
+                  Ver
+                </Button>
+              </div>
+            ) : codeSearchMiss ? (
+              <Typography color='text.secondary'>No hay una caja con ese código.</Typography>
+            ) : null}
+          </div>
+          {historyTable}
+        </AccordionDetails>
       </Accordion>
     </div>
   )
@@ -927,9 +928,14 @@ const CashPage = () => {
     <div className='flex flex-col gap-6'>
       {canManageOtherCash ? (
         <TabContext value={cashTab}>
-          <CustomTabList pill='true' onChange={(_event, value) => setCashTab(value)} aria-label='Caja'>
-            <Tab value='mine' label='Mi caja' />
-            <Tab value='others' label={otherOpenSessions.length > 0 ? `Otros turnos (${otherOpenSessions.length})` : 'Otros turnos'} />
+          <CustomTabList onChange={(_event, value) => setCashTab(value)} aria-label='Caja'>
+            <Tab value='mine' label='Mi caja' icon={<i className='ri-safe-2-line' />} iconPosition='top' />
+            <Tab
+              value='others'
+              label={otherOpenSessions.length > 0 ? `Otros turnos (${otherOpenSessions.length})` : 'Otros turnos'}
+              icon={<i className='ri-group-line' />}
+              iconPosition='top'
+            />
           </CustomTabList>
           <TabPanel value='mine' className='p-0'>
             {myCashPanel}

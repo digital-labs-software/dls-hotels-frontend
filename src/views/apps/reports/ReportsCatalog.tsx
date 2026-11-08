@@ -89,12 +89,6 @@ const DEFAULT_TAB = 'arrivals'
 
 const resolveTab = (value?: string) => ALL_TABS.find(tab => tab.value === value) ?? ALL_TABS.find(tab => tab.value === DEFAULT_TAB)!
 
-const tabLabel = (icon: string, label: string) => (
-  <div className='flex items-center gap-1.5'>
-    <i className={`${icon} text-lg`} />
-    {label}
-  </div>
-)
 
 const ReportsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
   const router = useRouter()
@@ -158,9 +152,15 @@ const ReportsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
   return (
     <div className='flex flex-col gap-6'>
       <TabContext value={group.value}>
-        <CustomTabList onChange={handleGroupChange} variant='scrollable' pill='true' aria-label='Grupos de reportes'>
+        <CustomTabList onChange={handleGroupChange} variant='scrollable' aria-label='Grupos de reportes'>
           {visibleGroups.map(item => (
-            <Tab key={item.value} value={item.value} label={tabLabel(item.icon, item.label)} />
+            <Tab
+              key={item.value}
+              value={item.value}
+              label={item.label}
+              icon={<i className={item.icon} />}
+              iconPosition='top'
+            />
           ))}
         </CustomTabList>
       </TabContext>
@@ -168,7 +168,13 @@ const ReportsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
       <TabContext value={current.value}>
         <CustomTabList onChange={handleTabChange} variant='scrollable' scrollButtons='auto' aria-label='Reportes'>
           {group.tabs.map(tab => (
-            <Tab key={tab.value} value={tab.value} label={tabLabel(tab.icon, tab.label)} />
+            <Tab
+              key={tab.value}
+              value={tab.value}
+              label={tab.label}
+              icon={<i className={tab.icon} />}
+              iconPosition='start'
+            />
           ))}
         </CustomTabList>
         <TabPanel value={current.value} className='p-0'>

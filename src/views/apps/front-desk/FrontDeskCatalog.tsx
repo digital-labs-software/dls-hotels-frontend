@@ -93,39 +93,20 @@ const FrontDeskCatalog = ({ defaultTab }: { defaultTab?: string }) => {
     <Grid container spacing={6}>
       <Grid size={{ xs: 12 }} className='flex flex-col gap-4'>
         <TabContext value={activeTab}>
-          <CustomTabList onChange={handleChange} variant='scrollable' pill='true' wrap='true'>
+          <CustomTabList onChange={handleChange} variant='scrollable' wrap='true'>
             {allowedTabs.includes('desk') ? (
-            <Tab
-              label={
-                <div className='flex flex-wrap items-center justify-center gap-1.5 text-center'>
-                  <i className='ri-dashboard-2-line text-lg' />
-                  Recepción
-                </div>
-              }
-              value='desk'
-            />
+              <Tab
+                value='desk'
+                label='Recepción'
+                icon={<i className='ri-dashboard-2-line' />}
+                iconPosition='top'
+              />
             ) : null}
             {allowedTabs.includes('accounts') ? (
-            <Tab
-              label={
-                <div className='flex flex-wrap items-center justify-center gap-1.5 text-center'>
-                  <i className='ri-bill-line text-lg' />
-                  Cuentas
-                </div>
-              }
-              value='accounts'
-            />
+              <Tab value='accounts' label='Cuentas' icon={<i className='ri-bill-line' />} iconPosition='top' />
             ) : null}
             {allowedTabs.includes('payments') ? (
-            <Tab
-              label={
-                <div className='flex flex-wrap items-center justify-center gap-1.5 text-center'>
-                  <i className='ri-wallet-3-line text-lg' />
-                  Caja
-                </div>
-              }
-              value='payments'
-            />
+              <Tab value='payments' label='Caja' icon={<i className='ri-wallet-3-line' />} iconPosition='top' />
             ) : null}
           </CustomTabList>
 

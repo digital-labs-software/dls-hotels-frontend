@@ -327,10 +327,26 @@ const ReservationsPage = () => {
       <Card>
         <CardContent className='flex flex-col gap-4'>
           <TabContext value={tab}>
-            <CustomTabList onChange={(_, value) => setTab(value as MainTab)} variant='scrollable' pill='true'>
-              {showCalendar ? <Tab value='calendar' label='Calendario' /> : null}
-              {showList ? <Tab value='list' label='Lista' /> : null}
-              {showNotes ? <Tab value='notes' label={`Por completar${notes.length ? ` (${notes.length})` : ''}`} /> : null}
+            <CustomTabList onChange={(_, value) => setTab(value as MainTab)} variant='scrollable'>
+              {showCalendar ? (
+                <Tab
+                  value='calendar'
+                  label='Calendario'
+                  icon={<i className='ri-calendar-line' />}
+                  iconPosition='top'
+                />
+              ) : null}
+              {showList ? (
+                <Tab value='list' label='Lista' icon={<i className='ri-list-check-2' />} iconPosition='top' />
+              ) : null}
+              {showNotes ? (
+                <Tab
+                  value='notes'
+                  label={`Por completar${notes.length ? ` (${notes.length})` : ''}`}
+                  icon={<i className='ri-sticky-note-line' />}
+                  iconPosition='top'
+                />
+              ) : null}
             </CustomTabList>
 
             <TabPanel value='calendar' className='p-0'>

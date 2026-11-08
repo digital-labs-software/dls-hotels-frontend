@@ -85,27 +85,21 @@ const StaffCatalog = ({ defaultTab }: { defaultTab?: string }) => {
     <Grid container spacing={6}>
       <Grid size={{ xs: 12 }} className='flex flex-col gap-6'>
         <TabContext value={activeTab}>
-          <CustomTabList onChange={handleChange} variant='scrollable' pill='true'>
+          <CustomTabList onChange={handleChange} variant='scrollable'>
             {canViewEmployees ? (
               <Tab
-                label={
-                  <div className='flex items-center gap-1.5'>
-                    <i className='ri-id-card-line text-lg' />
-                    Empleados
-                  </div>
-                }
                 value='employees'
+                label='Empleados'
+                icon={<i className='ri-id-card-line' />}
+                iconPosition='top'
               />
             ) : null}
             {canViewRoles ? (
               <Tab
-                label={
-                  <div className='flex items-center gap-1.5'>
-                    <i className='ri-shield-user-line text-lg' />
-                    Roles y permisos
-                  </div>
-                }
                 value='roles'
+                label='Roles y permisos'
+                icon={<i className='ri-shield-user-line' />}
+                iconPosition='top'
               />
             ) : null}
           </CustomTabList>

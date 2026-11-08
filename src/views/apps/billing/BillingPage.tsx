@@ -161,29 +161,17 @@ const BillingPage = () => {
             <CustomTabList
               onChange={(_event: SyntheticEvent, value: string) => isBillingTab(value) && goTab(value)}
               variant='scrollable'
-              pill='true'
             >
               {showPlan ? (
-              <Tab
-                label={
-                  <div className='flex items-center gap-1.5'>
-                    <i className='ri-vip-crown-line text-lg' />
-                    Mi plan
-                  </div>
-                }
-                value='plan'
-              />
+                <Tab value='plan' label='Mi plan' icon={<i className='ri-vip-crown-line' />} iconPosition='top' />
               ) : null}
               {showHistory ? (
-              <Tab
-                label={
-                  <div className='flex items-center gap-1.5'>
-                    <i className='ri-file-list-3-line text-lg' />
-                    Historial
-                  </div>
-                }
-                value='history'
-              />
+                <Tab
+                  value='history'
+                  label='Historial'
+                  icon={<i className='ri-file-list-3-line' />}
+                  iconPosition='top'
+                />
               ) : null}
             </CustomTabList>
 

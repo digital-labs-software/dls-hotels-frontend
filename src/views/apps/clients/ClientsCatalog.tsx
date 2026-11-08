@@ -92,28 +92,17 @@ const ClientsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
     <Grid container spacing={6}>
       <Grid size={{ xs: 12 }} className='flex flex-col gap-6'>
         <TabContext value={activeTab}>
-          <CustomTabList onChange={handleChange} variant='scrollable' pill='true'>
+          <CustomTabList onChange={handleChange} variant='scrollable'>
             {allowedTabs.includes('guests') ? (
-            <Tab
-              label={
-                <div className='flex items-center gap-1.5'>
-                  <i className='ri-user-line text-lg' />
-                  Huéspedes
-                </div>
-              }
-              value='guests'
-            />
+              <Tab value='guests' label='Huéspedes' icon={<i className='ri-user-line' />} iconPosition='top' />
             ) : null}
             {allowedTabs.includes('companies') ? (
-            <Tab
-              label={
-                <div className='flex items-center gap-1.5'>
-                  <i className='ri-building-line text-lg' />
-                  Empresas
-                </div>
-              }
-              value='companies'
-            />
+              <Tab
+                value='companies'
+                label='Empresas'
+                icon={<i className='ri-building-line' />}
+                iconPosition='top'
+              />
             ) : null}
           </CustomTabList>
 

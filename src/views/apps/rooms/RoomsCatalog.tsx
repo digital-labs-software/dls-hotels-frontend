@@ -106,50 +106,33 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
     <Grid container spacing={6}>
       <Grid size={{ xs: 12 }} className='flex flex-col gap-6'>
         <TabContext value={activeTab}>
-          <CustomTabList onChange={handleChange} variant='scrollable' pill='true' wrap='true'>
+          <CustomTabList onChange={handleChange} variant='scrollable' wrap='true'>
             {allowedTabs.includes('rooms') ? (
-            <Tab
-              label={
-                <div className='flex flex-wrap items-center justify-center gap-1.5 text-center'>
-                  <i className='ri-hotel-bed-line text-lg' />
-                  Habitaciones
-                </div>
-              }
-              value='rooms'
-            />
+              <Tab
+                value='rooms'
+                label='Habitaciones'
+                icon={<i className='ri-hotel-bed-line' />}
+                iconPosition='top'
+              />
             ) : null}
             {allowedTabs.includes('rates') ? (
-            <Tab
-              label={
-                <div className='flex flex-wrap items-center justify-center gap-1.5 text-center'>
-                  <i className='ri-money-dollar-circle-line text-lg' />
-                  Tarifas
-                </div>
-              }
-              value='rates'
-            />
+              <Tab
+                value='rates'
+                label='Tarifas'
+                icon={<i className='ri-money-dollar-circle-line' />}
+                iconPosition='top'
+              />
             ) : null}
             {allowedTabs.includes('room-types') ? (
-            <Tab
-              label={
-                <div className='flex flex-wrap items-center justify-center gap-1.5 text-center'>
-                  <i className='ri-price-tag-3-line text-lg' />
-                  Tipos de habitación
-                </div>
-              }
-              value='room-types'
-            />
+              <Tab
+                value='room-types'
+                label='Tipos de habitación'
+                icon={<i className='ri-price-tag-3-line' />}
+                iconPosition='top'
+              />
             ) : null}
             {allowedTabs.includes('floors') ? (
-            <Tab
-              label={
-                <div className='flex flex-wrap items-center justify-center gap-1.5 text-center'>
-                  <i className='ri-building-4-line text-lg' />
-                  Pisos
-                </div>
-              }
-              value='floors'
-            />
+              <Tab value='floors' label='Pisos' icon={<i className='ri-building-4-line' />} iconPosition='top' />
             ) : null}
           </CustomTabList>
 

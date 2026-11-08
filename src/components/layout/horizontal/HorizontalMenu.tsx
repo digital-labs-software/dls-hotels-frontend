@@ -279,16 +279,6 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
         ) : null}
         {canViewReports || canViewStaff || canViewHotel ? (
         <SubMenu label={dictionary['navigation'].administration} icon={<i className='ri-settings-3-line' />}>
-          {canViewReports ? (
-          <MenuItem
-            href={`/${locale}/apps/reports`}
-            exactMatch={false}
-            activeUrl='/apps/reports'
-            icon={<i className='ri-file-chart-line' />}
-          >
-            {dictionary['navigation'].reports}
-          </MenuItem>
-          ) : null}
           {canViewStaff ? (
             <MenuItem
               href={`/${locale}/apps/staff`}
@@ -299,15 +289,25 @@ const HorizontalMenu = ({ dictionary }: { dictionary: Awaited<ReturnType<typeof 
               {dictionary['navigation'].staff}
             </MenuItem>
           ) : null}
+          {canViewReports ? (
+            <MenuItem
+              href={`/${locale}/apps/reports`}
+              exactMatch={false}
+              activeUrl='/apps/reports'
+              icon={<i className='ri-file-chart-line' />}
+            >
+              {dictionary['navigation'].reports}
+            </MenuItem>
+          ) : null}
           {canViewHotel ? (
-          <MenuItem
-            href={`/${locale}/apps/hotel`}
-            exactMatch={false}
-            activeUrl='/apps/hotel'
-            icon={<i className='ri-building-4-line' />}
-          >
-            {dictionary['navigation'].hotel}
-          </MenuItem>
+            <MenuItem
+              href={`/${locale}/apps/hotel`}
+              exactMatch={false}
+              activeUrl='/apps/hotel'
+              icon={<i className='ri-building-4-line' />}
+            >
+              {dictionary['navigation'].hotel}
+            </MenuItem>
           ) : null}
         </SubMenu>
         ) : null}

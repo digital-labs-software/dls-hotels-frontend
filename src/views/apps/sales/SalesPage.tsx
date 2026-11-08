@@ -225,9 +225,9 @@ const SalesPage = () => {
   return (
     <div className='flex flex-col gap-4'>
       <TabContext value={tab}>
-        <CustomTabList pill='true' onChange={(_event, value) => setTab(value)}>
-          <Tab value='sell' label='Ventas' />
-          <Tab value='products' label='Productos' />
+        <CustomTabList onChange={(_event, value) => setTab(value)}>
+          <Tab value='sell' label='Ventas' icon={<i className='ri-shopping-bag-3-line' />} iconPosition='top' />
+          <Tab value='products' label='Productos' icon={<i className='ri-box-3-line' />} iconPosition='top' />
         </CustomTabList>
         <TabPanel value='sell' className='p-0'>
           {loading ? (
