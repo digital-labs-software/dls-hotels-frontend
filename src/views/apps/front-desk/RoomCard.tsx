@@ -45,11 +45,11 @@ const arrivalName = (room: RackRoom) =>
   room.arrival?.guestName || room.arrival?.bookerName || room.arrival?.companyName || null
 
 const primaryHint = (room: RackRoom) => {
-  if (room.arrival) return 'Doble clic: ver reserva · Clic derecho: más acciones'
-  if (room.displayStatus === 'OCCUPIED') return 'Doble clic: ver estadía · Clic derecho: más acciones'
-  if (room.displayStatus === 'MAINTENANCE') return 'Doble clic: ver mantenimiento · Clic derecho: más acciones'
+  if (room.arrival) return 'Clic: ver reserva · Clic derecho: más acciones'
+  if (room.displayStatus === 'OCCUPIED') return 'Clic: ver estadía · Clic derecho: más acciones'
+  if (room.displayStatus === 'MAINTENANCE') return 'Clic: ver mantenimiento · Clic derecho: más acciones'
   if (room.displayStatus === 'AVAILABLE' || room.displayStatus === 'CLEANING') {
-    return 'Doble clic: nuevo ingreso · Clic derecho: más acciones'
+    return 'Clic: nuevo ingreso · Clic derecho: más acciones'
   }
 
   return 'Clic derecho: más acciones'
@@ -66,6 +66,7 @@ const RoomCard = ({ room, onOpenMenu, onPrimaryAction, onOpenPhoto }: Props) => 
   const needsCleaning = room.displayStatus === 'RESERVED' && room.status === 'CLEANING'
   const statusLabel = RACK_STATUS_LABELS[room.displayStatus]
   const photoUrl = room.photoUrl ? cloudinaryTransformedUrl(room.photoUrl, ROOM_PHOTO_THUMB) || room.photoUrl : null
+  const showPhoto = room.displayStatus === 'AVAILABLE' && Boolean(photoUrl)
   const hint = primaryHint(room)
 
   return (
@@ -74,7 +75,7 @@ const RoomCard = ({ room, onOpenMenu, onPrimaryAction, onOpenPhoto }: Props) => 
       tabIndex={0}
       title={hint}
       aria-label={`Habitación ${room.number}. ${hint}`}
-      onDoubleClick={() => onPrimaryAction(room)}
+      onClick={() => onPrimaryAction(room)}
       onContextMenu={event => {
         event.preventDefault()
         onOpenMenu(event, room)
@@ -88,94 +89,62 @@ const RoomCard = ({ room, onOpenMenu, onPrimaryAction, onOpenPhoto }: Props) => 
       className='cursor-pointer rounded-md flex flex-col overflow-hidden'
       style={{
         width: 220,
-        minHeight: photoUrl ? undefined : 168,
-        backgroundColor: photoUrl ? undefined : palette.fill,
-        color: photoUrl ? undefined : palette.ink,
+        minHeight: 168,
+        height: showPhoto ? 168 : undefined,
+        backgroundColor: palette.fill,
+        color: palette.ink,
         border: `1px solid ${palette.ink}`
       }}
     >
-      {photoUrl ? (
-        <button
-          type='button'
-          className='relative overflow-hidden bg-backgroundPaper'
-          style={{ height: 150 }}
-          onClick={event => {
-            event.stopPropagation()
-            onOpenPhoto(room)
-          }}
-          onDoubleClick={event => event.stopPropagation()}
-          onContextMenu={event => {
-            event.preventDefault()
-            event.stopPropagation()
-            onOpenMenu(event, room)
-          }}
-        >
-          <img src={photoUrl} alt={`Habitación ${room.number}`} loading='lazy' className='is-full bs-full object-cover' />
-          <Typography
-            variant='h5'
-            className='absolute font-semibold leading-none text-white'
-            style={{ top: 8, left: 8, textShadow: '0 1px 3px rgba(0,0,0,0.85)' }}
-          >
-            {room.number}
+      <div className='flex items-center justify-between gap-2' style={{ minHeight: 40, padding: '10px 10px' }}>
+        <Typography variant='h5' className='font-semibold leading-none'>
+          {room.number}
+        </Typography>
+        {room.roomTypeCode ? (
+          <Typography variant='body2' className='font-semibold uppercase'>
+            {room.roomTypeCode}
           </Typography>
+        ) : null}
+      </div>
+      <div style={{ height: 1, backgroundColor: palette.line }} />
+      {showPhoto && photoUrl ? (
+        <div className='relative overflow-hidden bg-backgroundPaper' style={{ flex: 1, minHeight: 0 }}>
+          <img src={photoUrl} alt={`Habitación ${room.number}`} loading='lazy' className='is-full bs-full object-cover' />
+          <button
+            type='button'
+            aria-label='Ver foto'
+            title='Ver foto'
+            className='absolute flex cursor-pointer items-center justify-center border-0 text-white'
+            style={{ right: 6, bottom: 6, width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.55)' }}
+            onClick={event => {
+              event.stopPropagation()
+              onOpenPhoto(room)
+            }}
+            onDoubleClick={event => event.stopPropagation()}
+          >
+            <i className='ri-zoom-in-line text-base leading-none' />
+          </button>
+        </div>
+      ) : (
+        <div className='flex flex-1 items-center justify-center gap-1.5 px-2 py-2 text-center' style={{ minHeight: 72 }}>
           {holder ? (
-            <Typography
-              variant='body2'
-              className='absolute inset-0 flex items-center justify-center px-3 text-center font-medium uppercase text-white'
-              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.85)' }}
-            >
-              {holder}
-            </Typography>
+            <>
+              <i className='ri-user-line shrink-0 text-base leading-none' />
+              <Typography variant='body1' className='font-medium uppercase'>
+                {holder}
+              </Typography>
+            </>
           ) : room.displayStatus === 'MAINTENANCE' && room.maintenanceReason ? (
-            <Typography
-              variant='body2'
-              className='absolute inset-0 flex items-center justify-center px-3 text-center font-medium text-white'
-              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.85)' }}
-            >
+            <Typography variant='body1' className='font-medium'>
               {room.maintenanceReason}
             </Typography>
+          ) : room.displayStatus === 'AVAILABLE' ? (
+            <i className='ri-hotel-bed-line' style={{ fontSize: 40, lineHeight: 1, opacity: 0.45 }} aria-hidden />
           ) : null}
-        </button>
-      ) : (
-        <div className='flex flex-1 flex-col'>
-          <div className='flex items-center' style={{ padding: '10px 10px' }}>
-            <Typography variant='h5' className='font-semibold leading-none'>
-              {room.number}
-            </Typography>
-          </div>
-          <div style={{ height: 1, backgroundColor: palette.line }} />
-          <div className='flex flex-1 items-center justify-center gap-1.5 px-2 py-2 text-center'>
-            {holder ? (
-              <>
-                <i className='ri-user-line shrink-0 text-base leading-none' />
-                <Typography variant='body1' className='font-medium uppercase'>
-                  {holder}
-                </Typography>
-              </>
-            ) : room.displayStatus === 'MAINTENANCE' && room.maintenanceReason ? (
-              <Typography variant='body1' className='font-medium'>
-                {room.maintenanceReason}
-              </Typography>
-            ) : (
-              <>
-                <i className='ri-hotel-bed-line shrink-0 text-base leading-none' />
-                <Typography variant='body1' className='font-medium'>
-                  {room.number}
-                </Typography>
-              </>
-            )}
-          </div>
-          <div style={{ height: 1, backgroundColor: palette.line }} />
         </div>
       )}
-      <div
-        className='flex flex-col items-center text-center'
-        style={
-          photoUrl
-            ? { backgroundColor: palette.fill, color: palette.ink, padding: '8px 10px' }
-            : { color: palette.ink, padding: '8px 10px' }
-        }
-      >
+      <div style={{ height: 1, backgroundColor: palette.line }} />
+      <div className='flex flex-col items-center text-center' style={{ color: palette.ink, padding: '8px 10px' }}>
         <Typography variant='body2' className='font-semibold uppercase' color='inherit'>
           {statusLabel}
         </Typography>

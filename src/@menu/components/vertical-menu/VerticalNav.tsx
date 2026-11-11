@@ -46,6 +46,7 @@ export type VerticalNavProps = HTMLAttributes<HTMLHtmlElement> & {
   backdropColor?: string
   scrollWithContent?: boolean
   customStyles?: CSSObject
+  side?: 'left' | 'right'
 }
 
 const VerticalNav = (props: VerticalNavProps) => {
@@ -64,6 +65,7 @@ const VerticalNav = (props: VerticalNavProps) => {
     scrollWithContent = false,
     className,
     customStyles,
+    side = 'left',
     children,
     ...rest
   } = props
@@ -173,6 +175,7 @@ const VerticalNav = (props: VerticalNavProps) => {
       customStyles={customStyles}
       scrollWithContent={isScrollWithContentContext}
       transitionDuration={transitionDurationContext}
+      side={side}
       className={classnames(
         verticalNavClasses.root,
         {
@@ -193,6 +196,7 @@ const VerticalNav = (props: VerticalNavProps) => {
         width={widthContext}
         className={verticalNavClasses.container}
         transitionDuration={transitionDurationContext}
+        side={side}
         {
           // eslint-disable-next-line lines-around-comment
           /* Toggle verticalNav on hover only when isPopoutWhenCollapsedContext(default false) is false */

@@ -1,3 +1,5 @@
+'use client'
+
 // React Imports
 import type { ReactNode } from 'react'
 
@@ -9,6 +11,9 @@ import type { ChildrenType } from '@core/types'
 
 // Component Imports
 import LayoutContent from './components/vertical/LayoutContent'
+
+// Hook Imports
+import { useSettings } from '@core/hooks/useSettings'
 
 // Util Imports
 import { verticalLayoutClasses } from './utils/layoutClasses'
@@ -25,9 +30,11 @@ type VerticalLayoutProps = ChildrenType & {
 const VerticalLayout = (props: VerticalLayoutProps) => {
   // Props
   const { navbar, footer, navigation, children } = props
+  const { settings } = useSettings()
+  const navOnRight = settings.navSide === 'right'
 
   return (
-    <div className={classnames(verticalLayoutClasses.root, 'flex flex-auto')}>
+    <div className={classnames(verticalLayoutClasses.root, 'flex flex-auto', navOnRight && 'flex-row-reverse')}>
       {navigation || null}
       <StyledContentWrapper
         className={classnames(verticalLayoutClasses.contentWrapper, 'flex flex-col min-is-0 is-full')}

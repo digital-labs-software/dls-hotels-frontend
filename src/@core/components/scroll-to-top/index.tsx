@@ -8,21 +8,29 @@ import Zoom from '@mui/material/Zoom'
 import { styled } from '@mui/material/styles'
 import useScrollTrigger from '@mui/material/useScrollTrigger'
 
+// Hook Imports
+import { useSettings } from '@core/hooks/useSettings'
+
 interface ScrollToTopProps {
   className?: string
   children: ReactNode
 }
 
-const ScrollToTopStyled = styled('div')(({ theme }) => ({
+const ScrollToTopStyled = styled('div', {
+  shouldForwardProp: prop => prop !== 'navOnRight'
+})<{ navOnRight?: boolean }>(({ theme, navOnRight }) => ({
   zIndex: 'var(--mui-zIndex-fab)',
   position: 'fixed',
-  insetInlineEnd: theme.spacing(10),
+  insetInlineEnd: navOnRight ? 'auto' : theme.spacing(10),
+  insetInlineStart: navOnRight ? theme.spacing(10) : 'auto',
   insetBlockEnd: theme.spacing(14)
 }))
 
 const ScrollToTop = (props: ScrollToTopProps) => {
   // Props
   const { children, className } = props
+  const { settings } = useSettings()
+  const navOnRight = settings.navSide === 'right'
 
   // Hooks
   // init trigger
@@ -41,7 +49,7 @@ const ScrollToTop = (props: ScrollToTopProps) => {
 
   return (
     <Zoom in={trigger}>
-      <ScrollToTopStyled className={className} onClick={handleClick} role='presentation'>
+      <ScrollToTopStyled className={className} navOnRight={navOnRight} onClick={handleClick} role='presentation'>
         {children}
       </ScrollToTopStyled>
     </Zoom>

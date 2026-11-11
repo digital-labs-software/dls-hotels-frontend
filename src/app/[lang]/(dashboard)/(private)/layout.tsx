@@ -72,7 +72,7 @@ const Layout = async (props: ChildrenType & { params: Promise<{ lang: string }> 
           </Button>
         </ScrollToTop>
         <SupportChatWidget />
-        <Customizer dir={direction} />
+        <Customizer />
       </AuthGuard>
     </Providers>
   )

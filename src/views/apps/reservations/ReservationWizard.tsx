@@ -61,6 +61,7 @@ import {
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { formatPeople, roomCapacity } from '@/types/apps/roomTypeTypes'
 import DateField from '@/components/date-picker/DateField'
+import StayDatesField from '@/components/date-picker/StayDatesField'
 import GuestPicker from '@views/apps/front-desk/GuestPicker'
 import PayerKindToggle, { type PayerKind } from '@views/apps/front-desk/PayerKindToggle'
 import CompanyPicker from './CompanyPicker'
@@ -1001,33 +1002,17 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                   />
                 }
               >
-                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-                  <DateField
-                    fullWidth
-                    label='Ingreso (check-in)'
-                    value={primary.checkInDate}
-                    onChange={value =>
-                      value &&
-                      setStayDates(
-                        value,
-                        primary.checkOutDate > value ? primary.checkOutDate : addDays(value, Math.max(stayNights, 1))
-                      )
-                    }
-                  />
-                  <DateField
-                    fullWidth
-                    label='Salida (check-out)'
-                    value={primary.checkOutDate}
-                    minDate={primary.checkInDate ? addDays(primary.checkInDate, 1) : undefined}
-                    error={roomAttempted && primary.checkOutDate <= primary.checkInDate}
-                    helperText={
-                      roomAttempted && primary.checkOutDate <= primary.checkInDate
-                        ? 'La salida tiene que ser después del ingreso.'
-                        : undefined
-                    }
-                    onChange={value => value && setStayDates(primary.checkInDate, value)}
-                  />
-                </div>
+                <StayDatesField
+                  checkIn={primary.checkInDate}
+                  checkOut={primary.checkOutDate}
+                  error={roomAttempted && primary.checkOutDate <= primary.checkInDate}
+                  helperText={
+                    roomAttempted && primary.checkOutDate <= primary.checkInDate
+                      ? 'La salida tiene que ser después del ingreso.'
+                      : undefined
+                  }
+                  onChange={setStayDates}
+                />
               </Section>
 
               <Section

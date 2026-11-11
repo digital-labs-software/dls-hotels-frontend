@@ -129,6 +129,7 @@ export interface RackRoom {
   number: string
   roomTypeId: number
   roomTypeName: string
+  roomTypeCode: string
   effectivePrice: number
   photoUrl: string | null
   notes: string | null

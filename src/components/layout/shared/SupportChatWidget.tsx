@@ -17,6 +17,7 @@ import { styled } from '@mui/material/styles'
 import { useSession } from 'next-auth/react'
 
 import CustomIconButton from '@core/components/mui/IconButton'
+import { useSettings } from '@core/hooks/useSettings'
 
 type SupportMessage = {
   id: number
@@ -56,6 +57,8 @@ const initialMessages: SupportMessage[] = [
 
 const SupportChatWidget = () => {
   const { data: session } = useSession()
+  const { settings } = useSettings()
+  const navOnRight = settings.navSide === 'right'
   const [open, setOpen] = useState(false)
   const [tooltipOpen, setTooltipOpen] = useState(false)
   const [msg, setMsg] = useState('')
@@ -123,14 +126,16 @@ const SupportChatWidget = () => {
       className='mui-fixed'
       sx={{
         position: 'fixed',
-        right: { xs: 16, sm: 24 },
+        ...(navOnRight
+          ? { left: { xs: 16, sm: 24 }, right: 'auto' }
+          : { right: { xs: 16, sm: 24 }, left: 'auto' }),
         bottom: { xs: 16, sm: 24 },
 
         // Debajo del panel lateral (1200) para no tapar Guardar.
         zIndex: theme => theme.zIndex.drawer - 1,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'flex-end',
+        alignItems: navOnRight ? 'flex-start' : 'flex-end',
         gap: 2
       }}
     >
@@ -255,7 +260,7 @@ const SupportChatWidget = () => {
 
       <Tooltip
         title='Soporte en línea'
-        placement='left'
+        placement={navOnRight ? 'right' : 'left'}
         open={!open && tooltipOpen}
         onOpen={() => setTooltipOpen(true)}
         onClose={() => setTooltipOpen(false)}

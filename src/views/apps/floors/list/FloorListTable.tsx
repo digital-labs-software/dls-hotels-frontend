@@ -336,10 +336,7 @@ const FloorListTable = () => {
         maxWidth='xs'
       >
         <DialogTitle>Crear varios pisos</DialogTitle>
-        <DialogContent className='flex flex-col gap-4'>
-          <Typography>
-            Crea Piso 1, Piso 2… de una vez. Después puede agregar Planta baja, Sótano u otros con «Nuevo piso».
-          </Typography>
+        <DialogContent className='flex flex-col gap-4 pt-2'>
           <TextField
             fullWidth
             autoFocus
@@ -352,11 +349,6 @@ const FloorListTable = () => {
             error={!countValid}
             helperText={countValid ? 'Por ejemplo: 3 crea Piso 1, Piso 2 y Piso 3.' : 'Entre 1 y 50 pisos.'}
           />
-          {newNames.length > 0 ? (
-            <Typography variant='body2' color='text.primary'>
-              Se crearán: {newNames.join(', ')}.
-            </Typography>
-          ) : null}
           {existingNames.length > 0 ? (
             <Typography variant='body2' color='text.secondary'>
               Ya existen y no se repiten: {existingNames.join(', ')}.

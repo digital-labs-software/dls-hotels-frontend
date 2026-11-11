@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { createContext, useMemo, useState } from 'react'
 
 // Type Imports
-import type { Mode, Skin, Layout, LayoutComponentWidth } from '@core/types'
+import type { Mode, Skin, Layout, LayoutComponentWidth, Direction, NavSide } from '@core/types'
 
 // Config Imports
 import themeConfig from '@configs/themeConfig'
@@ -24,6 +24,8 @@ export type Settings = {
   contentWidth?: LayoutComponentWidth
   footerContentWidth?: LayoutComponentWidth
   primaryColor?: string
+  direction?: Direction
+  navSide?: NavSide
 }
 
 // UpdateSettingsOptions type
@@ -60,7 +62,9 @@ export const SettingsProvider = (props: Props) => {
     navbarContentWidth: themeConfig.navbar.contentWidth,
     contentWidth: themeConfig.contentWidth,
     footerContentWidth: themeConfig.footer.contentWidth,
-    primaryColor: primaryColorConfig[0].main
+    primaryColor: primaryColorConfig[0].main,
+    direction: 'ltr',
+    navSide: 'left'
   }
 
   const updatedInitialSettings = {
@@ -74,9 +78,17 @@ export const SettingsProvider = (props: Props) => {
     JSON.stringify(props.settingsCookie) !== '{}' ? props.settingsCookie : updatedInitialSettings
   )
 
+  const normalizeSettings = (value?: Settings | null): Settings => ({
+    ...updatedInitialSettings,
+    ...(value ?? {}),
+    navSide: value?.navSide === 'right' ? 'right' : 'left',
+    // Una cookie antigua de derecha a izquierda no debe voltear la pantalla.
+    direction: 'ltr'
+  })
+
   // State
   const [_settingsState, _updateSettingsState] = useState<Settings>(
-    JSON.stringify(settingsCookie) !== '{}' ? settingsCookie : updatedInitialSettings
+    normalizeSettings(JSON.stringify(settingsCookie) !== '{}' ? settingsCookie : updatedInitialSettings)
   )
 
   const updateSettings = (settings: Partial<Settings>, options?: UpdateSettingsOptions) => {

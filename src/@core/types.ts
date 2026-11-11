@@ -11,6 +11,8 @@ export type SystemMode = 'light' | 'dark'
 
 export type Direction = 'ltr' | 'rtl'
 
+export type NavSide = 'left' | 'right'
+
 export type LayoutComponentWidth = 'compact' | 'wide'
 
 export type LayoutComponentPosition = 'fixed' | 'static'

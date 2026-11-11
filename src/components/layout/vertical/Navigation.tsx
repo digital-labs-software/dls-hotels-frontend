@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation'
 
 // MUI Imports
 import { styled, useColorScheme, useTheme } from '@mui/material/styles'
+import Tooltip from '@mui/material/Tooltip'
 
 // Type Imports
 import type { getDictionary } from '@/utils/getDictionary'
@@ -34,6 +35,17 @@ type Props = {
   dictionary: Awaited<ReturnType<typeof getDictionary>>
   mode: Mode
 }
+
+// Marco con esquinas redondeadas: la barra izquierda va rellena y la derecha queda vacía.
+const SidebarToggleIcon = () => (
+  <svg viewBox='0 0 24 24' className='block text-xl' width='1em' height='1em' aria-hidden='true'>
+    <path
+      fill='currentColor'
+      fillRule='evenodd'
+      d='M6 2h12a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4zm2.25 1.75H18a2.25 2.25 0 0 1 2.25 2.25v12A2.25 2.25 0 0 1 18 20.25H8.25z'
+    />
+  </svg>
+)
 
 const StyledBoxForShadow = styled('div')(({ theme }) => ({
   top: 60,
@@ -74,6 +86,9 @@ const Navigation = (props: Props) => {
   const currentMode = muiMode === 'system' ? muiSystemMode : muiMode || mode
 
   const isDark = currentMode === 'dark'
+  const showRail = isCollapsed && !isHovered && !isBreakpointReached
+  const navOnRight = settings.navSide === 'right'
+  const sidebarLabel = isCollapsed ? 'Ampliar barra lateral' : 'Minimizar barra lateral'
 
   const scrollMenu = (container: any, isPerfectScrollbar: boolean) => {
     container = isBreakpointReached || !isPerfectScrollbar ? container.target : container
@@ -105,6 +120,7 @@ const Navigation = (props: Props) => {
     <VerticalNav
       customStyles={navigationCustomStyles(verticalNavOptions, theme)}
       collapsedWidth={68}
+      side={navOnRight ? 'right' : 'left'}
       backgroundColor='var(--mui-palette-background-default)'
       // eslint-disable-next-line lines-around-comment
       // The following condition adds the data-dark attribute to the VerticalNav component
@@ -116,21 +132,35 @@ const Navigation = (props: Props) => {
     >
       {/* Nav Header including Logo & nav toggle icons  */}
       <NavHeader>
-        <div className='grid is-full grid-cols-[1fr_auto_1fr] items-center'>
-          <span />
-          <Link href={getLocalizedUrl('/', locale as Locale)} className='flex justify-center'>
-            <Logo />
-          </Link>
-          <div className='flex justify-end'>
-            {!(isCollapsed && !isHovered) && (
-              <NavCollapseIcons
-                lockedIcon={<i className='ri-radio-button-line text-xl' />}
-                unlockedIcon={<i className='ri-checkbox-blank-circle-line text-xl' />}
-                closeIcon={<i className='ri-close-line text-xl' />}
-                className='text-textSecondary'
-                onClick={() => updateSettings({ layout: !isCollapsed ? 'collapsed' : 'vertical' })}
-              />
-            )}
+        <div
+          className={
+            showRail
+              ? 'flex is-full items-center justify-center'
+              : 'grid is-full grid-cols-[1fr_auto_1fr] items-center'
+          }
+        >
+          {showRail ? null : <span className={navOnRight ? 'order-3' : undefined} />}
+          {showRail ? null : (
+            <Link
+              href={getLocalizedUrl('/', locale as Locale)}
+              className={navOnRight ? 'order-2 flex justify-center' : 'flex justify-center'}
+            >
+              <Logo />
+            </Link>
+          )}
+          <div className={showRail ? 'flex justify-center' : navOnRight ? 'order-1 flex justify-start' : 'flex justify-end'}>
+            <Tooltip title={sidebarLabel}>
+              <span className={navOnRight ? 'inline-flex scale-x-[-1]' : 'inline-flex'}>
+                <NavCollapseIcons
+                  lockedIcon={<SidebarToggleIcon />}
+                  unlockedIcon={<SidebarToggleIcon />}
+                  closeIcon={<i className='ri-close-line text-xl' />}
+                  className='text-textSecondary'
+                  aria-label={sidebarLabel}
+                  onClick={() => updateSettings({ layout: !isCollapsed ? 'collapsed' : 'vertical' })}
+                />
+              </span>
+            </Tooltip>
           </div>
         </div>
       </NavHeader>

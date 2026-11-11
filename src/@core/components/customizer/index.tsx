@@ -3,10 +3,6 @@
 // React Imports
 import { useRef, useState } from 'react'
 
-// Next Imports
-import { usePathname } from 'next/navigation'
-import Link from 'next/link'
-
 // MUI Imports
 import Chip from '@mui/material/Chip'
 import Fade from '@mui/material/Fade'
@@ -25,7 +21,6 @@ import PerfectScrollbar from 'react-perfect-scrollbar'
 
 // Type Imports
 import type { Settings } from '@core/contexts/settingsContext'
-import type { Direction } from '@core/types'
 import type { PrimaryColorConfig } from '@configs/primaryColorConfig'
 
 // Icon Imports
@@ -37,7 +32,7 @@ import LayoutHorizontal from '@core/svg/LayoutHorizontal'
 import ContentCompact from '@core/svg/ContentCompact'
 import ContentWide from '@core/svg/ContentWide'
 import DirectionLtr from '@core/svg/DirectionLtr'
-import DirectionRtl from '@core/svg/DirectionRtl'
+import NavSideRight from '@core/svg/NavSideRight'
 
 // Config Imports
 import primaryColorConfig from '@configs/primaryColorConfig'
@@ -50,17 +45,7 @@ import styles from './styles.module.css'
 
 type CustomizerProps = {
   breakpoint?: Breakpoint | 'xxl' | `${number}px` | `${number}rem` | `${number}em`
-  dir?: Direction
   disableDirection?: boolean
-}
-
-const getLocalePath = (pathName: string, locale: string) => {
-  if (!pathName) return '/'
-  const segments = pathName.split('/')
-
-  segments[1] = locale
-
-  return segments.join('/')
 }
 
 type DebouncedColorPickerProps = {
@@ -96,10 +81,9 @@ const DebouncedColorPicker = (props: DebouncedColorPickerProps) => {
   )
 }
 
-const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }: CustomizerProps) => {
+const Customizer = ({ breakpoint = 'lg', disableDirection = false }: CustomizerProps) => {
   // States
   const [isOpen, setIsOpen] = useState(false)
-  const [direction, setDirection] = useState(dir)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   // Refs
@@ -107,7 +91,6 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
 
   // Hooks
   const theme = useTheme()
-  const pathName = usePathname()
   const { settings, updateSettings, resetSettings, isSettingsChanged } = useSettings()
   const isSystemDark = useMedia('(prefers-color-scheme: dark)', false)
 
@@ -141,6 +124,7 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
   const isMobileScreen = useMedia('(max-width: 600px)', false)
   const isBelowLgScreen = useMedia('(max-width: 1200px)', false)
   const isColorFromPrimaryConfig = primaryColorConfig.find(item => item.main === settings.primaryColor)
+  const navOnRight = settings.navSide === 'right'
 
   const ScrollWrapper = isBelowLgScreen ? 'div' : PerfectScrollbar
 
@@ -149,14 +133,8 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
   }
 
   // Update Settings
-  const handleChange = (field: keyof Settings | 'direction', value: Settings[keyof Settings] | Direction) => {
-    // Update direction state
-    if (field === 'direction') {
-      setDirection(value as Direction)
-    } else {
-      // Update settings in cookie
-      updateSettings({ [field]: value })
-    }
+  const handleChange = (field: keyof Settings | 'primaryColor', value: Settings[keyof Settings] | string) => {
+    updateSettings({ [field]: value })
   }
 
   const handleMenuClose = (event: MouseEvent | TouchEvent): void => {
@@ -172,7 +150,8 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
       <div
         className={classnames('customizer', styles.customizer, {
           [styles.show]: isOpen,
-          [styles.smallScreen]: isMobileScreen
+          [styles.smallScreen]: isMobileScreen,
+          [styles.dockStart]: navOnRight
         })}
       >
         <div className={styles.toggler} onClick={handleToggle} title='Personalizar tema' role='button' aria-label='Personalizar tema'>
@@ -440,38 +419,34 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
               </div>
               {!disableDirection && (
                 <div className='flex flex-col gap-2.5'>
-                  <p className='font-medium'>Dirección</p>
+                  <p className='font-medium'>Barra lateral</p>
                   <div className='flex items-center gap-4'>
-                    <Link href={getLocalePath(pathName, 'en')}>
-                      <div className='flex flex-col items-start gap-0.5'>
-                        <div
-                          className={classnames(styles.itemWrapper, {
-                            [styles.active]: direction === 'ltr'
-                          })}
-                        >
-                          <DirectionLtr />
-                        </div>
-                        <p className={styles.itemLabel}>
-                          Izquierda a derecha <br />
-                          (Inglés)
-                        </p>
+                    <div className='flex flex-col items-start gap-0.5'>
+                      <div
+                        className={classnames(styles.itemWrapper, {
+                          [styles.active]: !navOnRight
+                        })}
+                        onClick={() => updateSettings({ navSide: 'left' })}
+                      >
+                        <DirectionLtr />
                       </div>
-                    </Link>
-                    <Link href={getLocalePath(pathName, 'ar')}>
-                      <div className='flex flex-col items-start gap-0.5'>
-                        <div
-                          className={classnames(styles.itemWrapper, {
-                            [styles.active]: direction === 'rtl'
-                          })}
-                        >
-                          <DirectionRtl />
-                        </div>
-                        <p className={styles.itemLabel}>
-                          Derecha a izquierda <br />
-                          (Árabe)
-                        </p>
+                      <p className={styles.itemLabel} onClick={() => updateSettings({ navSide: 'left' })}>
+                        A la izquierda
+                      </p>
+                    </div>
+                    <div className='flex flex-col items-start gap-0.5'>
+                      <div
+                        className={classnames(styles.itemWrapper, {
+                          [styles.active]: navOnRight
+                        })}
+                        onClick={() => updateSettings({ navSide: 'right' })}
+                      >
+                        <NavSideRight />
                       </div>
-                    </Link>
+                      <p className={styles.itemLabel} onClick={() => updateSettings({ navSide: 'right' })}>
+                        A la derecha
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}

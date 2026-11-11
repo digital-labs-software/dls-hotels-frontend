@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 
 // MUI Imports
 import { deepmerge } from '@mui/utils'
@@ -47,6 +47,12 @@ const CustomThemeProvider = (props: Props) => {
   const { settings } = useSettings()
   const isDark = useMedia('(prefers-color-scheme: dark)', systemMode === 'dark')
 
+  // La barra lateral tiene su propio lado. La dirección del documento sigue el idioma
+  // y no voltea formularios ni textos.
+  useEffect(() => {
+    document.documentElement.setAttribute('dir', direction)
+  }, [direction])
+
   if (isServer) {
     currentMode = systemMode
   } else {
@@ -90,7 +96,7 @@ const CustomThemeProvider = (props: Props) => {
     return createTheme(coreTheme)
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.primaryColor, settings.skin, currentMode])
+  }, [settings.primaryColor, settings.skin, currentMode, direction])
 
   return (
     <AppRouterCacheProvider

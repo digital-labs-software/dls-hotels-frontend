@@ -18,6 +18,9 @@ import type { Direction } from '@core/types'
 // Config Imports
 import themeConfig from '@configs/themeConfig'
 
+// Hook Imports
+import { useSettings } from '@core/hooks/useSettings'
+
 type Props = ToastContainerProps & {
   boxProps?: BoxProps
   direction?: Direction
@@ -96,6 +99,7 @@ const ToastifyWrapper = styled(Box)<BoxProps>(({ theme }) => {
 
 const AppReactToastify = (props: Props) => {
   const { boxProps, direction = 'ltr', ...rest } = props
+  const { settings } = useSettings()
 
   const positionMap: Partial<Record<ToastPosition, ToastPosition>> = {
     'top-right': 'top-left',
@@ -106,7 +110,10 @@ const AppReactToastify = (props: Props) => {
     'bottom-center': 'bottom-center'
   }
 
-  const position = direction === 'rtl' ? positionMap[themeConfig.toastPosition] : themeConfig.toastPosition
+  const position =
+    direction === 'rtl' || settings.navSide === 'right'
+      ? positionMap[themeConfig.toastPosition]
+      : themeConfig.toastPosition
 
   return (
     <ToastifyWrapper {...boxProps}>

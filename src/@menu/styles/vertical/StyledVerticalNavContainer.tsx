@@ -7,16 +7,28 @@ import type { VerticalNavProps } from '../../components/vertical-menu/VerticalNa
 // Util Imports
 import { verticalNavClasses } from '../../utils/menuClasses'
 
-type StyledVerticalNavContainerProps = Pick<VerticalNavProps, 'width' | 'transitionDuration'>
+type StyledVerticalNavContainerProps = Pick<VerticalNavProps, 'width' | 'transitionDuration' | 'side'>
 
 const StyledVerticalNavContainer = styled.div<StyledVerticalNavContainerProps>`
   position: relative;
   block-size: 100%;
   inline-size: 100%;
-  border-inline-end: 1px solid #efefef;
+  ${({ side }) =>
+    side === 'right'
+      ? 'border-inline-start: 1px solid #efefef;'
+      : 'border-inline-end: 1px solid #efefef;'}
   .${verticalNavClasses.hovered} &,
   .${verticalNavClasses.expanding} & {
     inline-size: ${({ width }) => `${width}px`};
+    ${({ side }) =>
+      side === 'right'
+        ? `
+      position: absolute;
+      inset-inline-end: 0;
+      inset-block-start: 0;
+      block-size: 100%;
+    `
+        : ''}
   }
 
   /* Transition */

@@ -22,7 +22,8 @@ const StyledVerticalNav = styled.aside<StyledVerticalNavProps>`
   z-index: 9;
 
   /* Transition */
-  transition-property: inline-size, min-inline-size, margin-inline-start, inset-inline-start;
+  transition-property: inline-size, min-inline-size, margin-inline-start, margin-inline-end, inset-inline-start,
+    inset-inline-end;
   transition-duration: ${({ transitionDuration }) => `${transitionDuration}ms`};
   transition-timing-function: ease-in-out;
 
@@ -39,26 +40,34 @@ const StyledVerticalNav = styled.aside<StyledVerticalNavProps>`
   }
 
   /* Collapsed & Toggled */
-  &.${verticalNavClasses.breakpointReached} {
-    position: fixed;
-    block-size: 100%;
-    inset-block-start: 0;
-    inset-inline-start: ${({ width }) => `-${width}px`};
-    z-index: 100;
-    margin: 0;
-    &.${verticalNavClasses.collapsed} {
-      inset-inline-start: -${({ collapsedWidth }) => `${collapsedWidth}px`};
-    }
-    &.${verticalNavClasses.toggled} {
-      inset-inline-start: 0;
-    }
-  }
+  ${({ side, width, collapsedWidth }) => {
+    const edge = side === 'right' ? 'inset-inline-end' : 'inset-inline-start'
+    const opposite = side === 'right' ? 'inset-inline-start' : 'inset-inline-end'
 
-  ${({ width, isBreakpointReached }) =>
+    return `
+    &.${verticalNavClasses.breakpointReached} {
+      position: fixed;
+      block-size: 100%;
+      inset-block-start: 0;
+      ${opposite}: auto;
+      ${edge}: -${width}px;
+      z-index: 100;
+      margin: 0;
+      &.${verticalNavClasses.collapsed} {
+        ${edge}: -${collapsedWidth}px;
+      }
+      &.${verticalNavClasses.toggled} {
+        ${edge}: 0;
+      }
+    }
+  `
+  }}
+
+  ${({ width, isBreakpointReached, side }) =>
     !isBreakpointReached &&
     `
     &.${verticalNavClasses.toggled} {
-      margin-inline-start: -${width}px;
+      ${side === 'right' ? 'margin-inline-end' : 'margin-inline-start'}: -${width}px;
     }
   `}
 
