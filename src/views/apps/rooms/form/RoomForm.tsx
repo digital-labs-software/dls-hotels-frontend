@@ -28,8 +28,7 @@ import { toast } from 'react-toastify'
 import type { Locale } from '@configs/i18n'
 import type { Floor } from '@/types/apps/floorTypes'
 import type { RoomType } from '@/types/apps/roomTypeTypes'
-import type { RoomDisplayStatus, RoomStatus } from '@/types/apps/roomsTypes'
-import { formatRoomPrice, MANUAL_ROOM_STATUSES, ROOM_STATUS_LABELS } from '@/types/apps/roomsTypes'
+import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { listFloors } from '@/libs/floorsApi'
 import { listRates } from '@/libs/ratesApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
@@ -45,7 +44,6 @@ type FormValues = {
   number: string
   floorId: number | ''
   roomTypeId: number | ''
-  status: RoomStatus
   priceOverride: string
   notes: string
 }
@@ -85,7 +83,6 @@ const RoomForm = ({ uuid }: Props) => {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [pendingPhoto, setPendingPhoto] = useState<File | null>(null)
   const [removePhoto, setRemovePhoto] = useState(false)
-  const [displayStatus, setDisplayStatus] = useState<RoomDisplayStatus>('AVAILABLE')
   const [hotelRates, setHotelRates] = useState<HotelRate[]>([])
   const [rateAmounts, setRateAmounts] = useState<Record<number, string>>({})
   const [rateOn, setRateOn] = useState<Record<number, boolean>>({})
@@ -101,16 +98,12 @@ const RoomForm = ({ uuid }: Props) => {
       number: '',
       floorId: '',
       roomTypeId: '',
-      status: 'AVAILABLE',
       priceOverride: '',
       notes: ''
     }
   })
 
   const roomTypeId = useWatch({ control, name: 'roomTypeId' })
-  const status = useWatch({ control, name: 'status' })
-  const statusOptions: RoomStatus[] = status === 'OCCUPIED' ? ['OCCUPIED'] : [...MANUAL_ROOM_STATUSES]
-  const statusLocked = isView || status === 'OCCUPIED' || displayStatus === 'MAINTENANCE'
   const selectableTypes = roomTypes.filter(type => type.isActive || type.id === Number(roomTypeId))
 
   useEffect(() => {
@@ -137,7 +130,6 @@ const RoomForm = ({ uuid }: Props) => {
             number: '',
             floorId: floorsRes.data.length === 1 ? floorsRes.data[0].id : '',
             roomTypeId: activeTypes.length === 1 ? activeTypes[0].id : '',
-            status: 'AVAILABLE',
             priceOverride: '',
             notes: ''
           })
@@ -151,12 +143,10 @@ const RoomForm = ({ uuid }: Props) => {
         setPhotoUrl(room.photoUrl ?? null)
         setPendingPhoto(null)
         setRemovePhoto(false)
-        setDisplayStatus(room.displayStatus)
         reset({
           number: room.number,
           floorId: room.floorId,
           roomTypeId: room.roomTypeId,
-          status: room.status,
           priceOverride: room.priceOverride == null ? '' : String(room.priceOverride),
           notes: room.notes ?? ''
         })
@@ -228,7 +218,7 @@ const RoomForm = ({ uuid }: Props) => {
   }
 
   const goBack = () => {
-    router.push(getLocalizedUrl('/apps/rooms', locale as Locale))
+    router.push(getLocalizedUrl('/apps/rooms?tab=rooms', locale as Locale))
   }
 
   const onSubmit = async (data: FormValues) => {
@@ -295,7 +285,6 @@ const RoomForm = ({ uuid }: Props) => {
           floorId: Number(data.floorId),
           roomTypeId: Number(data.roomTypeId),
           number: data.number.trim(),
-          status: data.status,
           priceOverride,
           notes: data.notes.trim() ? data.notes.trim() : null,
           ratePrices
@@ -317,7 +306,6 @@ const RoomForm = ({ uuid }: Props) => {
           floorId: Number(data.floorId),
           roomTypeId: Number(data.roomTypeId),
           number: data.number.trim(),
-          status: data.status,
           priceOverride,
           notes: data.notes.trim() ? data.notes.trim() : null,
           ratePrices
@@ -536,31 +524,6 @@ const RoomForm = ({ uuid }: Props) => {
               {isView && effectivePrice != null ? (
                 <TextField fullWidth label='Precio efectivo' value={formatRoomPrice(effectivePrice)} disabled />
               ) : null}
-
-              <FormControl fullWidth>
-                <InputLabel id='room-status'>Estado</InputLabel>
-                <Controller
-                  name='status'
-                  control={control}
-                  rules={{ required: true }}
-                  render={({ field }) => (
-                    <Select {...field} label='Estado' labelId='room-status' disabled={statusLocked || isSubmitting}>
-                      {statusOptions.map(item => (
-                        <MenuItem key={item} value={item}>
-                          {ROOM_STATUS_LABELS[item]}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  )}
-                />
-                {displayStatus === 'MAINTENANCE' ? (
-                  <FormHelperText>
-                    Esta noche está en mantenimiento. Las fechas se cambian desde la lista de habitaciones.
-                  </FormHelperText>
-                ) : status === 'OCCUPIED' ? (
-                  <FormHelperText>Ocupada la asigna el ingreso del huésped.</FormHelperText>
-                ) : null}
-              </FormControl>
             </CardContent>
           </Card>
         </Grid>

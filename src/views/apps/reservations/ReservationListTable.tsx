@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
@@ -12,6 +16,7 @@ import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Pagination from '@mui/material/Pagination'
 import Select from '@mui/material/Select'
+import Switch from '@mui/material/Switch'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -23,7 +28,7 @@ import Typography from '@mui/material/Typography'
 import { toast } from 'react-toastify'
 
 import type { Reservation, ReservationStatus } from '@/types/apps/frontDeskTypes'
-import { SOURCE_LABELS, formatPlanningDate, stayStatusChipSx } from '@/types/apps/reservationsTypes'
+import { formatPlanningDate, stayStatusChipSx } from '@/types/apps/reservationsTypes'
 import { STAY_STATUS_LABELS, headlineStayStatus } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
@@ -32,12 +37,44 @@ import DateField from '@/components/date-picker/DateField'
 type Props = {
   propertyId: number
   refreshKey: number
+  canPay: boolean
+  canCancel: boolean
+  canEditStatus: boolean
   onOpen: (reservationUuid: string) => void
+  onPay: (row: Reservation) => void
+  onChanged: () => void
+  onStatusChanged: () => void
 }
+
+const bookerName = (row: Reservation) => {
+  if (row.company?.businessName) return row.company.businessName
+  if (row.guest) return `${row.guest.firstName} ${row.guest.lastName}`.replace(/\s+/g, ' ').trim()
+
+  return 'Sin nombre'
+}
+
+const canCancelRow = (row: Reservation) =>
+  (row.status === 'PENDING' || row.status === 'CONFIRMED') &&
+  !row.rooms.some(line => line.status === 'CHECKED_IN' || line.status === 'CHECKED_OUT')
+
+/** Solo se alterna mientras ninguna habitación entró, salió o quedó como no se presentó. */
+const canToggleStatus = (row: Reservation) =>
+  (row.status === 'PENDING' || row.status === 'CONFIRMED') &&
+  row.rooms.every(line => line.status === 'PENDING' || line.status === 'CONFIRMED' || line.status === 'CANCELLED')
 
 const STATUS_OPTIONS: ReservationStatus[] = ['PENDING', 'CONFIRMED', 'CANCELLED']
 
-const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
+const ReservationListTable = ({
+  propertyId,
+  refreshKey,
+  canPay,
+  canCancel,
+  canEditStatus,
+  onOpen,
+  onPay,
+  onChanged,
+  onStatusChanged
+}: Props) => {
   const [rows, setRows] = useState<Reservation[]>([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -47,6 +84,10 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
   const [to, setTo] = useState('')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [cancelRow, setCancelRow] = useState<Reservation | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelling, setCancelling] = useState(false)
+  const [statusUuid, setStatusUuid] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -71,9 +112,51 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
     }
   }, [from, page, propertyId, search, status, to])
 
+  const confirmCancel = async () => {
+    if (!cancelRow || !cancelReason.trim()) {
+      toast.error('Indica el motivo de cancelación.')
+
+      return
+    }
+
+    setCancelling(true)
+
+    try {
+      await reservationsApi.cancel(propertyId, cancelRow.uuid, cancelReason.trim())
+      toast.success('Reserva cancelada.')
+      setCancelRow(null)
+      setCancelReason('')
+      onChanged()
+    } catch (error) {
+      toast.error(getReservationsApiErrorMessage(error, 'No se pudo cancelar.'))
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const toggleStatus = async (row: Reservation, confirmed: boolean) => {
+    const next = confirmed ? 'CONFIRMED' : 'PENDING'
+
+    setStatusUuid(row.uuid)
+
+    try {
+      const updated = await reservationsApi.update(propertyId, row.uuid, { status: next })
+
+      setRows(current => current.map(item => (item.uuid === row.uuid ? { ...item, ...updated } : item)))
+      toast.success(confirmed ? 'Reserva confirmada.' : 'Reserva en pendiente.')
+      onStatusChanged()
+    } catch (error) {
+      toast.error(getReservationsApiErrorMessage(error, 'No se pudo cambiar el estado.'))
+    } finally {
+      setStatusUuid(null)
+    }
+  }
+
   useEffect(() => {
     load()
   }, [load, refreshKey])
+
+  const showActions = canPay || canCancel
 
   return (
     <div className='flex flex-col gap-4'>
@@ -144,8 +227,7 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
             <TableHead>
               <TableRow>
                 <TableCell>Código</TableCell>
-                <TableCell>Titular</TableCell>
-                <TableCell>Empresa</TableCell>
+                <TableCell>Quién reserva</TableCell>
                 <TableCell>Check-in (ingreso)</TableCell>
                 <TableCell>Check-out (salida)</TableCell>
                 <TableCell>Noches</TableCell>
@@ -153,26 +235,25 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
                 <TableCell>Total</TableCell>
                 <TableCell>Saldo</TableCell>
                 <TableCell>Estado</TableCell>
-                <TableCell>Canal</TableCell>
+                {showActions ? <TableCell>Acciones</TableCell> : null}
               </TableRow>
             </TableHead>
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11}>
+                  <TableCell colSpan={showActions ? 10 : 9}>
                     <Typography color='text.secondary'>No hay reservas con estos filtros.</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
                 rows.map(row => (
-                  <TableRow key={row.uuid} hover sx={{ cursor: 'pointer' }} onClick={() => onOpen(row.uuid)}>
+                  <TableRow key={row.uuid}>
                     <TableCell>
-                      <Button size='small'>{row.code}</Button>
+                      <Button size='small' onClick={() => onOpen(row.uuid)}>
+                        {row.code}
+                      </Button>
                     </TableCell>
-                    <TableCell>
-                      {row.guest ? `${row.guest.firstName} ${row.guest.lastName}` : '—'}
-                    </TableCell>
-                    <TableCell>{row.company?.businessName ?? '—'}</TableCell>
+                    <TableCell>{bookerName(row)}</TableCell>
                     <TableCell>{formatPlanningDate(row.checkInDate)}</TableCell>
                     <TableCell>{formatPlanningDate(row.checkOutDate)}</TableCell>
                     <TableCell>{row.nights}</TableCell>
@@ -200,13 +281,51 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
                     <TableCell>{formatRoomPrice(row.totalAmount)}</TableCell>
                     <TableCell>{formatRoomPrice(row.balance)}</TableCell>
                     <TableCell>
-                      <Chip
-                        size='small'
-                        label={STAY_STATUS_LABELS[headlineStayStatus(row)]}
-                        sx={stayStatusChipSx(headlineStayStatus(row))}
-                      />
+                      {canEditStatus && canToggleStatus(row) ? (
+                        <div className='flex items-center gap-1 whitespace-nowrap'>
+                          <Switch
+                            size='small'
+                            checked={row.status === 'CONFIRMED'}
+                            disabled={statusUuid === row.uuid}
+                            inputProps={{ 'aria-label': `Confirmar la reserva ${row.code}` }}
+                            onChange={(_, checked) => void toggleStatus(row, checked)}
+                          />
+                          <Typography variant='body2'>
+                            {row.status === 'CONFIRMED' ? 'Confirmada' : 'Pendiente'}
+                          </Typography>
+                        </div>
+                      ) : (
+                        <Chip
+                          size='small'
+                          label={STAY_STATUS_LABELS[headlineStayStatus(row)]}
+                          sx={stayStatusChipSx(headlineStayStatus(row))}
+                        />
+                      )}
                     </TableCell>
-                    <TableCell>{SOURCE_LABELS[row.source]}</TableCell>
+                    {showActions ? (
+                      <TableCell onClick={event => event.stopPropagation()}>
+                        <div className='flex flex-nowrap items-center gap-1'>
+                          {canPay ? (
+                            <Button size='small' className='whitespace-nowrap' onClick={() => onPay(row)}>
+                              Pago o devolución
+                            </Button>
+                          ) : null}
+                          {canCancel && canCancelRow(row) ? (
+                            <Button
+                              size='small'
+                              color='error'
+                              className='whitespace-nowrap'
+                              onClick={() => {
+                                setCancelReason('')
+                                setCancelRow(row)
+                              }}
+                            >
+                              Cancelar
+                            </Button>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 ))
               )}
@@ -220,6 +339,37 @@ const ReservationListTable = ({ propertyId, refreshKey, onOpen }: Props) => {
           </div>
         </>
       )}
+      <Dialog open={Boolean(cancelRow)} onClose={() => !cancelling && setCancelRow(null)} fullWidth maxWidth='xs'>
+        <DialogTitle>Cancelar reserva</DialogTitle>
+        <DialogContent className='flex flex-col gap-3 pt-4'>
+          {cancelRow ? (
+            <div className='flex flex-col gap-1'>
+              <Typography fontWeight={600}>
+                {cancelRow.code} · {bookerName(cancelRow)}
+              </Typography>
+              <Typography variant='body2' color='text.secondary'>
+                {formatPlanningDate(cancelRow.checkInDate)} – {formatPlanningDate(cancelRow.checkOutDate)}
+              </Typography>
+            </div>
+          ) : null}
+          <TextField
+            fullWidth
+            label='Motivo'
+            value={cancelReason}
+            onChange={event => setCancelReason(event.target.value)}
+            multiline
+            minRows={2}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelRow(null)} disabled={cancelling}>
+            Volver
+          </Button>
+          <Button color='error' variant='contained' disabled={cancelling} onClick={() => void confirmCancel()}>
+            Cancelar reserva
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   )
 }

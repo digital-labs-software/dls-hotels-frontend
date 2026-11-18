@@ -229,7 +229,7 @@ const ArrivalsReport = () => {
                 {line.roomNumber ?? 'Sin asignar'}
               </Typography>
               {line.roomStatus === 'CLEANING' && !done ? (
-                <Chip size='small' variant='tonal' color='warning' label='En limpieza' />
+                <Chip size='small' variant='tonal' color='warning' label='Limpieza' />
               ) : null}
             </div>
           </td>

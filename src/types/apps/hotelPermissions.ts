@@ -22,6 +22,7 @@ export const SALES_VOID = 'sales.void'
 export const SALES_PRODUCTS = 'sales.products'
 export const AUDIT_VIEW = 'audit.view'
 
+export const ROOMS_STATUS = 'rooms.status'
 export const ROOMS_VIEW = 'rooms.view'
 export const ROOMS_CREATE = 'rooms.create'
 export const ROOMS_EDIT = 'rooms.edit'
@@ -129,6 +130,7 @@ export const RESERVATION_PERMISSIONS = [
 ]
 
 export const ROOM_MENU_PERMISSIONS = [
+  ROOMS_STATUS,
   ROOMS_VIEW,
   ROOMS_CREATE,
   ROOMS_EDIT,

@@ -49,8 +49,7 @@ import { formatRoomPrice, ROOM_STATUS_LABELS } from '@/types/apps/roomsTypes'
 import TableFilters from './TableFilters'
 import { listFloors } from '@/libs/floorsApi'
 import { listRoomTypes } from '@/libs/roomTypesApi'
-import { deleteRoom, deleteRoomMaintenance, getRoomsApiErrorMessage, listRooms } from '@/libs/roomsApi'
-import RoomMaintenanceDialog from './RoomMaintenanceDialog'
+import { deleteRoom, getRoomsApiErrorMessage, listRooms } from '@/libs/roomsApi'
 import RoomPriceAdjustDialog from './RoomPriceAdjustDialog'
 import { ROOM_PHOTO_THUMB, cloudinaryTransformedUrl } from '@/libs/cloudinary'
 import { getLocalizedUrl } from '@/utils/i18n'
@@ -112,15 +111,6 @@ const statusColor: Record<RoomDisplayStatus, ThemeColor> = {
   MAINTENANCE: 'warning'
 }
 
-const maintenanceButtonSx = {
-  minWidth: 176,
-  borderRadius: 1,
-  fontWeight: 700,
-  letterSpacing: '0.04em',
-  textTransform: 'uppercase',
-  px: 2
-} as const
-
 const columnHelper = createColumnHelper<RoomWithAction>()
 
 const RoomListTable = () => {
@@ -138,9 +128,7 @@ const RoomListTable = () => {
   const [globalFilter, setGlobalFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [roomToDelete, setRoomToDelete] = useState<Room | null>(null)
-  const [roomToMaintain, setRoomToMaintain] = useState<Room | null>(null)
   const [priceOpen, setPriceOpen] = useState(false)
-  const [enablingId, setEnablingId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(20)
@@ -185,31 +173,6 @@ const RoomListTable = () => {
 
     fetchData()
   }, [fetchData, sessionStatus])
-
-  const handleEnable = useCallback(
-    async (room: Room) => {
-      const block = room.maintenances?.[0]
-
-      if (!block) {
-        toast.error('Esta habitación no tiene un mantenimiento para habilitar.')
-
-        return
-      }
-
-      setEnablingId(room.uuid)
-
-      try {
-        await deleteRoomMaintenance(propertyId, room.uuid, block.uuid)
-        toast.success(`Habitación ${room.number} habilitada.`)
-        await fetchData()
-      } catch (error) {
-        toast.error(getRoomsApiErrorMessage(error, 'No se pudo habilitar la habitación.'))
-      } finally {
-        setEnablingId(null)
-      }
-    },
-    [fetchData, propertyId]
-  )
 
   const handleConfirmDelete = async (reason: string) => {
     if (!roomToDelete) {
@@ -294,48 +257,6 @@ const RoomListTable = () => {
           />
         )
       }),
-      columnHelper.display({
-        id: 'maintenance',
-        header: '',
-        cell: ({ row }) => {
-          if (!canEditRoom) {
-            return null
-          }
-
-          const inMaintenance = row.original.displayStatus === 'MAINTENANCE'
-          const enabling = enablingId === row.original.uuid
-
-          if (inMaintenance) {
-            return (
-              <Button
-                variant='contained'
-                color='secondary'
-                size='small'
-                disabled={enabling}
-                startIcon={enabling ? <CircularProgress size={16} color='inherit' /> : <i className='ri-check-line' />}
-                onClick={() => void handleEnable(row.original)}
-                sx={maintenanceButtonSx}
-              >
-                Habilitar
-              </Button>
-            )
-          }
-
-          return (
-            <Button
-              variant='contained'
-              color='warning'
-              size='small'
-              startIcon={<i className='ri-close-line' />}
-              onClick={() => setRoomToMaintain(row.original)}
-              sx={maintenanceButtonSx}
-            >
-              Mantenimiento
-            </Button>
-          )
-        },
-        enableSorting: false
-      }),
       columnHelper.accessor('action', {
         header: 'Acciones',
         cell: ({ row }) => (
@@ -368,7 +289,7 @@ const RoomListTable = () => {
         enableSorting: false
       })
     ],
-    [canDeleteRoom, canEditRoom, enablingId, handleEnable, locale]
+    [canDeleteRoom, canEditRoom, locale]
   )
 
   const table = useReactTable({
@@ -523,13 +444,6 @@ const RoomListTable = () => {
         open={priceOpen}
         propertyId={propertyId}
         onClose={() => setPriceOpen(false)}
-        onSaved={() => void fetchData()}
-      />
-      <RoomMaintenanceDialog
-        open={Boolean(roomToMaintain)}
-        propertyId={propertyId}
-        room={roomToMaintain}
-        onClose={() => setRoomToMaintain(null)}
         onSaved={() => void fetchData()}
       />
       <DeleteReasonDialog

@@ -61,6 +61,7 @@ export interface PropertySettings {
   website: string | null
   checkInTime: string
   checkOutTime: string
+  pendingNotifyDays: number
   createdAt: string
   updatedAt: string
   location: PropertyLocation
@@ -78,6 +79,7 @@ export interface UpdatePropertySettingsInput {
   website?: string | null
   checkInTime?: string
   checkOutTime?: string
+  pendingNotifyDays?: number
 }
 
 export interface GeoItem {

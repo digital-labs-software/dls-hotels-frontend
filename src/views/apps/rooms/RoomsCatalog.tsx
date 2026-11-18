@@ -25,6 +25,7 @@ import {
   ROOMS_CREATE,
   ROOMS_DELETE,
   ROOMS_EDIT,
+  ROOMS_STATUS,
   ROOMS_VIEW,
   ROOM_TYPES_CREATE,
   ROOM_TYPES_DELETE,
@@ -35,13 +36,15 @@ import FloorListClient from '@views/apps/floors/list/FloorListClient'
 import RateListClient from '@views/apps/rates/list/RateListClient'
 import RoomTypeListClient from '@views/apps/room-types/list/RoomTypeListClient'
 import RoomListClient from '@views/apps/rooms/list/RoomListClient'
+import RoomStatusBoard from '@views/apps/rooms/RoomStatusBoard'
 import { getLocalizedUrl } from '@/utils/i18n'
 
-const ROOM_TABS = ['rooms', 'rates', 'room-types', 'floors'] as const
+const ROOM_TABS = ['status', 'rooms', 'rates', 'room-types', 'floors'] as const
 
 type RoomTab = (typeof ROOM_TABS)[number]
 
 const tabContentList: Record<RoomTab, ReactElement> = {
+  status: <RoomStatusBoard />,
   rooms: <RoomListClient />,
   'room-types': <RoomTypeListClient />,
   floors: <FloorListClient />,
@@ -53,6 +56,7 @@ const isRoomTab = (value?: string): value is RoomTab => {
 }
 
 const TAB_PERMISSIONS: Record<RoomTab, readonly string[]> = {
+  status: [ROOMS_STATUS],
   rooms: [ROOMS_VIEW, ROOMS_CREATE, ROOMS_EDIT, ROOMS_DELETE],
   rates: [RATES_VIEW, RATES_CREATE, RATES_EDIT, RATES_DELETE],
   'room-types': [ROOM_TYPES_VIEW, ROOM_TYPES_CREATE, ROOM_TYPES_EDIT, ROOM_TYPES_DELETE],
@@ -65,7 +69,7 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
   const { canAny, canViewRooms, loaded } = useSubscriptionAccess()
   const allowedTabs = ROOM_TABS.filter(tab => canAny(TAB_PERMISSIONS[tab]))
   const allowedKey = allowedTabs.join(',')
-  const [activeTab, setActiveTab] = useState<RoomTab>(isRoomTab(defaultTab) ? defaultTab : 'rooms')
+  const [activeTab, setActiveTab] = useState<RoomTab>(isRoomTab(defaultTab) ? defaultTab : 'status')
 
   useEffect(() => {
     if (!loaded) {
@@ -80,8 +84,7 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
       return
     }
 
-    const requested = isRoomTab(defaultTab) ? defaultTab : tabs[0]
-    const next = tabs.includes(requested) ? requested : tabs[0]
+    const next = isRoomTab(defaultTab) && tabs.includes(defaultTab) ? defaultTab : tabs[0]
 
     setActiveTab(current => (current === next ? current : next))
   }, [allowedKey, canViewRooms, defaultTab, loaded, locale, router])
@@ -94,8 +97,9 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
     setActiveTab(value)
 
     const baseUrl = getLocalizedUrl('/apps/rooms', locale as Locale)
+    const home = allowedTabs[0]
 
-    router.replace(value === 'rooms' ? baseUrl : `${baseUrl}?tab=${value}`)
+    router.replace(value === home ? baseUrl : `${baseUrl}?tab=${value}`)
   }
 
   if (!loaded || allowedTabs.length === 0 || !allowedTabs.includes(activeTab)) {
@@ -107,6 +111,9 @@ const RoomsCatalog = ({ defaultTab }: { defaultTab?: string }) => {
       <Grid size={{ xs: 12 }} className='flex flex-col gap-6'>
         <TabContext value={activeTab}>
           <CustomTabList onChange={handleChange} variant='scrollable' wrap='true'>
+            {allowedTabs.includes('status') ? (
+              <Tab value='status' label='Estado' icon={<i className='ri-checkbox-circle-line' />} iconPosition='top' />
+            ) : null}
             {allowedTabs.includes('rooms') ? (
               <Tab
                 value='rooms'

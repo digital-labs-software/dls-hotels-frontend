@@ -1,3 +1,5 @@
+import { formatRoomPrice } from '@/types/apps/roomsTypes'
+
 /** Tarifa del hotel: nombre y rango de fechas. El monto vive en cada habitación. */
 export type HotelRate = {
   id: number
@@ -123,14 +125,14 @@ export const priceSourceLabel = ({ price, rate, roomNumber, roomPrice }: PriceSo
   }
 
   if (rate && value === Number(rate.price)) {
-    return `Tarifa «${rate.name}»`
+    return `Tarifa ${rate.name}, ${formatRoomPrice(value)} por noche.`
   }
 
   if (roomNumber && roomPrice != null && value === Number(roomPrice)) {
-    return `Precio de la habitación ${roomNumber}`
+    return `Precio normal de la habitación ${roomNumber}, ${formatRoomPrice(Number(roomPrice))} por noche.`
   }
 
-  return 'Precio escrito a mano'
+  return 'Precio escrito a mano.'
 }
 
 export const formatRateValidity = (validFrom: string | null, validTo: string | null) => {

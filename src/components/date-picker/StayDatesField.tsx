@@ -75,9 +75,10 @@ const StayDatesField = ({ checkIn, checkOut, onChange, error, helperText }: Prop
   return (
     <>
       <div className='grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-4 items-end'>
-        <DateField fullWidth label='Ingreso (check-in)' value={checkIn} onChange={changeCheckIn} />
+        <DateField fullWidth size='small' label='Ingreso (check-in)' value={checkIn} onChange={changeCheckIn} />
         <DateField
           fullWidth
+          size='small'
           label='Salida (check-out)'
           value={checkOut}
           minDate={checkIn ? dateToIso(addDays(isoToDate(checkIn) as Date, 1)) : undefined}
@@ -89,7 +90,7 @@ const StayDatesField = ({ checkIn, checkOut, onChange, error, helperText }: Prop
           component='button'
           type='button'
           variant='caption'
-          className='justify-self-start sm:mb-2'
+          className='justify-self-start sm:mb-1'
           onClick={openCalendar}
         >
           Elegir varias noches

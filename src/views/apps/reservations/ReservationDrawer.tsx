@@ -10,10 +10,6 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -24,10 +20,10 @@ import Typography from '@mui/material/Typography'
 import { toast } from 'react-toastify'
 
 import type { Company, Guest } from '@/types/apps/clientsTypes'
-import type { FrontDeskPayment, Reservation, ReservationRoom } from '@/types/apps/frontDeskTypes'
+import type { Reservation, ReservationRoom } from '@/types/apps/frontDeskTypes'
 import { STAY_STATUS_LABELS, guestFullName, headlineStayStatus } from '@/types/apps/frontDeskTypes'
 import type { ReservationSource } from '@/types/apps/reservationsTypes'
-import { addDays, EXTERNAL_CODE_SOURCES, formatPlanningDate, PAYMENT_LABELS, SOURCE_LABELS, SOURCE_OPTIONS, stayStatusChipSx } from '@/types/apps/reservationsTypes'
+import { addDays, BOOKING_STATUS_LABELS, EXTERNAL_CODE_SOURCES, formatPlanningDate, SOURCE_LABELS, SOURCE_OPTIONS, stayStatusChipSx } from '@/types/apps/reservationsTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import GuestPicker from '@views/apps/front-desk/GuestPicker'
 import AddReservationRoomDialog from './AddReservationRoomDialog'
@@ -36,6 +32,8 @@ import CompanyPicker from './CompanyPicker'
 import CreateGuestDialog from './CreateGuestDialog'
 import { getReservationsApiErrorMessage, reservationsApi } from '@/libs/reservationsApi'
 import DateField from '@/components/date-picker/DateField'
+import { formatGuestPhone } from '@/utils/guestPhone'
+import RoomDatesDialog from './RoomDatesDialog'
 
 type Props = {
   open: boolean
@@ -44,18 +42,10 @@ type Props = {
   highlightAssign?: boolean
   onClose: () => void
   onChanged: () => void
-  onPay: (uuid: string, balance: number, paidAmount: number, cancelled: boolean) => void
-  paymentsVersion?: number
 }
 
 const personLabel = (guest: { firstName: string; lastName: string }) =>
   !guest.lastName || guest.lastName === '—' ? guest.firstName : `${guest.firstName} ${guest.lastName}`
-
-const STATUS_INK: Record<Reservation['status'], { light: string; dark: string }> = {
-  PENDING: { light: '#BF360C', dark: '#FFB74D' },
-  CONFIRMED: { light: '#0D47A1', dark: '#64B5F6' },
-  CANCELLED: { light: '#263238', dark: '#B0BEC5' }
-}
 
 type SlotDraft = {
   guestId: number | null
@@ -84,12 +74,9 @@ const ReservationDrawer = ({
   reservationUuid,
   highlightAssign,
   onClose,
-  onChanged,
-  onPay,
-  paymentsVersion = 0
+  onChanged
 }: Props) => {
   const [reservation, setReservation] = useState<Reservation | null>(null)
-  const [payments, setPayments] = useState<FrontDeskPayment[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -103,8 +90,7 @@ const ReservationDrawer = ({
   const [pickedCompany, setPickedCompany] = useState<Company | null>(null)
   const [editCheckIn, setEditCheckIn] = useState('')
   const [editCheckOut, setEditCheckOut] = useState('')
-  const [cancelOpen, setCancelOpen] = useState(false)
-  const [cancelReason, setCancelReason] = useState('')
+  const [editStatus, setEditStatus] = useState<'PENDING' | 'CONFIRMED'>('CONFIRMED')
   const [assignLine, setAssignLine] = useState<ReservationRoom | null>(null)
   const [addRoomOpen, setAddRoomOpen] = useState(false)
 
@@ -116,13 +102,9 @@ const ReservationDrawer = ({
     if (!silent) setLoading(true)
 
     try {
-      const [detail, paymentRows] = await Promise.all([
-        reservationsApi.get(propertyId, reservationUuid),
-        reservationsApi.payments(propertyId, reservationUuid)
-      ])
+      const detail = await reservationsApi.get(propertyId, reservationUuid)
 
       setReservation(detail)
-      setPayments(paymentRows)
       setSource(detail.source)
       setExternalCode(detail.externalCode ?? '')
       setDiscountAmount(String(detail.discountAmount ?? 0))
@@ -137,6 +119,7 @@ const ReservationDrawer = ({
 
       setEditCheckIn(checkIns[0] || detail.checkInDate)
       setEditCheckOut(checkOuts.at(-1) || detail.checkOutDate)
+      setEditStatus(detail.status === 'PENDING' ? 'PENDING' : 'CONFIRMED')
       setEditing(false)
     } catch (error) {
       toast.error(getReservationsApiErrorMessage(error, 'No se pudo cargar la reserva.'))
@@ -156,27 +139,12 @@ const ReservationDrawer = ({
       load()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, reservationUuid, paymentsVersion])
+  }, [open, reservationUuid])
 
   const afterAction = async (message: string) => {
     toast.success(message)
     await load()
     onChanged()
-  }
-
-  const handleConfirm = async () => {
-    if (!reservation) return
-
-    setSaving(true)
-
-    try {
-      await reservationsApi.update(propertyId, reservation.uuid, { status: 'CONFIRMED' })
-      await afterAction('Reserva confirmada.')
-    } catch (error) {
-      toast.error(getReservationsApiErrorMessage(error, 'No se pudo confirmar.'))
-    } finally {
-      setSaving(false)
-    }
   }
 
   const handleSaveEdit = async () => {
@@ -203,7 +171,8 @@ const ReservationDrawer = ({
         source,
         externalCode: EXTERNAL_CODE_SOURCES.includes(source) ? externalCode.trim() || null : null,
         discountAmount: Number(discountAmount) || 0,
-        notes: notes.trim() || null
+        notes: notes.trim() || null,
+        ...(statusEditable && editStatus !== reservation.status ? { status: editStatus } : {})
       })
 
       let keptCheckIn = false
@@ -255,6 +224,7 @@ const ReservationDrawer = ({
 
     setEditCheckIn(checkIns[0] || reservation.checkInDate)
     setEditCheckOut(checkOuts.at(-1) || reservation.checkOutDate)
+    setEditStatus(reservation.status === 'PENDING' ? 'PENDING' : 'CONFIRMED')
     setEditing(false)
   }
 
@@ -268,26 +238,6 @@ const ReservationDrawer = ({
       await afterAction('Marcada como no se presentó.')
     } catch (error) {
       toast.error(getReservationsApiErrorMessage(error, 'No se pudo marcar que no se presentó.'))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleCancel = async () => {
-    if (!reservation || !cancelReason.trim()) {
-      toast.error('Indica el motivo de cancelación.')
-
-      return
-    }
-
-    setSaving(true)
-
-    try {
-      await reservationsApi.cancel(propertyId, reservation.uuid, cancelReason.trim())
-      setCancelOpen(false)
-      await afterAction('Reserva cancelada.')
-    } catch (error) {
-      toast.error(getReservationsApiErrorMessage(error, 'No se pudo cancelar.'))
     } finally {
       setSaving(false)
     }
@@ -308,7 +258,10 @@ const ReservationDrawer = ({
     }
   }
 
-  const handleSaveLine = async (line: ReservationRoom, patch: { checkOutDate?: string; adults?: number; children?: number; pricePerNight?: number }) => {
+  const handleSaveLine = async (
+    line: ReservationRoom,
+    patch: { checkInDate?: string; checkOutDate?: string; adults?: number; children?: number; pricePerNight?: number }
+  ) => {
     if (!reservation) return
 
     setSaving(true)
@@ -373,10 +326,10 @@ const ReservationDrawer = ({
   )
   const stayFinished = rooms.length > 0 && !stayOpen
   const canEdit = (status === 'PENDING' || status === 'CONFIRMED') && !stayFinished
-  const canCancel =
-    (status === 'PENDING' || status === 'CONFIRMED') &&
-    !rooms.some(line => line.status === 'CHECKED_IN' || line.status === 'CHECKED_OUT')
   const readOnly = status === 'CANCELLED' || stayFinished
+  const statusEditable =
+    (status === 'PENDING' || status === 'CONFIRMED') &&
+    rooms.every(line => line.status === 'PENDING' || line.status === 'CONFIRMED' || line.status === 'CANCELLED')
 
   const activeRooms = (reservation?.rooms ?? []).filter(
     line => line.status !== 'CANCELLED' && line.status !== 'NO_SHOW' && line.status !== 'CHECKED_OUT'
@@ -400,6 +353,8 @@ const ReservationDrawer = ({
     ]
       .filter(Boolean)
       .join(' · ') || 'Sin quien reserva'
+
+  const bookerPhone = formatGuestPhone(reservation?.company?.phone || reservation?.guest?.phone) || 'Sin celular'
 
   const guestEditLabel =
     guestId == null
@@ -441,10 +396,12 @@ const ReservationDrawer = ({
               <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 3 }} className='flex flex-col gap-4'>
                 {editing ? (
                   <>
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <div className='flex flex-col gap-4'>
+                      <div className='grid grid-cols-1 md:grid-cols-2 gap-4 items-start'>
+                      <div className='flex flex-col gap-2'>
+                      <Typography variant='caption' color='text.secondary'>Quién reserva</Typography>
                       {!companyId || guestId != null ? (
                         <div className='flex flex-col gap-2'>
-                          <Typography variant='caption' color='text.secondary'>Persona</Typography>
                           {guestEditLabel ? (
                             <Chip label={guestEditLabel} onDelete={() => { setGuestId(null); setPickedGuest(null) }} />
                           ) : (
@@ -467,7 +424,6 @@ const ReservationDrawer = ({
                       ) : null}
                       {!guestId || companyId != null ? (
                         <div className='flex flex-col gap-2'>
-                          <Typography variant='caption' color='text.secondary'>Agencia o empresa</Typography>
                           {companyEditLabel ? (
                             <Chip label={companyEditLabel} onDelete={() => { setCompanyId(null); setPickedCompany(null) }} />
                           ) : (
@@ -486,14 +442,32 @@ const ReservationDrawer = ({
                           )}
                         </div>
                       ) : null}
-                      <DateField label='Ingreso' value={editCheckIn} onChange={setEditCheckIn} fullWidth />
-                      <DateField
-                        label='Salida'
-                        value={editCheckOut}
-                        minDate={editCheckIn ? addDays(editCheckIn, 1) : undefined}
-                        onChange={setEditCheckOut}
-                        fullWidth
-                      />
+                      </div>
+                      <div className='flex flex-col gap-2'>
+                        <Typography variant='caption' color='text.secondary'>Estado</Typography>
+                        <FormControl fullWidth disabled={!statusEditable}>
+                          <Select
+                            value={editStatus}
+                            inputProps={{ 'aria-label': 'Estado' }}
+                            onChange={event => setEditStatus(event.target.value as 'PENDING' | 'CONFIRMED')}
+                          >
+                            <MenuItem value='CONFIRMED'>Confirmada</MenuItem>
+                            <MenuItem value='PENDING'>Pendiente</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </div>
+                      </div>
+                      <div className='grid grid-cols-2 gap-4'>
+                        <DateField label='Ingreso' value={editCheckIn} onChange={setEditCheckIn} fullWidth />
+                        <DateField
+                          label='Salida'
+                          value={editCheckOut}
+                          minDate={editCheckIn ? addDays(editCheckIn, 1) : undefined}
+                          onChange={setEditCheckOut}
+                          fullWidth
+                        />
+                      </div>
+                      <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                       <FormControl fullWidth>
                         <InputLabel id='edit-source'>Canal</InputLabel>
                         <Select
@@ -527,6 +501,7 @@ const ReservationDrawer = ({
                           slotProps={{ input: { startAdornment: <Typography variant='body2' className='mie-1'>S/</Typography> } }}
                         />
                       ) : null}
+                      </div>
                     </div>
                     <TextField
                       label='Notas de la reserva'
@@ -542,7 +517,6 @@ const ReservationDrawer = ({
                       {reservation.balance < 0
                         ? `saldo a favor ${formatRoomPrice(Math.abs(reservation.balance))}`
                         : `saldo ${formatRoomPrice(reservation.balance)} · pagado ${formatRoomPrice(reservation.paidAmount)}`}
-                      . Lo pagado se corrige con Pago o devolución.
                     </Typography>
                     <div className='flex justify-end gap-2'>
                       <Button variant='outlined' color='secondary' disabled={saving} onClick={cancelEdit}>
@@ -555,59 +529,57 @@ const ReservationDrawer = ({
                   </>
                 ) : (
                   <>
-                    <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
-                      <div>
+                    <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6'>
+                      <div className='flex flex-col gap-1'>
                         <Typography variant='caption' color='text.secondary'>Quién reserva</Typography>
-                        <Typography>{booker}</Typography>
+                        <Typography fontWeight={600}>{booker}</Typography>
                       </div>
-                      <div>
-                        <Typography variant='caption' color='text.secondary'>Canal</Typography>
-                        <Typography>
-                          {SOURCE_LABELS[reservation.source]}
-                          {reservation.externalCode?.trim() ? ` · ${reservation.externalCode.trim()}` : ''}
-                        </Typography>
+                      <div className='flex flex-col gap-1'>
+                        <Typography variant='caption' color='text.secondary'>Celular</Typography>
+                        <Typography fontWeight={600}>{bookerPhone}</Typography>
                       </div>
-                      <div>
+                      <div className='flex flex-col gap-1'>
                         <Typography variant='caption' color='text.secondary'>Estadía</Typography>
-                        <Typography>
+                        <Typography fontWeight={600}>
                           {stayIn && stayOut ? `${formatPlanningDate(stayIn)} – ${formatPlanningDate(stayOut)}` : '—'}
                         </Typography>
                       </div>
-                      <div>
+                      <div className='flex flex-col gap-1'>
                         <Typography variant='caption' color='text.secondary'>Estado</Typography>
-                        <Typography
-                          fontWeight={600}
-                          sx={{
-                            color: theme =>
-                              headlineStayStatus(reservation) === 'NO_SHOW'
-                                ? theme.palette.mode === 'dark'
-                                  ? '#CE93D8'
-                                  : '#6A1B9A'
-                                : STATUS_INK[reservation.status][theme.palette.mode]
-                          }}
-                        >
-                          {STAY_STATUS_LABELS[headlineStayStatus(reservation)]}
-                        </Typography>
+                        <div>
+                          <Chip
+                            size='small'
+                            label={STAY_STATUS_LABELS[headlineStayStatus(reservation)]}
+                            sx={stayStatusChipSx(headlineStayStatus(reservation))}
+                          />
+                        </div>
                       </div>
-                      <div>
+                      <div className='flex flex-col gap-1'>
                         <Typography variant='caption' color='text.secondary'>Total</Typography>
-                        <Typography>
+                        <Typography fontWeight={600}>
                           {formatRoomPrice(reservation.totalAmount)}
                           {reservation.discountAmount > 0 ? ` · descuento ${formatRoomPrice(reservation.discountAmount)}` : ''}
                         </Typography>
                       </div>
-                      <div>
+                      <div className='flex flex-col gap-1'>
                         <Typography variant='caption' color='text.secondary'>Saldo</Typography>
-                        <Typography color={reservation.balance > 0 ? 'error' : 'success.main'}>
+                        <Typography fontWeight={600} color={reservation.balance > 0 ? 'error' : 'success.main'}>
                           {reservation.balance < 0
                             ? `A favor ${formatRoomPrice(Math.abs(reservation.balance))}`
                             : `${formatRoomPrice(reservation.balance)} · pagado ${formatRoomPrice(reservation.paidAmount)}`}
                         </Typography>
                       </div>
+                      <div className='flex flex-col gap-1'>
+                        <Typography variant='caption' color='text.secondary'>Canal</Typography>
+                        <Typography fontWeight={600}>
+                          {SOURCE_LABELS[reservation.source]}
+                          {reservation.externalCode?.trim() ? ` · ${reservation.externalCode.trim()}` : ''}
+                        </Typography>
+                      </div>
                     </div>
-                    <div>
+                    <div className='flex flex-col gap-1'>
                       <Typography variant='caption' color='text.secondary'>Notas de la reserva</Typography>
-                      <Typography>{reservation.notes?.trim() || 'Sin nota'}</Typography>
+                      <Typography fontWeight={600}>{reservation.notes?.trim() || 'Sin nota'}</Typography>
                     </div>
                     {canEdit ? (
                       <div className='flex justify-end'>
@@ -642,66 +614,38 @@ const ReservationDrawer = ({
                     </Button>
                   ) : null}
                 </div>
-                {reservation.rooms.map(line => (
-                  <RoomRow
-                    key={line.uuid}
-                    line={line}
-                    highlightAssign={Boolean(highlightAssign && !line.roomId)}
-                    saving={saving}
-                    propertyId={propertyId}
-                    onAssign={() => setAssignLine(line)}
-                    onNoShow={() => handleNoShow(line)}
-                    onRemove={() => handleRemoveRoom(line)}
-                    onSave={patch => handleSaveLine(line, patch)}
-                    onAssignGuest={(slotIndex, guest, previousId) => handleAssignGuest(line, slotIndex, guest, previousId)}
-                    onClearGuest={reservationGuestId => handleClearGuest(line, reservationGuestId)}
-                  />
-                ))}
-              </div>
+                {reservation.rooms.map(line => {
+                  const others = reservation.rooms.filter(
+                    item =>
+                      item.uuid !== line.uuid &&
+                      (item.status === 'PENDING' || item.status === 'CONFIRMED' || item.status === 'CHECKED_IN')
+                  )
+                  const groupCheckIn = others.length
+                    ? [...others].map(item => item.checkInDate).sort()[0]
+                    : line.checkInDate
+                  const groupCheckOut = others.length
+                    ? [...others].map(item => item.checkOutDate).sort().at(-1) || line.checkOutDate
+                    : line.checkOutDate
 
-              <div>
-                <Typography variant='subtitle2' className='mb-2'>
-                  Pagos
-                </Typography>
-                {payments.length === 0 ? (
-                  <Typography variant='body2' color='text.secondary'>
-                    Sin pagos registrados.
-                  </Typography>
-                ) : (
-                  payments.map(payment => (
-                    <Typography key={payment.uuid} variant='body2'>
-                      {payment.amount < 0 ? 'Devolución · ' : ''}
-                      {formatRoomPrice(Math.abs(payment.amount))} · {PAYMENT_LABELS[payment.method]}
-                      {payment.reference ? ` · ${payment.reference}` : ''}
-                    </Typography>
-                  ))
-                )}
-              </div>
-
-              <div className='flex flex-wrap gap-2'>
-                {status === 'PENDING' ? (
-                  <Button variant='contained' disabled={saving} onClick={handleConfirm}>
-                    Confirmar
-                  </Button>
-                ) : null}
-                <Button
-                  variant='outlined'
-                  onClick={() =>
-                    onPay(reservation.uuid, reservation.balance, reservation.paidAmount, reservation.status === 'CANCELLED')
-                  }
-                >
-                  Pago o devolución
-                </Button>
-                {canCancel ? (
-                  <Button color='error' variant='outlined' onClick={() => setCancelOpen(true)}>
-                    Cancelar reserva
-                  </Button>
-                ) : null}
-                {readOnly ? (
-                  <Typography variant='caption' color='text.secondary'>
-                    Esta reserva está en solo lectura. Aún puedes registrar pagos o devoluciones.
-                  </Typography>
-                ) : null}
+                  return (
+                    <RoomRow
+                      key={line.uuid}
+                      line={line}
+                      highlightAssign={Boolean(highlightAssign && !line.roomId)}
+                      saving={saving}
+                      propertyId={propertyId}
+                      groupCheckIn={groupCheckIn}
+                      groupCheckOut={groupCheckOut}
+                      allowDateChange={others.length > 0}
+                      onAssign={() => setAssignLine(line)}
+                      onNoShow={() => handleNoShow(line)}
+                      onRemove={() => handleRemoveRoom(line)}
+                      onSave={patch => handleSaveLine(line, patch)}
+                      onAssignGuest={(slotIndex, guest, previousId) => handleAssignGuest(line, slotIndex, guest, previousId)}
+                      onClearGuest={reservationGuestId => handleClearGuest(line, reservationGuestId)}
+                    />
+                  )
+                })}
               </div>
             </>
           )}
@@ -741,26 +685,6 @@ const ReservationDrawer = ({
           onChanged()
         }}
       />
-
-      <Dialog open={cancelOpen} onClose={() => setCancelOpen(false)} fullWidth maxWidth='xs'>
-        <DialogTitle>Cancelar reserva</DialogTitle>
-        <DialogContent className='pt-4'>
-          <TextField
-            fullWidth
-            label='Motivo'
-            value={cancelReason}
-            onChange={e => setCancelReason(e.target.value)}
-            multiline
-            minRows={2}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCancelOpen(false)}>Volver</Button>
-          <Button color='error' variant='contained' disabled={saving} onClick={handleCancel}>
-            Cancelar reserva
-          </Button>
-        </DialogActions>
-      </Dialog>
     </>
   )
 }
@@ -939,6 +863,9 @@ const RoomRow = ({
   highlightAssign,
   saving,
   propertyId,
+  groupCheckIn,
+  groupCheckOut,
+  allowDateChange,
   onAssign,
   onNoShow,
   onRemove,
@@ -950,22 +877,23 @@ const RoomRow = ({
   highlightAssign: boolean
   saving: boolean
   propertyId: number
+  groupCheckIn: string
+  groupCheckOut: string
+  allowDateChange: boolean
   onAssign: () => void
   onNoShow: () => void
   onRemove: () => void
-  onSave: (patch: { checkOutDate: string }) => void
+  onSave: (patch: { checkInDate: string; checkOutDate: string }) => void
   onAssignGuest: (slotIndex: number, guest: Guest, previousId: number | null) => void
   onClearGuest: (reservationGuestId: number) => void
 }) => {
-  const [checkOutDate, setCheckOutDate] = useState(line.checkOutDate)
   const [slots, setSlots] = useState<SlotDraft[]>(() => slotsFromLine(line))
-  const [more, setMore] = useState(false)
+  const [datesOpen, setDatesOpen] = useState(false)
   const lineOpen = line.status === 'PENDING' || line.status === 'CONFIRMED'
   const canEditPeople = lineOpen || line.status === 'CHECKED_IN'
   const canMutate = lineOpen
 
   useEffect(() => {
-    setCheckOutDate(line.checkOutDate)
     setSlots(slotsFromLine(line))
   }, [line])
 
@@ -979,7 +907,13 @@ const RoomRow = ({
             <Typography fontWeight={600}>
               {line.roomNumber || 'Sin número'} · {line.roomTypeName}
             </Typography>
-            <Chip size='small' label={STAY_STATUS_LABELS[line.status]} sx={stayStatusChipSx(line.status)} />
+            <Chip
+              size='small'
+              label={BOOKING_STATUS_LABELS[line.status]}
+              color={line.status === 'CONFIRMED' ? 'primary' : undefined}
+              variant={line.status === 'CONFIRMED' ? 'tonal' : 'filled'}
+              sx={line.status === 'CONFIRMED' ? undefined : stayStatusChipSx(line.status)}
+            />
           </div>
           {highlightAssign ? <Alert severity='warning'>Esta habitación no tiene número.</Alert> : null}
           <Typography variant='body2'>
@@ -1038,9 +972,9 @@ const RoomRow = ({
               Cambiar habitación
             </Button>
           ) : null}
-          {canMutate ? (
-            <Button size='small' onClick={() => setMore(current => !current)}>
-              {more ? 'Ocultar' : 'Cambiar salida'}
+          {canMutate && allowDateChange ? (
+            <Button size='small' disabled={saving} onClick={() => setDatesOpen(true)}>
+              Cambiar fechas
             </Button>
           ) : null}
           {line.status === 'CONFIRMED' || line.status === 'PENDING' ? (
@@ -1054,15 +988,26 @@ const RoomRow = ({
             </Button>
           ) : null}
         </div>
-        {more && canMutate ? (
-          <div className='flex flex-wrap items-start gap-2'>
-            <DateField size='small' label='Salida' value={checkOutDate} onChange={setCheckOutDate} />
-            <Button size='small' className='mbs-1' disabled={saving || !checkOutDate} onClick={() => onSave({ checkOutDate })}>
-              Guardar salida
-            </Button>
-          </div>
-        ) : null}
       </div>
+      {datesOpen && allowDateChange ? (
+        <RoomDatesDialog
+          key={`${line.uuid}-${line.checkInDate}-${line.checkOutDate}`}
+          open
+          title={line.roomNumber ? `Habitación ${line.roomNumber}` : line.roomTypeName}
+          roomCheckIn={line.checkInDate}
+          roomCheckOut={line.checkOutDate}
+          stayCheckIn={groupCheckIn}
+          stayCheckOut={groupCheckOut}
+          onClose={() => setDatesOpen(false)}
+          onAccept={(checkIn, checkOut) => {
+            setDatesOpen(false)
+
+            if (checkIn === line.checkInDate && checkOut === line.checkOutDate) return
+
+            onSave({ checkInDate: checkIn, checkOutDate: checkOut })
+          }}
+        />
+      ) : null}
     </div>
   )
 }

@@ -264,9 +264,10 @@ export interface Reservation {
     lastName: string
     documentType: string | null
     documentNumber: string | null
+    phone: string | null
   } | null
   companyId: number | null
-  company: { id: number; uuid: string; businessName: string; taxNumber: string | null } | null
+  company: { id: number; uuid: string; businessName: string; taxNumber: string | null; phone: string | null } | null
   source: ReservationSource
   externalCode: string | null
   status: ReservationStatus

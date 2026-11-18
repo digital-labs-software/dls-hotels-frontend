@@ -12,6 +12,7 @@ import type { Guest } from '@/types/apps/clientsTypes'
 import { DOCUMENT_TYPE_LABELS } from '@/types/apps/clientsTypes'
 import { guestFullName } from '@/types/apps/frontDeskTypes'
 import { frontDeskApi } from '@/libs/frontDeskApi'
+import { formatGuestPhone } from '@/utils/guestPhone'
 
 type Props = {
   propertyId: number
@@ -153,7 +154,7 @@ const GuestPicker = ({
                 option.person.documentNumber
                   ? `${DOCUMENT_TYPE_LABELS[option.person.documentType ?? 'OTHER'] ?? ''} ${option.person.documentNumber}`.trim()
                   : null,
-                option.person.phone
+                option.person.phone ? formatGuestPhone(option.person.phone) : null
               ]
                 .filter(Boolean)
                 .join(' · ')}

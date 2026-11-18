@@ -25,6 +25,8 @@ import { useExistingRecord } from '@/hooks/useExistingRecord'
 import { DocumentLookupAdornment, DocumentLookupHelper } from '@/components/document-lookup/DocumentLookupHelper'
 import ExistingRecordAlert from '@/components/document-lookup/ExistingRecordAlert'
 import { toPersonName } from '@/utils/string'
+import GuestPhoneField from '@/components/GuestPhoneField'
+import { formatGuestPhone, guestPhoneError } from '@/utils/guestPhone'
 
 type Props = {
   open: boolean
@@ -44,6 +46,7 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
   const [documentType, setDocumentType] = useState<DocumentType | ''>('DNI')
   const [documentNumber, setDocumentNumber] = useState('')
   const [phone, setPhone] = useState('')
+  const [phoneError, setPhoneError] = useState('')
   const [email, setEmail] = useState('')
   const [saving, setSaving] = useState(false)
   const documentInputRef = useRef<HTMLInputElement>(null)
@@ -71,6 +74,7 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
 
     setDocumentType('DNI')
     setPhone('')
+    setPhoneError('')
     setEmail('')
     clearExisting()
     resetLookup()
@@ -137,6 +141,14 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
 
     if (!names || !surnames) {
       toast.error('Nombres y apellidos son obligatorios.')
+
+      return
+    }
+
+    const phoneProblem = guestPhoneError(phone)
+
+    if (phoneProblem) {
+      setPhoneError(phoneProblem)
 
       return
     }
@@ -255,7 +267,7 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
           <ExistingRecordAlert
             title='Este documento ya está registrado'
             name={`${existing.person.firstName} ${existing.person.lastName}`}
-            details={[existing.person.phone && `Tel. ${existing.person.phone}`, existing.person.email]}
+            details={[existing.person.phone && `Cel. ${formatGuestPhone(existing.person.phone)}`, existing.person.email]}
             actionLabel='Usar este huésped'
             onAction={selectExisting}
           />
@@ -278,7 +290,16 @@ const CreateGuestDialog = ({ open, propertyId, onClose, onCreated, initialQuery 
               />
             </div>
             <div className='flex gap-4 max-sm:flex-col'>
-              <TextField fullWidth label='Teléfono' value={phone} onChange={e => setPhone(e.target.value)} />
+              <GuestPhoneField
+                value={phone}
+                onChange={next => {
+                  setPhone(next)
+                  setPhoneError('')
+                }}
+                disabled={saving}
+                error={Boolean(phoneError)}
+                helperText={phoneError}
+              />
               <TextField fullWidth label='Correo' value={email} onChange={e => setEmail(e.target.value)} />
             </div>
           </>

@@ -137,8 +137,10 @@ const CashPage = () => {
   const [openNotes, setOpenNotes] = useState('')
   const [expenseAmount, setExpenseAmount] = useState('')
   const [expenseNotes, setExpenseNotes] = useState('')
+  const [expenseErrors, setExpenseErrors] = useState<{ amount?: string; notes?: string }>({})
   const [reinforcementAmount, setReinforcementAmount] = useState('')
   const [reinforcementNotes, setReinforcementNotes] = useState('')
+  const [reinforcementErrors, setReinforcementErrors] = useState<{ amount?: string; notes?: string }>({})
   const [countedCash, setCountedCash] = useState('')
   const [closeNotes, setCloseNotes] = useState('')
   const [pendingRemoval, setPendingRemoval] = useState<{ kind: 'expense' | 'reinforcement'; uuid: string } | null>(null)
@@ -298,8 +300,10 @@ const CashPage = () => {
     setMoveDialog(null)
     setExpenseAmount('')
     setExpenseNotes('')
+    setExpenseErrors({})
     setReinforcementAmount('')
     setReinforcementNotes('')
+    setReinforcementErrors({})
   }
 
   const addReinforcement = async () => {
@@ -308,19 +312,23 @@ const CashPage = () => {
     }
 
     const amount = moneyValue(reinforcementAmount)
+    const nextErrors: { amount?: string; notes?: string } = {}
 
     if (amount === null || amount <= 0) {
-      toast.error('Escribe cuánto entró a la caja.')
-
-      return
+      nextErrors.amount = 'Escribe cuánto entró a la caja.'
     }
 
     if (!reinforcementNotes.trim()) {
-      toast.error('Escribe una descripción del refuerzo.')
+      nextErrors.notes = 'Escribe una descripción del refuerzo.'
+    }
+
+    if (nextErrors.amount || nextErrors.notes || amount === null) {
+      setReinforcementErrors(nextErrors)
 
       return
     }
 
+    setReinforcementErrors({})
     setSaving(true)
 
     try {
@@ -332,6 +340,7 @@ const CashPage = () => {
       setCurrent(updated)
       setReinforcementAmount('')
       setReinforcementNotes('')
+      setReinforcementErrors({})
       toast.success('Refuerzo registrado.')
     } catch (error) {
       toast.error(getCashApiErrorMessage(error, 'No se pudo registrar el refuerzo.'))
@@ -373,18 +382,23 @@ const CashPage = () => {
     }
 
     const amount = moneyValue(expenseAmount)
+    const nextErrors: { amount?: string; notes?: string } = {}
 
     if (amount === null || amount <= 0) {
-      toast.error('Escribe cuánto salió de la caja.')
-
-      return
+      nextErrors.amount = 'Escribe cuánto salió de la caja.'
     }
 
     if (!expenseNotes.trim()) {
-      toast.error('Escribe para qué salió el dinero.')
+      nextErrors.notes = 'Escribe para qué salió el dinero.'
+    }
+
+    if (nextErrors.amount || nextErrors.notes || amount === null) {
+      setExpenseErrors(nextErrors)
 
       return
     }
+
+    setExpenseErrors({})
 
     setSaving(true)
 
@@ -397,6 +411,7 @@ const CashPage = () => {
       setCurrent(updated)
       setExpenseAmount('')
       setExpenseNotes('')
+      setExpenseErrors({})
       toast.success('Egreso registrado.')
     } catch (error) {
       toast.error(getCashApiErrorMessage(error, 'No se pudo registrar el egreso.'))
@@ -956,23 +971,35 @@ const CashPage = () => {
               Caja <strong>{current.number}</strong> · abierta · cajero {current.cashier.name}
             </Typography>
           ) : null}
-          <div className='flex flex-wrap items-end gap-3'>
+          <div className='flex flex-wrap items-start gap-3'>
             <TextField
+              required
               label='Monto'
               value={expenseAmount}
-              onChange={event => setExpenseAmount(event.target.value)}
+              onChange={event => {
+                setExpenseAmount(event.target.value)
+                setExpenseErrors(current => ({ ...current, amount: undefined }))
+              }}
               className='min-is-[140px]'
               placeholder='12.00'
               disabled={saving}
               autoFocus
+              error={Boolean(expenseErrors.amount)}
+              helperText={expenseErrors.amount}
             />
             <TextField
+              required
               label='¿Para qué salió?'
               value={expenseNotes}
-              onChange={event => setExpenseNotes(event.target.value)}
+              onChange={event => {
+                setExpenseNotes(event.target.value)
+                setExpenseErrors(current => ({ ...current, notes: undefined }))
+              }}
               className='min-is-[220px] flex-1'
               placeholder='Almuerzo, pan, plomero…'
               disabled={saving}
+              error={Boolean(expenseErrors.notes)}
+              helperText={expenseErrors.notes}
             />
           </div>
           <Table size='small'>
@@ -1032,23 +1059,35 @@ const CashPage = () => {
               Caja <strong>{current.number}</strong> · abierta · cajero {current.cashier.name}
             </Typography>
           ) : null}
-          <div className='flex flex-wrap items-end gap-3'>
+          <div className='flex flex-wrap items-start gap-3'>
             <TextField
+              required
               label='Monto'
               value={reinforcementAmount}
-              onChange={event => setReinforcementAmount(event.target.value)}
+              onChange={event => {
+                setReinforcementAmount(event.target.value)
+                setReinforcementErrors(current => ({ ...current, amount: undefined }))
+              }}
               className='min-is-[140px]'
               placeholder='50.00'
               disabled={saving}
               autoFocus
+              error={Boolean(reinforcementErrors.amount)}
+              helperText={reinforcementErrors.amount}
             />
             <TextField
+              required
               label='Descripción'
               value={reinforcementNotes}
-              onChange={event => setReinforcementNotes(event.target.value)}
+              onChange={event => {
+                setReinforcementNotes(event.target.value)
+                setReinforcementErrors(current => ({ ...current, notes: undefined }))
+              }}
               className='min-is-[220px] flex-1'
               placeholder='Ej. Cambio para el turno'
               disabled={saving}
+              error={Boolean(reinforcementErrors.notes)}
+              helperText={reinforcementErrors.notes}
             />
           </div>
           <Table size='small'>

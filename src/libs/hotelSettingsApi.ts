@@ -65,6 +65,7 @@ const normalizeSettings = (settings: PropertySettings): PropertySettings => ({
   category: normalizeCategory(settings.category),
   checkInTime: settings.checkInTime?.slice(0, 5) || '14:00',
   checkOutTime: settings.checkOutTime?.slice(0, 5) || '12:00',
+  pendingNotifyDays: Number(settings.pendingNotifyDays) || 7,
   location: settings.location
 })
 
@@ -82,6 +83,7 @@ const toUpdatePayload = (body: UpdatePropertySettingsInput) => {
   if (body.website !== undefined) payload.website = emptyToNull(body.website)
   if (body.checkInTime !== undefined) payload.checkInTime = body.checkInTime
   if (body.checkOutTime !== undefined) payload.checkOutTime = body.checkOutTime
+  if (body.pendingNotifyDays !== undefined) payload.pendingNotifyDays = body.pendingNotifyDays
 
   return payload
 }

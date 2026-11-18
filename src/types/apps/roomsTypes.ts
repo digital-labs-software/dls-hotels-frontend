@@ -61,7 +61,7 @@ export type CreateRoomDto = {
   number: string
   priceOverride: number
   photoUrl?: string | null
-  status: RoomStatus
+  status?: RoomStatus
   notes?: string | null
   ratePrices?: RoomRatePriceInput[]
 }

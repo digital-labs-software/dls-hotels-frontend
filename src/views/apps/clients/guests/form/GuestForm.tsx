@@ -29,6 +29,8 @@ import { DOCUMENT_TYPE_LABELS, guestDocumentOptions } from '@/types/apps/clients
 import { getClientsApiErrorMessage, guestsApi } from '@/libs/clientsApi'
 import { getLocalizedUrl } from '@/utils/i18n'
 import { scrollToFirstInvalid } from '@/utils/scrollToFirstInvalid'
+import GuestPhoneField from '@/components/GuestPhoneField'
+import { formatGuestPhone, guestPhoneError } from '@/utils/guestPhone'
 import { toPersonName } from '@/utils/string'
 import { isCompleteDocument, useDocumentLookup } from '@/hooks/useDocumentLookup'
 import { useExistingRecord } from '@/hooks/useExistingRecord'
@@ -378,7 +380,7 @@ const GuestForm = ({ uuid }: Props) => {
                         title='Este documento ya está registrado como huésped'
                         name={`${existing.person.firstName} ${existing.person.lastName}`}
                         details={[
-                          existing.person.phone && `Tel. ${existing.person.phone}`,
+                          existing.person.phone && `Cel. ${formatGuestPhone(existing.person.phone)}`,
                           existing.person.email
                         ]}
                         actionLabel='Abrir huésped'
@@ -446,15 +448,15 @@ const GuestForm = ({ uuid }: Props) => {
                     <Controller
                       name='phone'
                       control={control}
-                      rules={{ maxLength: { value: 20, message: 'Máximo 20 caracteres.' } }}
+                      rules={{ validate: value => guestPhoneError(value) ?? true }}
                       render={({ field }) => (
-                        <TextField
-                          {...field}
-                          fullWidth
-                          label='Teléfono'
-                          placeholder='987654321'
+                        <GuestPhoneField
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
                           disabled={isView || isSubmitting}
-                          {...(errors.phone && { error: true, helperText: errors.phone.message })}
+                          error={Boolean(errors.phone)}
+                          helperText={errors.phone?.message}
                         />
                       )}
                     />

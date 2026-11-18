@@ -20,13 +20,14 @@ import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Link from '@mui/material/Link'
 import OutlinedInput from '@mui/material/OutlinedInput'
 import Select from '@mui/material/Select'
+import Switch from '@mui/material/Switch'
 import Step from '@mui/material/Step'
 import StepLabel from '@mui/material/StepLabel'
 import Stepper from '@mui/material/Stepper'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
@@ -60,8 +61,10 @@ import {
 } from '@/types/apps/reservationsTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import { formatPeople, roomCapacity } from '@/types/apps/roomTypeTypes'
-import DateField from '@/components/date-picker/DateField'
 import StayDatesField from '@/components/date-picker/StayDatesField'
+import GuestPhoneField from '@/components/GuestPhoneField'
+import { companiesApi, getClientsApiErrorMessage, guestsApi } from '@/libs/clientsApi'
+import { guestPhoneError } from '@/utils/guestPhone'
 import GuestPicker from '@views/apps/front-desk/GuestPicker'
 import PayerKindToggle, { type PayerKind } from '@views/apps/front-desk/PayerKindToggle'
 import CompanyPicker from './CompanyPicker'
@@ -174,6 +177,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   const createdReservation = useRef<{ uuid: string; code: string } | null>(null)
   const [step, setStep] = useState(0)
   const [rooms, setRooms] = useState<RoomDraft[]>([emptyRoom(today, prefill)])
+  const [stayCheckIn, setStayCheckIn] = useState(prefill?.checkInDate || today)
+  const [stayCheckOut, setStayCheckOut] = useState(prefill?.checkOutDate || addDays(prefill?.checkInDate || today, 1))
   const [availability, setAvailability] = useState<AvailabilityRoomType[]>([])
   const [ratesByRoom, setRatesByRoom] = useState<Record<number, Rate[]>>({})
   const requestedRateRooms = useRef(new Set<number>())
@@ -189,6 +194,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   const [source, setSource] = useState<ReservationSource>('PHONE')
   const [externalCode, setExternalCode] = useState('')
   const [confirmed, setConfirmed] = useState(true)
+  const [callPhone, setCallPhone] = useState('')
+  const [callPhoneError, setCallPhoneError] = useState('')
   const [discountAmount, setDiscountAmount] = useState('0')
   const [notes, setNotes] = useState('')
   const [payAmount, setPayAmount] = useState('')
@@ -200,8 +207,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   const [bookerAttempted, setBookerAttempted] = useState(false)
   const [cashBlocked, setCashBlocked] = useState(false)
 
-  const primary = rooms[0]
-  const stayNights = primary ? nightsBetween(primary.checkInDate, primary.checkOutDate) : 1
+  const stayNights = nightsBetween(stayCheckIn, stayCheckOut)
 
   /** Abierta desde una celda del calendario: la habitación ya viene elegida. */
   const quickBooking = Boolean(prefill?.roomId)
@@ -216,6 +222,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
     setStep(0)
     setRooms([emptyRoom(today, prefill)])
+    setStayCheckIn(prefill?.checkInDate || today)
+    setStayCheckOut(prefill?.checkOutDate || addDays(prefill?.checkInDate || today, 1))
     setAvailability([])
     setRatesByRoom({})
     requestedRateRooms.current.clear()
@@ -225,6 +233,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     setSource('PHONE')
     setExternalCode('')
     setConfirmed(true)
+    setCallPhone('')
+    setCallPhoneError('')
     setDiscountAmount('0')
     setNotes(prefill?.notes ?? '')
     setPayAmount('')
@@ -237,10 +247,13 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     setBookerAttempted(false)
   }, [open, prefill, today])
 
-  const loadAvailability = async (drafts = rooms) => {
-    const first = drafts[0]
+  useEffect(() => {
+    setCallPhone(guest?.person.phone || company?.phone || '')
+    setCallPhoneError('')
+  }, [guest?.uuid, company?.uuid, guest?.person.phone, company?.phone])
 
-    if (!first || first.checkOutDate <= first.checkInDate) {
+  const loadAvailability = async () => {
+    if (stayCheckOut <= stayCheckIn) {
       return
     }
 
@@ -248,8 +261,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
     try {
       const result = await reservationsApi.availability(propertyId, {
-        checkInDate: first.checkInDate,
-        checkOutDate: first.checkOutDate
+        checkInDate: stayCheckIn,
+        checkOutDate: stayCheckOut
       })
 
       setAvailability(result.roomTypes)
@@ -291,11 +304,11 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
   }
 
   useEffect(() => {
-    if (open && primary?.checkInDate && primary?.checkOutDate) {
+    if (open && stayCheckIn && stayCheckOut) {
       loadAvailability()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, primary?.checkInDate, primary?.checkOutDate])
+  }, [open, stayCheckIn, stayCheckOut])
 
   const loadRates = async (roomId: number) => {
     if (requestedRateRooms.current.has(roomId)) {
@@ -478,11 +491,12 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     return type.freeRooms.filter(free => !taken.has(free.id))
   }
 
-  /** Cambia las fechas de la estadía en todas las habitaciones que no tienen fechas propias. */
-  const setStayDates = (checkInDate: string, checkOutDate: string) =>
-    setRooms(current =>
-      current.map((item, index) => (index === 0 || !item.customDates ? { ...item, checkInDate, checkOutDate } : item))
-    )
+  /** Cambia las fechas del grupo en todas las habitaciones. */
+  const setStayDates = (checkInDate: string, checkOutDate: string) => {
+    setStayCheckIn(checkInDate)
+    setStayCheckOut(checkOutDate)
+    setRooms(current => current.map(item => ({ ...item, checkInDate, checkOutDate, customDates: false })))
+  }
 
   const roomGuests = (room: RoomDraft) => ({
     adults: Number(room.adults) || 0,
@@ -595,6 +609,19 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
       return
     }
 
+    const storedPhone = (guest?.person.phone || company?.phone || '').trim()
+    const nextPhone = callPhone.trim()
+
+    if (nextPhone && nextPhone !== storedPhone) {
+      const phoneProblem = guestPhoneError(nextPhone)
+
+      if (phoneProblem) {
+        setCallPhoneError(phoneProblem)
+
+        return
+      }
+    }
+
     setSaving(true)
 
     try {
@@ -611,6 +638,20 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
         if (!sessionOpen) {
           setCashBlocked(true)
+
+          return
+        }
+      }
+
+      if (nextPhone && nextPhone !== storedPhone) {
+        try {
+          if (guest) {
+            await guestsApi.update(propertyId, guest.uuid, { phone: nextPhone })
+          } else if (company) {
+            await companiesApi.update(propertyId, company.uuid, { phone: nextPhone })
+          }
+        } catch (error) {
+          toast.error(getClientsApiErrorMessage(error, 'No se pudo guardar el celular.'))
 
           return
         }
@@ -683,15 +724,12 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
     const selectedRate = rates.find(rate => rate.id === room.rateId)
     const staleRates = typeof room.roomId === 'number' ? (ratesByRoom[room.roomId] ?? []).filter(rate => rate.expired) : []
     const selectedFree = selectedType?.freeRooms.find(free => free.id === room.roomId)
-    const roomNights = nightsBetween(room.checkInDate, room.checkOutDate)
     const { adults, children } = roomGuests(room)
     const freeRooms = selectedType ? freeRoomsFor(room, selectedType) : []
     const roomValue = typeof room.roomId === 'number' && freeRooms.some(free => free.id === room.roomId) ? room.roomId : 'later'
     const crowded = selectedType ? !fitsGuests(selectedType, adults, children) : false
     const missingType = roomAttempted && !room.roomTypeId
     const missingAdult = adults < 1
-    const roomDatesInvalid = room.checkOutDate <= room.checkInDate
-    const subtotal = (Number(room.pricePerNight) || 0) * roomNights
 
     const priceSource = priceSourceLabel({
       price: room.pricePerNight,
@@ -699,7 +737,6 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
       roomNumber: selectedFree?.number,
       roomPrice: selectedFree?.effectivePrice
     })
-    const hasPrice = room.pricePerNight.trim() !== '' && Number.isFinite(Number(room.pricePerNight))
 
     return (
       <div key={room.key} className='flex flex-col gap-2'>
@@ -782,8 +819,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
               <MenuItem value='later'>Asignar después</MenuItem>
               {freeRooms.map(free => (
                 <MenuItem key={free.id} value={free.id}>
-                  {free.number} · {free.floorName} · {formatRoomPrice(free.effectivePrice)}
-                  {free.status === 'CLEANING' ? ' · Limpieza' : ''}
+                  {free.number} · {free.floorName}
                 </MenuItem>
               ))}
             </Select>
@@ -807,17 +843,31 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
             slotProps={{ htmlInput: { min: 0 } }}
             onChange={e => updateRoom(room.key, { children: e.target.value })}
           />
-          <TextField
-            size='small'
-            label='Precio/noche'
-            value={room.pricePerNight}
-            placeholder={selectedType && typeof room.roomId !== 'number' ? 'Al asignar' : undefined}
-            disabled={!selectedType || typeof room.roomId !== 'number'}
-            onChange={e => updateRoom(room.key, { pricePerNight: e.target.value, rateNotice: '' })}
-            slotProps={{ input: { startAdornment: <Typography variant='body2' className='mie-1'>S/</Typography> } }}
-          />
-          <div className='flex items-center justify-end min-bs-[40px]'>
-            {rooms.length > 1 ? (
+          <Tooltip
+            title={priceSource}
+            disableHoverListener={!priceSource}
+            disableFocusListener={!priceSource}
+            disableTouchListener={!priceSource}
+            enterTouchDelay={400}
+          >
+            <TextField
+              fullWidth
+              size='small'
+              label='Precio/noche'
+              value={room.pricePerNight}
+              placeholder={selectedType && typeof room.roomId !== 'number' ? 'Al asignar' : undefined}
+              disabled={!selectedType || typeof room.roomId !== 'number'}
+              onChange={e => updateRoom(room.key, { pricePerNight: e.target.value, rateNotice: '' })}
+              slotProps={{ input: { startAdornment: <Typography variant='body2' className='mie-1'>S/</Typography> } }}
+              sx={
+                priceSource
+                  ? { '& .MuiInputBase-input': { textDecoration: 'underline dotted', textUnderlineOffset: '3px' } }
+                  : undefined
+              }
+            />
+          </Tooltip>
+          {rooms.length > 1 ? (
+            <div className='flex items-center justify-end min-bs-[40px]'>
               <IconButton
                 size='small'
                 aria-label='Quitar esta habitación'
@@ -825,21 +875,8 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
               >
                 <i className='ri-delete-bin-line' />
               </IconButton>
-            ) : null}
-          </div>
-        </div>
-        <div className='flex justify-end items-baseline gap-4'>
-          <Typography variant='body2' color='text.secondary'>
-            {hasPrice
-              ? `${roomNights} noche${roomNights === 1 ? '' : 's'} × ${formatRoomPrice(Number(room.pricePerNight))}`
-              : 'Sin precio hasta asignar la habitación'}
-          </Typography>
-          <Typography variant='body2' color='text.secondary'>
-            Subtotal
-          </Typography>
-          <Typography fontWeight={700} sx={{ minWidth: 88, textAlign: 'right' }}>
-            {hasPrice ? formatRoomPrice(subtotal) : '—'}
-          </Typography>
+            </div>
+          ) : null}
         </div>
 
         {crowded && selectedType ? (
@@ -867,31 +904,6 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
             tarifa vigente.
           </Typography>
         ) : null}
-
-        <div className='flex flex-wrap items-center gap-x-4 gap-y-2'>
-          {selectedType ? (
-            <Typography variant='caption' color='text.secondary'>
-              {priceSource}
-            </Typography>
-          ) : null}
-          {index > 0 ? (
-            <Link
-              component='button'
-              type='button'
-              variant='caption'
-              onClick={() =>
-                updateRoom(
-                  room.key,
-                  room.customDates
-                    ? { customDates: false, checkInDate: primary.checkInDate, checkOutDate: primary.checkOutDate }
-                    : { customDates: true }
-                )
-              }
-            >
-              {room.customDates ? 'Usar las fechas de la estadía' : 'Fechas distintas'}
-            </Link>
-          ) : null}
-        </div>
 
         {rates.length > 0 ? (
           <FormControl size='small' fullWidth className='md:max-is-[420px]'>
@@ -924,31 +936,6 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
               </FormHelperText>
             ) : null}
           </FormControl>
-        ) : null}
-
-        {index > 0 && room.customDates ? (
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 md:max-is-[520px]'>
-            <DateField
-              fullWidth
-              size='small'
-              label='Ingreso de esta habitación'
-              value={room.checkInDate}
-              onChange={value => updateRoom(room.key, { checkInDate: value })}
-            />
-            <DateField
-              fullWidth
-              size='small'
-              label='Salida de esta habitación'
-              value={room.checkOutDate}
-              minDate={room.checkInDate ? addDays(room.checkInDate, 1) : undefined}
-              error={roomAttempted && roomDatesInvalid}
-              helperText={roomAttempted && roomDatesInvalid ? 'La salida tiene que ser después del ingreso.' : undefined}
-              onChange={value => updateRoom(room.key, { checkOutDate: value })}
-            />
-            <Typography variant='caption' color='text.secondary' className='sm:col-span-2'>
-              La disponibilidad de estas fechas se confirma al guardar.
-            </Typography>
-          </div>
         ) : null}
       </div>
     )
@@ -998,16 +985,16 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                 action={
                   <Chip
                     size='small'
-                    label={`${formatStayDay(primary.checkInDate)} → ${formatStayDay(primary.checkOutDate)} · ${stayNights} noche${stayNights === 1 ? '' : 's'}`}
+                    label={`${formatStayDay(stayCheckIn)} → ${formatStayDay(stayCheckOut)} · ${stayNights} noche${stayNights === 1 ? '' : 's'}`}
                   />
                 }
               >
                 <StayDatesField
-                  checkIn={primary.checkInDate}
-                  checkOut={primary.checkOutDate}
-                  error={roomAttempted && primary.checkOutDate <= primary.checkInDate}
+                  checkIn={stayCheckIn}
+                  checkOut={stayCheckOut}
+                  error={roomAttempted && stayCheckOut <= stayCheckIn}
                   helperText={
-                    roomAttempted && primary.checkOutDate <= primary.checkInDate
+                    roomAttempted && stayCheckOut <= stayCheckIn
                       ? 'La salida tiene que ser después del ingreso.'
                       : undefined
                   }
@@ -1060,7 +1047,7 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
                     onClick={() =>
                       setRooms(current => [
                         ...current,
-                        emptyRoom(today, { checkInDate: primary.checkInDate, checkOutDate: primary.checkOutDate })
+                        emptyRoom(today, { checkInDate: stayCheckIn, checkOutDate: stayCheckOut })
                       ])
                     }
                   >
@@ -1122,21 +1109,30 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
 
           {step === 2 ? (
             <div className='flex flex-col gap-4'>
-              <div
-                className={`grid grid-cols-1 gap-4 ${EXTERNAL_CODE_SOURCES.includes(source) ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
-              >
-                <FormControl fullWidth>
-                  <InputLabel id='reservation-status'>Estado</InputLabel>
-                  <Select
-                    labelId='reservation-status'
-                    label='Estado'
-                    value={confirmed ? 'CONFIRMED' : 'PENDING'}
-                    onChange={e => setConfirmed(e.target.value === 'CONFIRMED')}
-                  >
-                    <MenuItem value='CONFIRMED'>Confirmada</MenuItem>
-                    <MenuItem value='PENDING'>Pendiente</MenuItem>
-                  </Select>
-                </FormControl>
+              <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
+                <div className='flex h-14 items-center gap-3 self-start'>
+                  <Box className='flex items-center' sx={{ width: 70 }}>
+                    <Switch
+                      checked={confirmed}
+                      disabled={saving}
+                      inputProps={{ 'aria-label': 'Estado de la reserva' }}
+                      onChange={(_, checked) => setConfirmed(checked)}
+                      sx={{ transform: 'scale(1.5)', transformOrigin: 'left center' }}
+                    />
+                  </Box>
+                  <Typography fontWeight={600}>{confirmed ? 'Confirmada' : 'Pendiente'}</Typography>
+                </div>
+                <GuestPhoneField
+                  label='Celular (opcional)'
+                  value={callPhone}
+                  disabled={saving}
+                  error={Boolean(callPhoneError)}
+                  helperText={callPhoneError || undefined}
+                  onChange={next => {
+                    setCallPhone(next)
+                    setCallPhoneError('')
+                  }}
+                />
                 <FormControl fullWidth>
                   <InputLabel id='reservation-source'>Canal</InputLabel>
                   <Select

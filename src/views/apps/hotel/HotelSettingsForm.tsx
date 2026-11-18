@@ -40,6 +40,7 @@ type FormValues = {
   address: string
   checkInTime: string
   checkOutTime: string
+  pendingNotifyDays: string
 }
 
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -60,7 +61,8 @@ const toFormValues = (settings: PropertySettings): FormValues => ({
   website: settings.website ?? '',
   address: settings.address ?? '',
   checkInTime: settings.checkInTime,
-  checkOutTime: settings.checkOutTime
+  checkOutTime: settings.checkOutTime,
+  pendingNotifyDays: String(settings.pendingNotifyDays ?? 7)
 })
 
 const buildChangedPayload = (initial: FormValues, current: FormValues): UpdatePropertySettingsInput => {
@@ -100,6 +102,12 @@ const buildChangedPayload = (initial: FormValues, current: FormValues): UpdatePr
 
   if (current.checkOutTime !== initial.checkOutTime) {
     payload.checkOutTime = current.checkOutTime
+  }
+
+  const notifyDays = Number(current.pendingNotifyDays)
+
+  if (notifyDays !== Number(initial.pendingNotifyDays)) {
+    payload.pendingNotifyDays = notifyDays
   }
 
   return payload
@@ -517,6 +525,33 @@ const HotelSettingsForm = () => {
                     disabled={isSubmitting}
                     error={Boolean(errors.checkOutTime)}
                     helperText={errors.checkOutTime?.message || 'Hora a la que el huésped deja la habitación.'}
+                  />
+                )}
+              />
+              <Controller
+                name='pendingNotifyDays'
+                control={control}
+                rules={{
+                  required: 'Indica cuántos días antes se avisan las pendientes.',
+                  validate: value => {
+                    const days = Number(value)
+
+                    return (Number.isInteger(days) && days >= 1 && days <= 30) || 'Indica entre 1 y 30 días.'
+                  }
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    type='number'
+                    label='Avisar pendientes (días)'
+                    disabled={isSubmitting}
+                    error={Boolean(errors.pendingNotifyDays)}
+                    helperText={
+                      errors.pendingNotifyDays?.message ||
+                      'Días antes de la llegada. También se avisan las que ya debieron llegar.'
+                    }
+                    slotProps={{ htmlInput: { min: 1, max: 30, step: 1 } }}
                   />
                 )}
               />

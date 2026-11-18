@@ -32,9 +32,11 @@ import { listExpiredRates } from '@/libs/ratesApi'
 import type { HotelRate } from '@/types/apps/rateTypes'
 import { formatRateDate } from '@/types/apps/rateTypes'
 import { reservationsApi, subscribeReservationNotes } from '@/libs/reservationsApi'
-import type { Stay } from '@/types/apps/frontDeskTypes'
+import { hotelSettingsApi } from '@/libs/hotelSettingsApi'
+import type { Reservation, Stay } from '@/types/apps/frontDeskTypes'
 import type { ReservationNote } from '@/types/apps/reservationsTypes'
-import { formatPlanningDate } from '@/types/apps/reservationsTypes'
+import { addDays, formatPlanningDate } from '@/types/apps/reservationsTypes'
+import { formatGuestPhone } from '@/utils/guestPhone'
 import { STAY_STATUS_LABELS } from '@/types/apps/frontDeskTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 import type { Locale } from '@configs/i18n'
@@ -72,6 +74,7 @@ const TodayAlertsDropdown = () => {
   const [departures, setDepartures] = useState<Stay[]>([])
   const [pendingNotes, setPendingNotes] = useState<ReservationNote[]>([])
   const [expiredRates, setExpiredRates] = useState<HotelRate[]>([])
+  const [pendingHolds, setPendingHolds] = useState<Reservation[]>([])
   const [dismissed, setDismissed] = useState<string[]>([])
 
   const anchorRef = useRef<HTMLButtonElement>(null)
@@ -117,6 +120,21 @@ const TodayAlertsDropdown = () => {
       setExpiredRates(await listExpiredRates(propertyId))
     } catch {
       setExpiredRates([])
+    }
+
+    try {
+      const settings = await hotelSettingsApi.get(propertyId)
+      const days = Number(settings.pendingNotifyDays) || 7
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date())
+      const page = await reservationsApi.list(propertyId, {
+        status: 'PENDING',
+        to: addDays(today, days),
+        limit: 50
+      })
+
+      setPendingHolds(page.data)
+    } catch {
+      setPendingHolds([])
     } finally {
       setLoading(false)
     }
@@ -151,7 +169,7 @@ const TodayAlertsDropdown = () => {
   )
 
   const pendingArrivals = visibleArrivals.filter(stay => stay.status !== 'CHECKED_IN').length
-  const badgeCount = (pendingArrivals || visibleDepartures.length) + pendingNotes.length + expiredRates.length
+  const badgeCount = (pendingArrivals || visibleDepartures.length) + pendingNotes.length + expiredRates.length + pendingHolds.length
 
   const goToNotes = () => {
     setOpen(false)
@@ -161,6 +179,11 @@ const TodayAlertsDropdown = () => {
   const goToRate = (uuid: string) => {
     setOpen(false)
     router.push(getLocalizedUrl(`/apps/rooms?tab=rates&tarifa=${uuid}`, locale as Locale))
+  }
+
+  const goToReservation = (uuid: string) => {
+    setOpen(false)
+    router.push(getLocalizedUrl(`/apps/reservations?reserva=${uuid}`, locale as Locale))
   }
 
   const goToFrontDesk = () => {
@@ -296,12 +319,52 @@ const TodayAlertsDropdown = () => {
                       <div className='p-6'>
                         <Typography color='text.secondary'>{error}</Typography>
                       </div>
-                    ) : visibleArrivals.length === 0 && visibleDepartures.length === 0 ? (
+                    ) : visibleArrivals.length === 0 && visibleDepartures.length === 0 && pendingHolds.length === 0 ? (
                       <div className='p-6'>
                         <Typography color='text.secondary'>No hay llegadas ni salidas programadas hoy.</Typography>
                       </div>
                     ) : (
                       <>
+                        {pendingHolds.length > 0 ? (
+                          <>
+                            <div className='pli-4 plb-2'>
+                              <Typography variant='caption' className='uppercase' color='text.disabled'>
+                                Pendientes por confirmar ({pendingHolds.length})
+                              </Typography>
+                            </div>
+                            {pendingHolds.map(reservation => {
+                              const booker =
+                                reservation.company?.businessName ||
+                                (reservation.guest
+                                  ? `${reservation.guest.firstName} ${reservation.guest.lastName}`.trim()
+                                  : 'Sin nombre')
+                              const phone = formatGuestPhone(reservation.company?.phone || reservation.guest?.phone) || 'Sin celular'
+                              const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date())
+                              const overdue = reservation.checkInDate < today
+
+                              return (
+                                <div
+                                  key={reservation.uuid}
+                                  className='flex plb-3 pli-4 gap-3 cursor-pointer hover:bg-actionHover border-be'
+                                  onClick={() => goToReservation(reservation.uuid)}
+                                >
+                                  <CustomAvatar color='warning' skin='light-static'>
+                                    <i className='ri-phone-line' />
+                                  </CustomAvatar>
+                                  <div className='flex flex-col flex-auto min-is-0'>
+                                    <Typography className='font-medium' color='text.primary'>
+                                      {reservation.code} · {booker}
+                                    </Typography>
+                                    <Typography variant='caption' color={overdue ? 'error.main' : 'text.secondary'}>
+                                      {phone} · llega {formatPlanningDate(reservation.checkInDate)}
+                                      {overdue ? ' · Ya debió llegar' : ''}
+                                    </Typography>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </>
+                        ) : null}
                         <div className='pli-4 plb-2'>
                           <Typography variant='caption' className='uppercase' color='text.disabled'>
                             Llegadas ({visibleArrivals.length})

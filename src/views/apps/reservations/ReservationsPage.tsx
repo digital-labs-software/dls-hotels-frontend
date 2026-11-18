@@ -34,8 +34,11 @@ import { toast } from 'react-toastify'
 import CustomTabList from '@core/components/mui/TabList'
 import { useSubscriptionAccess } from '@/contexts/subscriptionAccess'
 import {
+  RECEPTION_PAYMENTS_CREATE,
   RESERVATIONS_CALENDAR_VIEW,
+  RESERVATIONS_CANCEL,
   RESERVATIONS_CREATE,
+  RESERVATIONS_EDIT,
   RESERVATIONS_LIST_VIEW,
   RESERVATIONS_NOTES_MANAGE,
   RESERVATIONS_NOTES_VIEW
@@ -84,6 +87,9 @@ const ReservationsPage = () => {
   const showNotes = can(RESERVATIONS_NOTES_VIEW) || can(RESERVATIONS_NOTES_MANAGE)
   const canCreateReservation = can(RESERVATIONS_CREATE)
   const canManageNotes = can(RESERVATIONS_NOTES_MANAGE)
+  const canPayReservation = can(RECEPTION_PAYMENTS_CREATE)
+  const canCancelReservation = can(RESERVATIONS_CANCEL)
+  const canEditReservation = can(RESERVATIONS_EDIT)
   const searchParams = useSearchParams()
   const propertyId = session?.user?.propertyId ?? 1
 
@@ -108,7 +114,9 @@ const ReservationsPage = () => {
   const [payBalance, setPayBalance] = useState(0)
   const [payPaid, setPayPaid] = useState(0)
   const [payCancelled, setPayCancelled] = useState(false)
-  const [paymentsVersion, setPaymentsVersion] = useState(0)
+  const [payCode, setPayCode] = useState('')
+  const [payBooker, setPayBooker] = useState('')
+  const [payStay, setPayStay] = useState('')
   const [unassignedOpen, setUnassignedOpen] = useState(false)
   const [unassigned, setUnassigned] = useState<PlanningBooking[]>([])
   const [listKey, setListKey] = useState(0)
@@ -161,6 +169,13 @@ const ReservationsPage = () => {
     if (searchParams.get('por-completar') === '1') {
       setDetailUuid(null)
       setTab('notes')
+    }
+
+    const reserva = searchParams.get('reserva')
+
+    if (reserva) {
+      setTab('list')
+      setDetailUuid(reserva)
     }
   }, [searchParams])
 
@@ -313,14 +328,6 @@ const ReservationsPage = () => {
           onChanged={() => {
             setListKey(current => current + 1)
             fetchPlanning()
-          }}
-          paymentsVersion={paymentsVersion}
-          onPay={(uuid, balance, paidAmount, cancelled) => {
-            setPayUuid(uuid)
-            setPayBalance(balance)
-            setPayPaid(paidAmount)
-            setPayCancelled(cancelled)
-            setPayOpen(true)
           }}
         />
       ) : (
@@ -548,10 +555,34 @@ const ReservationsPage = () => {
               <ReservationListTable
                 propertyId={propertyId}
                 refreshKey={listKey}
+                canPay={canPayReservation}
+                canCancel={canCancelReservation}
+                canEditStatus={canEditReservation}
                 onOpen={uuid => {
                   setHighlightAssign(false)
                   setDetailUuid(uuid)
                 }}
+                onPay={row => {
+                  const booker = row.company?.businessName
+                    ? row.company.businessName
+                    : row.guest
+                      ? `${row.guest.firstName} ${row.guest.lastName}`.replace(/\s+/g, ' ').trim()
+                      : 'Sin nombre'
+
+                  setPayUuid(row.uuid)
+                  setPayBalance(row.balance)
+                  setPayPaid(row.paidAmount)
+                  setPayCancelled(row.status === 'CANCELLED')
+                  setPayCode(row.code)
+                  setPayBooker(booker)
+                  setPayStay(`${formatPlanningShort(row.checkInDate)} – ${formatPlanningShort(row.checkOutDate)}`)
+                  setPayOpen(true)
+                }}
+                onChanged={() => {
+                  setListKey(current => current + 1)
+                  fetchPlanning()
+                }}
+                onStatusChanged={() => fetchPlanning()}
               />
             </TabPanel>
 
@@ -590,9 +621,11 @@ const ReservationsPage = () => {
         balance={payBalance}
         paidAmount={payPaid}
         cancelled={payCancelled}
+        code={payCode}
+        booker={payBooker}
+        stayLabel={payStay}
         onClose={() => setPayOpen(false)}
         onSuccess={() => {
-          setPaymentsVersion(current => current + 1)
           setListKey(current => current + 1)
           fetchPlanning()
         }}

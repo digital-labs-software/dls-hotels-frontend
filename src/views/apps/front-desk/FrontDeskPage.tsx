@@ -103,8 +103,16 @@ const FrontDeskPage = () => {
 
     fetchOverview()
     const timer = window.setInterval(fetchOverview, 60000)
+    const onRoomsChanged = () => {
+      void fetchOverview()
+    }
 
-    return () => window.clearInterval(timer)
+    window.addEventListener('front-desk-rooms-changed', onRoomsChanged)
+
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('front-desk-rooms-changed', onRoomsChanged)
+    }
   }, [fetchOverview, status])
 
   const roomTypes = useMemo(() => {
@@ -651,12 +659,6 @@ const FrontDeskPage = () => {
         propertyId={propertyId}
         stay={selectedStay}
         onClose={() => setStayOpen(false)}
-        onSuccess={fetchOverview}
-        onPay={stay => {
-          setRefundPreset(null)
-          setSelectedStay(stay)
-          setPayOpen(true)
-        }}
       />
       <PaymentDialog
         open={payOpen}

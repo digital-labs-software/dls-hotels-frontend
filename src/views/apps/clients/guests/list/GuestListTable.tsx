@@ -44,6 +44,7 @@ import type { Guest } from '@/types/apps/clientsTypes'
 import { DOCUMENT_TYPE_LABELS } from '@/types/apps/clientsTypes'
 import { getClientsApiErrorMessage, guestsApi } from '@/libs/clientsApi'
 import { getLocalizedUrl } from '@/utils/i18n'
+import { formatGuestPhone } from '@/utils/guestPhone'
 import tableStyles from '@core/styles/table.module.css'
 
 declare module '@tanstack/table-core' {
@@ -184,8 +185,8 @@ const GuestListTable = () => {
       }),
       columnHelper.accessor(row => row.person.phone ?? '', {
         id: 'phone',
-        header: 'Teléfono',
-        cell: ({ row }) => <Typography>{row.original.person.phone || '—'}</Typography>
+        header: 'Celular',
+        cell: ({ row }) => <Typography>{formatGuestPhone(row.original.person.phone) || '—'}</Typography>
       }),
       columnHelper.accessor(row => row.person.email ?? '', {
         id: 'email',

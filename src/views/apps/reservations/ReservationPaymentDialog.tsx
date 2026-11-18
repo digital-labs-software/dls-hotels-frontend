@@ -35,6 +35,9 @@ type Props = {
   balance?: number
   paidAmount?: number
   cancelled?: boolean
+  code?: string
+  booker?: string
+  stayLabel?: string
   onClose: () => void
   onSuccess: () => void
 }
@@ -46,6 +49,9 @@ const ReservationPaymentDialog = ({
   balance = 0,
   paidAmount = 0,
   cancelled = false,
+  code,
+  booker,
+  stayLabel,
   onClose,
   onSuccess
 }: Props) => {
@@ -161,6 +167,19 @@ const ReservationPaymentDialog = ({
       <DialogTitle>{kind === 'refund' ? 'Registrar devolución' : 'Registrar pago'}</DialogTitle>
       <DialogContent className='flex flex-col gap-4 pt-4'>
         {cashOpen === false ? <Alert severity='warning'>{CASH_REQUIRED_MESSAGE}</Alert> : null}
+        {code ? (
+          <div className='flex flex-col gap-1'>
+            <Typography fontWeight={600}>
+              {code}
+              {booker ? ` · ${booker}` : ''}
+            </Typography>
+            {stayLabel ? (
+              <Typography variant='body2' color='text.secondary'>
+                {stayLabel}
+              </Typography>
+            ) : null}
+          </div>
+        ) : null}
         <Typography variant='body2' color='text.secondary'>
           Pagado {formatRoomPrice(paidAmount)} · saldo {formatRoomPrice(balance)}
         </Typography>

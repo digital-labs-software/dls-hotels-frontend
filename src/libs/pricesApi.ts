@@ -38,9 +38,14 @@ export type PriceNight = {
   rateId: number | null
 }
 
+export type PriceRoomAvailability = 'free' | 'occupied' | 'maintenance'
+
 export type PriceRoomQuote = {
   id: number
   number: string
+  floorId: number
+  floorName: string
+  availability: PriceRoomAvailability
   nights: PriceNight[]
   total: number
 }
@@ -54,10 +59,16 @@ export type PriceTypeQuote = {
   rooms: PriceRoomQuote[]
 }
 
+export type PriceFloor = {
+  id: number
+  name: string
+}
+
 export type PriceQuote = {
   from: string
   to: string
   nights: number
+  floors: PriceFloor[]
   types: PriceTypeQuote[]
 }
 

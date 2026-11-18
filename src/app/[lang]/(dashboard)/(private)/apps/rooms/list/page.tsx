@@ -10,7 +10,7 @@ type Props = {
 const RoomsListPage = async ({ params }: Props) => {
   const { lang } = await params
 
-  redirect(getLocalizedUrl('/apps/rooms', lang))
+  redirect(getLocalizedUrl('/apps/rooms?tab=rooms', lang))
 }
 
 export default RoomsListPage
