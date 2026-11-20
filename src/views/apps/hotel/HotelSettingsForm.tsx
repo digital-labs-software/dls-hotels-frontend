@@ -414,7 +414,7 @@ const HotelSettingsForm = () => {
           </Card>
 
           <Card>
-            <CardHeader title='Ubicación' subheader='El distrito lo registra DLS. Puedes corregir la calle.' />
+            <CardHeader title='Ubicación' />
             <CardContent>
               <Grid container spacing={5}>
                 <Grid size={{ xs: 12, sm: 4 }}>
@@ -467,11 +467,8 @@ const HotelSettingsForm = () => {
 
           {canSettingsInvoices ? (
             <Card className='mbe-6'>
-              <CardHeader title='Series y SUNAT' subheader='IGV, series y NubeFact' />
+              <CardHeader title='Series y SUNAT' />
               <CardContent className='flex flex-col gap-3'>
-                <Typography color='text.secondary'>
-                  Se configura al activar el hotel o cambiar series e IGV. Para emitir boletas o facturas, usa Facturación.
-                </Typography>
                 <Button
                   variant='outlined'
                   component={Link}
@@ -503,7 +500,7 @@ const HotelSettingsForm = () => {
                     label='Check-in (ingreso)'
                     disabled={isSubmitting}
                     error={Boolean(errors.checkInTime)}
-                    helperText={errors.checkInTime?.message || 'Hora a la que el huésped entra a la habitación.'}
+                    helperText={errors.checkInTime?.message}
                   />
                 )}
               />
@@ -524,7 +521,7 @@ const HotelSettingsForm = () => {
                     label='Check-out (salida)'
                     disabled={isSubmitting}
                     error={Boolean(errors.checkOutTime)}
-                    helperText={errors.checkOutTime?.message || 'Hora a la que el huésped deja la habitación.'}
+                    helperText={errors.checkOutTime?.message}
                   />
                 )}
               />
@@ -547,10 +544,7 @@ const HotelSettingsForm = () => {
                     label='Avisar pendientes (días)'
                     disabled={isSubmitting}
                     error={Boolean(errors.pendingNotifyDays)}
-                    helperText={
-                      errors.pendingNotifyDays?.message ||
-                      'Días antes de la llegada. También se avisan las que ya debieron llegar.'
-                    }
+                    helperText={errors.pendingNotifyDays?.message}
                     slotProps={{ htmlInput: { min: 1, max: 30, step: 1 } }}
                   />
                 )}

@@ -210,7 +210,7 @@ export const PLANNING_VIEWS: { value: PlanningView; label: string }[] = [
   { value: 'MONTH', label: '1 mes' }
 ]
 
-/** Ocupado rojo, reservado azul, pendiente ámbar, finalizada gris, no se presentó púrpura. El texto va oscuro sobre fondos claros. */
+/** Ocupado rojo, reservado azul, por confirmar ámbar, salió gris, no se presentó púrpura. El texto va oscuro sobre fondos claros. */
 export const BAR_COLORS: Record<StayStatus, { bg: string; text: string; dashed?: boolean }> = {
   CHECKED_IN: { bg: '#C62828', text: '#fff' },
   CONFIRMED: { bg: '#0D47A1', text: '#fff' },
@@ -248,10 +248,10 @@ export const stayStatusChipSx = (status: StayStatus) => {
 }
 
 export const BOOKING_STATUS_LABELS: Record<StayStatus, string> = {
-  PENDING: 'Pendiente',
+  PENDING: 'Por confirmar',
   CONFIRMED: 'Reservado',
   CHECKED_IN: 'Ocupado',
-  CHECKED_OUT: 'Finalizada',
+  CHECKED_OUT: 'Salió',
   CANCELLED: 'Cancelada',
   NO_SHOW: 'No se presentó'
 }

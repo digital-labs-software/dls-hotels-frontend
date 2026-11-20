@@ -10,6 +10,10 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -47,6 +51,21 @@ type Props = {
 const personLabel = (guest: { firstName: string; lastName: string }) =>
   !guest.lastName || guest.lastName === '—' ? guest.firstName : `${guest.firstName} ${guest.lastName}`
 
+const roomAskLabel = (line: ReservationRoom) =>
+  line.roomNumber
+    ? `la habitación ${line.roomNumber}, tipo ${line.roomTypeName}`
+    : `la habitación de tipo ${line.roomTypeName}`
+
+const noShowQuestion = (line: ReservationRoom, mode: 'mark' | 'undo', pending: boolean) => {
+  const place = roomAskLabel(line)
+
+  if (mode === 'undo') {
+    return `¿Volver a ${pending ? 'pendiente' : 'confirmada'} ${place}?`
+  }
+
+  return `¿Está seguro de que ${place} no se presentó?`
+}
+
 type SlotDraft = {
   guestId: number | null
   reservationGuestId: number | null
@@ -79,6 +98,7 @@ const ReservationDrawer = ({
   const [reservation, setReservation] = useState<Reservation | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [noShowAsk, setNoShowAsk] = useState<{ line: ReservationRoom; mode: 'mark' | 'undo' } | null>(null)
   const [editing, setEditing] = useState(false)
   const [source, setSource] = useState<ReservationSource>('PHONE')
   const [externalCode, setExternalCode] = useState('')
@@ -228,16 +248,25 @@ const ReservationDrawer = ({
     setEditing(false)
   }
 
-  const handleNoShow = async (line: ReservationRoom) => {
-    if (!reservation) return
+  const confirmNoShow = async () => {
+    if (!reservation || !noShowAsk) return
+
+    const { line, mode } = noShowAsk
+    const status = mode === 'mark' ? 'NO_SHOW' : reservation.status === 'PENDING' ? 'PENDING' : 'CONFIRMED'
 
     setSaving(true)
 
     try {
-      await reservationsApi.updateRoom(propertyId, reservation.uuid, line.uuid, { status: 'NO_SHOW' })
-      await afterAction('Marcada como no se presentó.')
+      await reservationsApi.updateRoom(propertyId, reservation.uuid, line.uuid, { status })
+      setNoShowAsk(null)
+      await afterAction(mode === 'mark' ? 'Marcada como no se presentó.' : 'La habitación volvió a su estado.')
     } catch (error) {
-      toast.error(getReservationsApiErrorMessage(error, 'No se pudo marcar que no se presentó.'))
+      toast.error(
+        getReservationsApiErrorMessage(
+          error,
+          mode === 'mark' ? 'No se pudo marcar que no se presentó.' : 'No se pudo deshacer. La habitación puede estar ocupada.'
+        )
+      )
     } finally {
       setSaving(false)
     }
@@ -638,7 +667,8 @@ const ReservationDrawer = ({
                       groupCheckOut={groupCheckOut}
                       allowDateChange={others.length > 0}
                       onAssign={() => setAssignLine(line)}
-                      onNoShow={() => handleNoShow(line)}
+                      onNoShow={() => setNoShowAsk({ line, mode: 'mark' })}
+                      onUndoNoShow={() => setNoShowAsk({ line, mode: 'undo' })}
                       onRemove={() => handleRemoveRoom(line)}
                       onSave={patch => handleSaveLine(line, patch)}
                       onAssignGuest={(slotIndex, guest, previousId) => handleAssignGuest(line, slotIndex, guest, previousId)}
@@ -665,6 +695,25 @@ const ReservationDrawer = ({
           onChanged()
         }}
       />
+
+      <Dialog open={Boolean(noShowAsk)} onClose={() => !saving && setNoShowAsk(null)} fullWidth maxWidth='xs'>
+        <DialogTitle>{noShowAsk?.mode === 'undo' ? 'Volver a reservada' : 'No se presentó'}</DialogTitle>
+        <DialogContent>
+          {noShowAsk ? (
+            <Typography className='pt-2'>
+              {noShowQuestion(noShowAsk.line, noShowAsk.mode, reservation?.status === 'PENDING')}
+            </Typography>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button color='secondary' disabled={saving} onClick={() => setNoShowAsk(null)}>
+            Cancelar
+          </Button>
+          <Button variant='contained' color={noShowAsk?.mode === 'undo' ? 'primary' : 'secondary'} disabled={saving} onClick={() => void confirmNoShow()}>
+            {saving ? <CircularProgress size={20} color='inherit' /> : noShowAsk?.mode === 'undo' ? 'Volver a reservada' : 'Confirmar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <AssignReservationRoomDialog
         open={Boolean(assignLine)}
@@ -868,6 +917,7 @@ const RoomRow = ({
   allowDateChange,
   onAssign,
   onNoShow,
+  onUndoNoShow,
   onRemove,
   onSave,
   onAssignGuest,
@@ -882,6 +932,7 @@ const RoomRow = ({
   allowDateChange: boolean
   onAssign: () => void
   onNoShow: () => void
+  onUndoNoShow: () => void
   onRemove: () => void
   onSave: (patch: { checkInDate: string; checkOutDate: string }) => void
   onAssignGuest: (slotIndex: number, guest: Guest, previousId: number | null) => void
@@ -980,6 +1031,11 @@ const RoomRow = ({
           {line.status === 'CONFIRMED' || line.status === 'PENDING' ? (
             <Button size='small' color='secondary' disabled={saving} onClick={onNoShow}>
               No se presentó
+            </Button>
+          ) : null}
+          {line.status === 'NO_SHOW' ? (
+            <Button size='small' disabled={saving} onClick={onUndoNoShow}>
+              Volver a reservada
             </Button>
           ) : null}
           {canMutate ? (

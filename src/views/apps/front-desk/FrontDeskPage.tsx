@@ -10,6 +10,9 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import InputAdornment from '@mui/material/InputAdornment'
 import Grid from '@mui/material/Grid'
@@ -82,6 +85,7 @@ const FrontDeskPage = () => {
   const [assignOpen, setAssignOpen] = useState(false)
   const [photoRoom, setPhotoRoom] = useState<RackRoom | null>(null)
   const [arrivalBusy, setArrivalBusy] = useState<{ id: string; action: 'checkIn' | 'noShow' } | null>(null)
+  const [noShowStay, setNoShowStay] = useState<Stay | null>(null)
   const arrivalLock = useRef(false)
 
   const fetchOverview = useCallback(async () => {
@@ -498,7 +502,7 @@ const FrontDeskPage = () => {
                     setSelectedStay(stay)
                     setAssignOpen(true)
                   }}
-                  onNoShow={stay => void runArrivalAction(stay, 'noShow')}
+                  onNoShow={setNoShowStay}
                 />
               </TabPanel>
               <TabPanel value='inHouse' className='p-0'>
@@ -707,6 +711,40 @@ const FrontDeskPage = () => {
           setPayOpen(true)
         }}
       />
+      <Dialog open={Boolean(noShowStay)} onClose={() => !arrivalBusy && setNoShowStay(null)} fullWidth maxWidth='xs'>
+        <DialogTitle>No se presentó</DialogTitle>
+        <DialogContent>
+          {noShowStay ? (
+            <Typography className='pt-2'>
+              {`¿Está seguro de que ${
+                noShowStay.roomNumber
+                  ? `la habitación ${noShowStay.roomNumber}, tipo ${noShowStay.roomTypeName}`
+                  : `la habitación de tipo ${noShowStay.roomTypeName}`
+              } no se presentó?`}
+            </Typography>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button color='secondary' disabled={Boolean(arrivalBusy)} onClick={() => setNoShowStay(null)}>
+            Cancelar
+          </Button>
+          <Button
+            variant='contained'
+            color='secondary'
+            disabled={Boolean(arrivalBusy) || !noShowStay}
+            onClick={() => {
+              const stay = noShowStay
+
+              if (!stay) return
+
+              setNoShowStay(null)
+              void runArrivalAction(stay, 'noShow')
+            }}
+          >
+            {arrivalBusy?.action === 'noShow' ? <CircularProgress size={20} color='inherit' /> : 'Confirmar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <AssignRoomDialog
         open={assignOpen}
         propertyId={propertyId}

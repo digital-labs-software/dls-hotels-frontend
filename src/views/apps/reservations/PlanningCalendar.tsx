@@ -14,6 +14,7 @@ import type { Planning, PlanningBooking, PlanningMaintenance, PlanningRoom, Rese
 import {
   applyFilters,
   BAR_COLORS,
+  BOOKING_STATUS_LABELS,
   NOTE_COLORS,
   ROOM_STATE_COLORS,
   barLayout,
@@ -65,11 +66,11 @@ const cellHint = (roomNumber: string, day: string) => `Hab. ${roomNumber} · ${l
 type LegendItem = { label: string; color: string; text?: string; dashed?: boolean }
 
 const reservationLegend: LegendItem[] = [
-  { label: 'Pendiente', color: BAR_COLORS.PENDING.bg, text: BAR_COLORS.PENDING.text, dashed: true },
-  { label: 'Reservado', color: BAR_COLORS.CONFIRMED.bg, text: BAR_COLORS.CONFIRMED.text },
-  { label: 'Ocupado', color: BAR_COLORS.CHECKED_IN.bg, text: BAR_COLORS.CHECKED_IN.text },
-  { label: 'Finalizada', color: BAR_COLORS.CHECKED_OUT.bg, text: BAR_COLORS.CHECKED_OUT.text },
-  { label: 'No se presentó', color: BAR_COLORS.NO_SHOW.bg, text: BAR_COLORS.NO_SHOW.text }
+  { label: BOOKING_STATUS_LABELS.PENDING, color: BAR_COLORS.PENDING.bg, text: BAR_COLORS.PENDING.text, dashed: true },
+  { label: BOOKING_STATUS_LABELS.CONFIRMED, color: BAR_COLORS.CONFIRMED.bg, text: BAR_COLORS.CONFIRMED.text },
+  { label: BOOKING_STATUS_LABELS.CHECKED_IN, color: BAR_COLORS.CHECKED_IN.bg, text: BAR_COLORS.CHECKED_IN.text },
+  { label: BOOKING_STATUS_LABELS.CHECKED_OUT, color: BAR_COLORS.CHECKED_OUT.bg, text: BAR_COLORS.CHECKED_OUT.text },
+  { label: BOOKING_STATUS_LABELS.NO_SHOW, color: BAR_COLORS.NO_SHOW.bg, text: BAR_COLORS.NO_SHOW.text }
 ]
 
 const roomLegend: LegendItem[] = [

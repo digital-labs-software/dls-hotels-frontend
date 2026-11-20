@@ -18,6 +18,7 @@ import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
 import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
+import InputAdornment from '@mui/material/InputAdornment'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import OutlinedInput from '@mui/material/OutlinedInput'
@@ -843,29 +844,33 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
             slotProps={{ htmlInput: { min: 0 } }}
             onChange={e => updateRoom(room.key, { children: e.target.value })}
           />
-          <Tooltip
-            title={priceSource}
-            disableHoverListener={!priceSource}
-            disableFocusListener={!priceSource}
-            disableTouchListener={!priceSource}
-            enterTouchDelay={400}
-          >
-            <TextField
-              fullWidth
-              size='small'
-              label='Precio/noche'
-              value={room.pricePerNight}
-              placeholder={selectedType && typeof room.roomId !== 'number' ? 'Al asignar' : undefined}
-              disabled={!selectedType || typeof room.roomId !== 'number'}
-              onChange={e => updateRoom(room.key, { pricePerNight: e.target.value, rateNotice: '' })}
-              slotProps={{ input: { startAdornment: <Typography variant='body2' className='mie-1'>S/</Typography> } }}
-              sx={
-                priceSource
-                  ? { '& .MuiInputBase-input': { textDecoration: 'underline dotted', textUnderlineOffset: '3px' } }
-                  : undefined
+          <TextField
+            fullWidth
+            size='small'
+            label='Precio/noche'
+            value={room.pricePerNight}
+            placeholder={selectedType && typeof room.roomId !== 'number' ? 'Al asignar' : undefined}
+            disabled={!selectedType || typeof room.roomId !== 'number'}
+            onChange={e => updateRoom(room.key, { pricePerNight: e.target.value, rateNotice: '' })}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <Typography variant='body2' className='mie-1'>
+                    S/
+                  </Typography>
+                ),
+                endAdornment: priceSource ? (
+                  <InputAdornment position='end'>
+                    <Tooltip title={priceSource}>
+                      <span className='inline-flex cursor-help text-textSecondary' tabIndex={0} aria-label={priceSource}>
+                        <i className='ri-information-line text-base' />
+                      </span>
+                    </Tooltip>
+                  </InputAdornment>
+                ) : undefined
               }
-            />
-          </Tooltip>
+            }}
+          />
           {rooms.length > 1 ? (
             <div className='flex items-center justify-end min-bs-[40px]'>
               <IconButton
@@ -1110,17 +1115,16 @@ const ReservationWizard = ({ open, propertyId, today, prefill, onClose, onCreate
           {step === 2 ? (
             <div className='flex flex-col gap-4'>
               <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
-                <div className='flex h-14 items-center gap-3 self-start'>
-                  <Box className='flex items-center' sx={{ width: 70 }}>
-                    <Switch
-                      checked={confirmed}
-                      disabled={saving}
-                      inputProps={{ 'aria-label': 'Estado de la reserva' }}
-                      onChange={(_, checked) => setConfirmed(checked)}
-                      sx={{ transform: 'scale(1.5)', transformOrigin: 'left center' }}
-                    />
-                  </Box>
-                  <Typography fontWeight={600}>{confirmed ? 'Confirmada' : 'Pendiente'}</Typography>
+                <div className='flex h-14 items-center gap-2 self-start'>
+                  <Switch
+                    checked={confirmed}
+                    disabled={saving}
+                    inputProps={{ 'aria-label': 'Estado de la reserva' }}
+                    onChange={(_, checked) => setConfirmed(checked)}
+                  />
+                  <Typography variant='body2' color='text.primary'>
+                    {confirmed ? 'Confirmada' : 'Pendiente'}
+                  </Typography>
                 </div>
                 <GuestPhoneField
                   label='Celular (opcional)'

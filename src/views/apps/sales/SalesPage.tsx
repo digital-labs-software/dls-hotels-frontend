@@ -8,8 +8,12 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CircularProgress from '@mui/material/CircularProgress'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import MenuItem from '@mui/material/MenuItem'
+import Radio from '@mui/material/Radio'
+import RadioGroup from '@mui/material/RadioGroup'
+import Switch from '@mui/material/Switch'
 import Tab from '@mui/material/Tab'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -35,6 +39,13 @@ import {
   quantityText,
   type SaleProduct
 } from '@/libs/salesApi'
+import CompanyPicker from '@/views/apps/reservations/CompanyPicker'
+import CreateCompanyDialog from '@/views/apps/reservations/CreateCompanyDialog'
+import type { Company } from '@/types/apps/clientsTypes'
+import type { SalePerson } from '@/libs/personsApi'
+import { toPersonName } from '@/utils/string'
+import CreatePersonDialog from './CreatePersonDialog'
+import PersonPicker from './PersonPicker'
 import ProductsPanel from './ProductsPanel'
 import { SALES_CREATE, SALES_PRODUCTS, SALES_VOID } from '@/types/apps/hotelPermissions'
 import { addDays, limaToday, PAYMENT_METHOD_LABELS, PAYMENT_METHODS, type PaymentMethod } from '@/types/apps/frontDeskTypes'
@@ -42,6 +53,20 @@ import { formatRateDate } from '@/types/apps/rateTypes'
 import { formatRoomPrice } from '@/types/apps/roomsTypes'
 
 const money = (value: number) => formatRoomPrice(value)
+
+const saleBuyer = (sale: Consumption) => {
+  if (sale.roomNumber) return `Habitación ${sale.roomNumber}`
+
+  const name = sale.customerName || sale.guestName
+
+  if (!name) return 'Mostrador'
+
+  if (!sale.documentNumber) return name
+
+  const kind = sale.documentType === 'RUC' ? 'RUC' : sale.documentType === 'DNI' ? 'DNI' : ''
+
+  return kind ? `${name} · ${kind} ${sale.documentNumber}` : name
+}
 
 const saleTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', hour12: false })
@@ -67,8 +92,14 @@ const SalesPage = () => {
   const [billing, setBilling] = useState<'ROOM' | 'NOW'>('ROOM')
   const [roomUuid, setRoomUuid] = useState('')
   const [method, setMethod] = useState<PaymentMethod>('CASH')
-  const [customerName, setCustomerName] = useState('')
-  const [documentNumber, setDocumentNumber] = useState('')
+  const [buyerKind, setBuyerKind] = useState<'PERSON' | 'COMPANY'>('PERSON')
+  const [withDocument, setWithDocument] = useState(true)
+  const [walkInName, setWalkInName] = useState('')
+  const [person, setPerson] = useState<SalePerson | null>(null)
+  const [company, setCompany] = useState<Company | null>(null)
+  const [personDialog, setPersonDialog] = useState<string | null>(null)
+  const [companyDialog, setCompanyDialog] = useState<string | null>(null)
+  const [buyerReset, setBuyerReset] = useState(0)
   const [saving, setSaving] = useState(false)
   const lock = useRef(false)
   const [voidUuid, setVoidUuid] = useState<string | null>(null)
@@ -137,21 +168,41 @@ const SalesPage = () => {
     setSaving(true)
 
     try {
+      let customerName: string | null = null
+
+      if (billing === 'NOW' && buyerKind === 'PERSON' && !withDocument) {
+        customerName = toPersonName(walkInName) || null
+      }
+
+      if (billing === 'NOW' && buyerKind === 'PERSON' && withDocument && !person) {
+        toast.error('Elija la persona o regístrela con su DNI.')
+
+        return
+      }
+
+      if (billing === 'NOW' && buyerKind === 'COMPANY' && !company) {
+        toast.error('Elija la empresa.')
+
+        return
+      }
+
       const saved = await salesApi.createConsumption(propertyId, {
         billing,
         reservationRoomUuid: billing === 'ROOM' ? roomUuid : undefined,
         guestUuid: billing === 'ROOM' ? rooms.find(room => room.reservationRoomUuid === roomUuid)?.guestUuid ?? undefined : undefined,
-        customerName: billing === 'NOW' ? customerName.trim() || null : null,
-        documentType: billing === 'NOW' && documentNumber.trim() ? 'DNI' : null,
-        documentNumber: billing === 'NOW' ? documentNumber.trim() || null : null,
+        personUuid: billing === 'NOW' && buyerKind === 'PERSON' && withDocument ? person?.uuid : undefined,
+        companyUuid: billing === 'NOW' && buyerKind === 'COMPANY' ? company?.uuid : undefined,
+        customerName,
         method: billing === 'NOW' ? method : undefined,
         items: chosen.map(item => ({ productUuid: item.product.uuid, quantity: item.quantity }))
       })
 
       toast.success(saved.billing === 'ROOM' ? 'Se cargó a la habitación.' : 'Venta cobrada.')
       setQuantities({})
-      setCustomerName('')
-      setDocumentNumber('')
+      setWalkInName('')
+      setPerson(null)
+      setCompany(null)
+      setBuyerReset(value => value + 1)
       await loadSales()
     } catch (error) {
       toast.error(getSalesApiErrorMessage(error, 'No se pudo registrar la venta.'))
@@ -209,13 +260,78 @@ const SalesPage = () => {
               </MenuItem>
             ))}
           </TextField>
-          <TextField label='Nombre (opcional)' value={customerName} onChange={event => setCustomerName(event.target.value)} />
-          <TextField label='DNI, si pide boleta' value={documentNumber} onChange={event => setDocumentNumber(event.target.value)} />
+          <RadioGroup
+            row
+            className='justify-center'
+            value={buyerKind}
+            onChange={event => setBuyerKind(event.target.value as 'PERSON' | 'COMPANY')}
+          >
+            <FormControlLabel value='PERSON' control={<Radio />} label='Persona' />
+            <FormControlLabel value='COMPANY' control={<Radio />} label='Empresa' />
+          </RadioGroup>
+          {buyerKind === 'PERSON' ? (
+            <div className='flex items-start gap-2'>
+              <FormControlLabel
+                className='mr-0 mt-2 shrink-0'
+                label={withDocument ? 'Con DNI' : 'Sin DNI'}
+                control={
+                  <Switch
+                    checked={withDocument}
+                    onChange={(_, checked) => setWithDocument(checked)}
+                    inputProps={{ 'aria-label': withDocument ? 'Con DNI' : 'Sin DNI' }}
+                  />
+                }
+              />
+              <div className='min-is-0 flex-1'>
+                {withDocument ? (
+                  <PersonPicker
+                    key={buyerReset}
+                    propertyId={propertyId}
+                    selected={person}
+                    onSelect={setPerson}
+                    onCreate={query => setPersonDialog(query)}
+                  />
+                ) : (
+                  <TextField
+                    fullWidth
+                    label='Nombres'
+                    placeholder='Nombre y apellido'
+                    value={walkInName}
+                    onChange={event => setWalkInName(event.target.value)}
+                    onBlur={() => setWalkInName(toPersonName(walkInName))}
+                  />
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className='flex flex-col gap-1'>
+              <CompanyPicker
+                key={buyerReset}
+                propertyId={propertyId}
+                label='Buscar empresa'
+                placeholder='RUC o razón social'
+                selected={company}
+                onSelect={setCompany}
+                onCreate={query => setCompanyDialog(query)}
+              />
+            </div>
+          )}
         </div>
       )}
       <div className='flex items-center justify-between gap-3'>
         <Typography className='font-medium'>Total {money(total)}</Typography>
-        <Button variant='contained' disabled={!canSell || saving || chosen.length === 0 || (billing === 'ROOM' && !roomUuid)} onClick={() => void sell()}>
+        <Button
+          variant='contained'
+          disabled={
+            !canSell ||
+            saving ||
+            chosen.length === 0 ||
+            (billing === 'ROOM' && !roomUuid) ||
+            (billing === 'NOW' && buyerKind === 'PERSON' && withDocument && !person) ||
+            (billing === 'NOW' && buyerKind === 'COMPANY' && !company)
+          }
+          onClick={() => void sell()}
+        >
           {saving ? <CircularProgress size={20} color='inherit' /> : 'Registrar venta'}
         </Button>
       </div>
@@ -350,9 +466,7 @@ const SalesPage = () => {
                               {sale.voidedAt ? ' · Anulada' : ''}
                             </td>
                             <td>
-                              {sale.roomNumber
-                                ? `Habitación ${sale.roomNumber}`
-                                : sale.customerName || sale.guestName || 'Mostrador'}
+                              {saleBuyer(sale)}
                             </td>
                             <td>{money(sale.total)}</td>
                             {canVoid ? (
@@ -378,6 +492,26 @@ const SalesPage = () => {
           <ProductsPanel propertyId={propertyId} products={products} canEdit={canProducts} onChanged={load} />
         </TabPanel>
       </TabContext>
+      <CreatePersonDialog
+        open={personDialog !== null}
+        propertyId={propertyId}
+        initialQuery={personDialog ?? ''}
+        onClose={() => setPersonDialog(null)}
+        onCreated={created => {
+          setPerson(created)
+          setPersonDialog(null)
+        }}
+      />
+      <CreateCompanyDialog
+        open={companyDialog !== null}
+        propertyId={propertyId}
+        initialQuery={companyDialog ?? ''}
+        onClose={() => setCompanyDialog(null)}
+        onCreated={created => {
+          setCompany(created)
+          setCompanyDialog(null)
+        }}
+      />
       <DeleteReasonDialog
         open={Boolean(voidUuid)}
         title='Anular venta'

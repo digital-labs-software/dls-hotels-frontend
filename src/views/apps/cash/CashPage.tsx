@@ -748,6 +748,7 @@ const CashPage = () => {
             {canOpenCash ? (
               <div className='flex flex-wrap items-end gap-3'>
                 <TextField
+                  size='small'
                   label='Monto inicial'
                   value={openingAmount}
                   onChange={event => setOpeningAmount(event.target.value)}
@@ -755,6 +756,7 @@ const CashPage = () => {
                   className='min-is-[120px]'
                 />
                 <TextField
+                  size='small'
                   label='Nota'
                   value={openNotes}
                   onChange={event => setOpenNotes(event.target.value)}
@@ -788,6 +790,7 @@ const CashPage = () => {
           <div className='flex flex-col gap-3'>
             <div className='flex flex-wrap items-end gap-3'>
               <TextField
+                size='small'
                 label='Código'
                 value={codeQuery}
                 onChange={event => {
@@ -841,6 +844,7 @@ const CashPage = () => {
               <div className='flex flex-wrap items-end gap-3'>
                 <TextField
                   select
+                  size='small'
                   label='Empleado'
                   value={otherCashierUuid}
                   onChange={event => setOtherCashierUuid(event.target.value)}
@@ -853,6 +857,7 @@ const CashPage = () => {
                   ))}
                 </TextField>
                 <TextField
+                  size='small'
                   label='Monto inicial'
                   value={openingAmount}
                   onChange={event => setOpeningAmount(event.target.value)}
@@ -860,6 +865,7 @@ const CashPage = () => {
                   className='min-is-[120px]'
                 />
                 <TextField
+                  size='small'
                   label='Nota'
                   value={openNotes}
                   onChange={event => setOpenNotes(event.target.value)}

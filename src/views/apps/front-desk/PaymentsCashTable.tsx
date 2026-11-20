@@ -10,6 +10,7 @@ import FormControl from '@mui/material/FormControl'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
+import OutlinedInput from '@mui/material/OutlinedInput'
 import Select from '@mui/material/Select'
 import TablePagination from '@mui/material/TablePagination'
 import Typography from '@mui/material/Typography'
@@ -143,7 +144,7 @@ const PaymentsCashTable = () => {
         </div>
 
         <Card>
-          <CardContent className='flex flex-wrap items-end gap-4'>
+          <CardContent className='flex flex-wrap items-center gap-4'>
             <DateField
               label='Desde'
               value={from}
@@ -163,10 +164,14 @@ const PaymentsCashTable = () => {
                 setTo(value)
               }}
             />
-            <FormControl size='small' className='min-is-[180px]'>
-              <InputLabel>Método</InputLabel>
+            <FormControl className='min-is-[180px]'>
+              <InputLabel id='cash-method' shrink>
+                Método
+              </InputLabel>
               <Select
-                label='Método'
+                labelId='cash-method'
+                displayEmpty
+                input={<OutlinedInput notched label='Método' />}
                 value={method}
                 onChange={e => {
                   setPage(0)

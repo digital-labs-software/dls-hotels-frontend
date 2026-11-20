@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
@@ -16,10 +16,12 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { toast } from 'react-toastify'
 
 import { scrollToFirstInvalid } from '@/utils/scrollToFirstInvalid'
+import { toPersonName } from '@/utils/string'
 
-import DateField from '@/components/date-picker/DateField'
-import { createRate, getRatesApiErrorMessage, updateRate } from '@/libs/ratesApi'
+import { createRate, getRatesApiErrorMessage, listRates, updateRate } from '@/libs/ratesApi'
 import type { HotelRate } from '@/types/apps/rateTypes'
+import RateRangeCalendar from './RateRangeCalendar'
+import { withRateTones } from './rateTones'
 
 export type RateDrawerMode = 'create' | 'edit' | 'view'
 
@@ -63,15 +65,29 @@ const RateFormDrawer = ({ open, mode, propertyId, rate, onClose, onSuccess }: Pr
   const isView = mode === 'view'
   const isEdit = mode === 'edit'
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const [activeRates, setActiveRates] = useState<HotelRate[]>([])
 
   const {
     control,
     handleSubmit,
     reset,
+    setValue,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting }
   } = useForm<FormValues>({ defaultValues: emptyValues })
 
   const validFrom = useWatch({ control, name: 'validFrom' })
+  const validTo = useWatch({ control, name: 'validTo' })
+  const isActive = useWatch({ control, name: 'isActive' })
+
+  const taken = useMemo(
+    () =>
+      withRateTones(activeRates)
+        .filter(item => item.uuid !== rate?.uuid)
+        .map(item => ({ name: item.name, validFrom: item.validFrom, validTo: item.validTo, tone: item.tone })),
+    [activeRates, rate?.uuid]
+  )
 
   useEffect(() => {
     if (!open) {
@@ -80,6 +96,26 @@ const RateFormDrawer = ({ open, mode, propertyId, rate, onClose, onSuccess }: Pr
 
     reset((isEdit || isView) && rate ? toFormValues(rate) : emptyValues)
   }, [open, mode, rate, isEdit, isView, reset])
+
+  useEffect(() => {
+    if (!open || !propertyId) {
+      return
+    }
+
+    let cancel = false
+
+    listRates(propertyId, { page: 1, limit: 100, isActive: true })
+      .then(page => {
+        if (!cancel) setActiveRates(page.data)
+      })
+      .catch(() => {
+        if (!cancel) setActiveRates([])
+      })
+
+    return () => {
+      cancel = true
+    }
+  }, [open, propertyId])
 
   const handleReset = () => {
     onClose()
@@ -91,10 +127,32 @@ const RateFormDrawer = ({ open, mode, propertyId, rate, onClose, onSuccess }: Pr
       return
     }
 
+    if (!data.validFrom || !data.validTo) {
+      setError('validFrom', { message: 'Elija el inicio y el fin en el calendario' })
+
+      return
+    }
+
+    if (data.validTo < data.validFrom) {
+      setError('validFrom', { message: 'La fecha de fin no puede ser anterior al inicio' })
+
+      return
+    }
+
+    if (data.isActive) {
+      const clash = taken.find(item => item.validFrom <= data.validTo && item.validTo >= data.validFrom)
+
+      if (clash) {
+        setError('validFrom', { message: `Ese tramo pisa ${clash.name}` })
+
+        return
+      }
+    }
+
     const payload = {
-      name: data.name.trim(),
-      validFrom: data.validFrom.trim(),
-      validTo: data.validTo.trim(),
+      name: toPersonName(data.name),
+      validFrom: data.validFrom,
+      validTo: data.validTo,
       isActive: data.isActive
     }
 
@@ -130,7 +188,7 @@ const RateFormDrawer = ({ open, mode, propertyId, rate, onClose, onSuccess }: Pr
       ModalProps={{ keepMounted: true }}
       sx={{
         '& .MuiDrawer-paper': {
-          width: { xs: '100%', md: 440 },
+          width: { xs: '100%', md: 'fit-content' },
           maxWidth: '100vw',
           height: '100%',
           display: 'flex',
@@ -154,7 +212,8 @@ const RateFormDrawer = ({ open, mode, propertyId, rate, onClose, onSuccess }: Pr
           void handleSubmit(onSubmit, () => scrollToFirstInvalid(form))(event)
         }}
       >
-        <div className='flex min-bs-0 min-is-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto p-5'>
+        <div className='flex min-bs-0 w-full max-w-full flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto p-5 md:w-max'>
+          <div className='w-0 min-w-full'>
           <Controller
             name='name'
             control={control}
@@ -173,73 +232,50 @@ const RateFormDrawer = ({ open, mode, propertyId, rate, onClose, onSuccess }: Pr
                 label='Nombre'
                 placeholder='Semana Santa'
                 disabled={isView || isSubmitting}
+                onBlur={() => {
+                  field.onChange(toPersonName(field.value))
+                  field.onBlur()
+                }}
                 error={Boolean(errors.name)}
                 helperText={errors.name?.message}
               />
             )}
           />
-          <Controller
-            name='validFrom'
-            control={control}
-            rules={{ required: 'Indique desde qué fecha.' }}
-            render={({ field }) => (
-              <DateField
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                name={field.name}
-                fullWidth
-                label='Desde'
-                disabled={isView || isSubmitting}
-                error={Boolean(errors.validFrom)}
-                helperText={errors.validFrom?.message}
-              />
-            )}
-          />
-          <Controller
-            name='validTo'
-            control={control}
-            rules={{
-              required: 'Indique hasta qué fecha.',
-              validate: value => {
-                if (!value || !validFrom || value >= validFrom) {
-                  return true
-                }
-
-                return 'La fecha de fin no puede ser anterior al inicio.'
-              }
+          </div>
+          <RateRangeCalendar
+            key={`${open ? 'open' : 'closed'}-${mode}-${rate?.uuid ?? 'new'}`}
+            from={validFrom || ''}
+            to={validTo || ''}
+            taken={taken}
+            blockTaken={!isView && isActive}
+            adjustEnds={isEdit}
+            disabled={isView || isSubmitting}
+            error={errors.validFrom?.message}
+            onBlocked={message => setError('validFrom', { message })}
+            onChange={(nextFrom, nextTo) => {
+              setValue('validFrom', nextFrom, { shouldDirty: true })
+              setValue('validTo', nextTo, { shouldDirty: true })
+              clearErrors('validFrom')
             }}
-            render={({ field }) => (
-              <DateField
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                name={field.name}
-                fullWidth
-                label='Hasta'
-                minDate={validFrom || undefined}
-                disabled={isView || isSubmitting}
-                error={Boolean(errors.validTo)}
-                helperText={errors.validTo?.message}
-              />
-            )}
           />
-          <Controller
-            name='isActive'
-            control={control}
-            render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={field.value}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={isView || isSubmitting}
-                  />
-                }
-                label={field.value ? 'Activa' : 'Inactiva'}
-              />
-            )}
-          />
+          <div className='w-0 min-w-full'>
+            <Controller
+              name='isActive'
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={field.value}
+                      onChange={(_, checked) => field.onChange(checked)}
+                      disabled={isView || isSubmitting}
+                    />
+                  }
+                  label={field.value ? 'Activa' : 'Inactiva'}
+                />
+              )}
+            />
+          </div>
         </div>
         <Divider />
         <div className='flex shrink-0 flex-col gap-3 p-5 sm:flex-row sm:justify-end'>

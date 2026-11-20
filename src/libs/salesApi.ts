@@ -95,6 +95,8 @@ export type Consumption = {
   documentNumber: string | null
   guestUuid: string | null
   guestName: string | null
+  personUuid: string | null
+  companyUuid: string | null
   reservationRoomUuid: string | null
   roomNumber: string | null
   total: number
@@ -142,6 +144,8 @@ export const salesApi = {
       billing: 'ROOM' | 'NOW'
       reservationRoomUuid?: string
       guestUuid?: string
+      personUuid?: string
+      companyUuid?: string
       customerName?: string | null
       documentType?: DocumentType | null
       documentNumber?: string | null

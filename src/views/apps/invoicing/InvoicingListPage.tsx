@@ -135,7 +135,17 @@ const InvoicingListPage = () => {
 
       <Card>
         <CardContent className='flex flex-col gap-4'>
-          <div className='flex flex-wrap gap-3'>
+          <div className='flex flex-wrap items-center gap-3'>
+            <TextField
+              label='Buscar'
+              placeholder='Número, cliente o RUC'
+              value={search}
+              onChange={event => {
+                setPage(1)
+                setSearch(event.target.value)
+              }}
+              className='min-is-[220px]'
+            />
             <FormControl sx={{ minWidth: 160 }}>
               <InputLabel id='invoice-type'>Tipo</InputLabel>
               <Select
@@ -195,18 +205,9 @@ const InvoicingListPage = () => {
                 setTo(value)
               }}
             />
-            <TextField
-              label='Buscar'
-              placeholder='Número, cliente o RUC'
-              value={search}
-              onChange={event => {
-                setPage(1)
-                setSearch(event.target.value)
-              }}
-            />
-            <Button variant='outlined' color='secondary' startIcon={<i className='ri-refresh-line' />} onClick={() => void load()}>
-              Actualizar
-            </Button>
+            <IconButton color='secondary' onClick={() => void load()} disabled={loading} aria-label='Actualizar'>
+              <i className='ri-refresh-line' />
+            </IconButton>
           </div>
 
           {loading ? (

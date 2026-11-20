@@ -44,6 +44,7 @@ import { limaToday } from '@/types/apps/frontDeskTypes'
 import { deleteRate, getRate, getRatesApiErrorMessage, listRates, updateRate } from '@/libs/ratesApi'
 import RateFormDrawer from './RateFormDrawer'
 import type { RateDrawerMode } from './RateFormDrawer'
+import RateYearDialog from './RateYearDialog'
 import { getLocalizedUrl } from '@/utils/i18n'
 import tableStyles from '@core/styles/table.module.css'
 
@@ -116,6 +117,7 @@ const RateListTable = () => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'true' | 'false'>('all')
   const [pendingUuid, setPendingUuid] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [yearOpen, setYearOpen] = useState(false)
   const [drawerMode, setDrawerMode] = useState<RateDrawerMode>('create')
   const [selectedRate, setSelectedRate] = useState<HotelRate | null>(null)
 
@@ -326,6 +328,15 @@ const RateListTable = () => {
               </Select>
             </FormControl>
             <Button
+              variant='outlined'
+              color='secondary'
+              className='max-sm:is-full is-auto'
+              onClick={() => setYearOpen(true)}
+              startIcon={<i className='ri-calendar-2-line' />}
+            >
+              Ver el año
+            </Button>
+            <Button
               variant='contained'
               color='primary'
               className='max-sm:is-full is-auto'
@@ -418,6 +429,7 @@ const RateListTable = () => {
         onClose={() => setDrawerOpen(false)}
         onSuccess={() => void fetchRates()}
       />
+      <RateYearDialog open={yearOpen} propertyId={propertyId} onClose={() => setYearOpen(false)} />
       <DeleteReasonDialog
         open={Boolean(rateToDelete)}
         title='Eliminar tarifa'
